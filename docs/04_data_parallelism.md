@@ -115,7 +115,8 @@ for i, data in enumerate(data_loader):
 ```
 [glogin01]$ python ../src/data_parallel.py
 Using custom data configuration default
-Reusing dataset multi_nli (/home/ubuntu/.cache/huggingface/datasets/multi_nli/default/0.0.0/591f72eb6263d1ab527561777936b199b714cda156d35716881158a2bd144f39)
+Reusing dataset multi_nli
+(/home/ubuntu/.cache/huggingface/datasets/multi_nli/default/0.0.0/591f72eb6263d1ab527561777936b199b714cda156d35716881158a2bd144f39)
 100%|█████████████████████████████████████████████| 3/3 [00:00<00:00, 58.31it/s]
 Some weights of the model checkpoint at bert-base-cased were not used when initializing
 BertForSequenceClassification: ['cls.predictions.bias', 'cls.predictions.transform.dense.bias',
@@ -241,14 +242,24 @@ for i, data in enumerate(data_loader):
 ```
 [glogin01]$ python ../src/efficient_data_parallel.py
 Using custom data configuration default
-Reusing dataset multi_nli (/home/ubuntu/.cache/huggingface/datasets/multi_nli/default/0.0.0/591f72eb6263d1ab527561777936b199b714cda156d35716881158a2bd144f39)
+Reusing dataset multi_nli
+(/home/ubuntu/.cache/huggingface/datasets/multi_nli/default/0.0.0/591f72eb6263d1ab527561777936b199b714cda156d35716881158a2bd144f39)
 100%|████████████████████████████████████████████| 3/3 [00:00<00:00, 199.34it/s]
-Some weights of the model checkpoint at bert-base-cased were not used when initializing BertForSequenceClassification: ['cls.predictions.transform.LayerNorm.weight', 'cls.seq_relationship.weight', 'cls.predictions.decoder.weight', 'cls.predictions.bias', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.weight']
-- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
-- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
-Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+Some weights of the model checkpoint at bert-base-cased were not used when initializing
+BertForSequenceClassification: ['cls.predictions.transform.LayerNorm.weight', 'cls.seq_relationship.weight',
+'cls.predictions.decoder.weight', 'cls.predictions.bias', 'cls.predictions.transform.dense.bias',
+'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.weight']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on
+another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a
+BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that
+you expect to be exactly identical (initializing a BertForSequenceClassification model from a
+BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased
+and are newly initialized: ['classifier.bias', 'classifier.weight']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
-/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/nn/parallel/_functions.py:64: UserWarning: Was asked to gather along dimension 0, but all input tensors were scalars; will instead unsqueeze and return a vector.
+/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/nn/parallel/_functions.py:64: UserWarning: Was
+asked to gather along dimension 0, but all input tensors were scalars; will instead unsqueeze and return a vector.
   warnings.warn('Was asked to gather along dimension 0, but all '
 step:0, loss:1.186471700668335
 step:10, loss:1.1163532733917236
