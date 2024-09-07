@@ -195,7 +195,7 @@ step: 300, loss: 3.437178373336792
 ## 3. 1F1B Pipelining (PipeDream)
 Microsoft에서 공개한 `PipeDream`은 `GPipe`와는 약간 다른 방식의 파이프라이닝을 수행합니다. 흔히 이 방법을 1F1B라고 부르는데, 모든 Forward가 끝나고 나서 Backward를 수행하는 GPipe와 달리 `PipeDream`은 Forward와 Backward를 번갈아가면서 수행합니다.
    
-<img src=\"../images/1f1b.png\" width=600>
+![](../images/1f1b.png)
 
 1F1B Pipelining에는 다음과 같은 두가지 챌린지가 존재합니다.
 1. Weight version managing
