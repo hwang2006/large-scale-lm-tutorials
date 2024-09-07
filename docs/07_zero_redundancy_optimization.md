@@ -1,389 +1,194 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "id": "b22066fd",
-   "metadata": {},
-   "source": [
-    "# Zero Redundancy Optimization (ZeRO)\n",
-    "\n",
-    "이번 세션에는 Microsoft의 뉴럴넷 학습 최적화 솔루션인 ZeRO에 대해서 알아보도록 하겠습니다."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "7bea8763",
-   "metadata": {},
-   "source": [
-    "## 1. Mixed Precision\n",
-    "\n",
-    "최신 GPU들이 Lower precision에 대한 계산을 지원하면서 현대의 뉴럴넷 학습은 대부분 FP16(half)과 FP32(single)을 함께 사용하는 Mixed precision 방식을 사용합니다. V100 기준으로 FP32에서 속도가 14TFLOPS 정도라면, FP16에서는 100TFLOPS의 속도로 모델을 학습할 수 있습니다. 또한 FP16을 사용하면 모델의 사이즈가 줄기 때문에 학습 뿐만 아니라 배포시에도 장점이 있죠.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/mixed_precision_1.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### 그런데 왜 Mixed?\n",
-    "그런데 여기에서 의문이 듭니다. FP16으로만 모델을 학습시키면 되지, 굳이 FP32와 FP16을 같이 쓸 필요가 있을까요? 결과부터 말하자면 FP16만으로 학습시 Loss가 심하게 발산하여 학습이 거의 불가능합니다. Gradient를 FP16로 유지하면 대부분의 소수점을 버리는 것이기 때문에 정밀한 학습이 불가능해집니다. 따라서 속도가 빠른 FP16과 정확도가 높은 FP32를 모두 사용해서 두 방식의 장점만을 취하려고 하는 것이죠. \n",
-    "\n",
-    "![](../images/ddp_analysis_3.png)\n",
-    "\n",
-    "Computation cost가 큰 Forward와 Backward는 FP16 모델로 하고, 계산된 Gradient를 정밀도가 높은 FP32 모델에 복사해서 weight를 업데이트 합니다. 그런데 여기서 궁금한 점이 생깁니다. FP16의 Gradient를 FP32에 적용하려면 어떻게 해야할까요? 연구진이 실험한 결과, FP16으로 계산된 Loss를 Backward 하면 크기가 크기가 작았던 일부 값들(그림에서 왼쪽)은 계산이 되면서 0으로 변해버렸다고 합니다.\n",
-    "\n",
-    "![](../images/mixed_precision_4.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### Loss Scaling\n",
-    "이러한 문제를 어떻게 해결할 수 있을까요? 매우 심플한 아이디어로, Loss Gradient에 매우 큰 값을 곱해줘서 분포를 오른쪽으로 밀어주면 됩니다. 이러한 기술의 이름을 Loss scaling이라고 합니다. FP16의 Loss에 매우 큰 값을 곱하면, FP32에 적용 했을 때 사라져 버릴 수 있는 값들도 잘 살려낼 수 있죠.\n",
-    "\n",
-    "![](../images/mixed_precision_5.png)\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "52e3d53a",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: apex/apex/amp/opt.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import contextlib\n",
-    "\n",
-    "@contextlib.contextmanager\n",
-    "def scale_loss(self, loss):\n",
-    "    if not self._amp_handle.is_active():\n",
-    "        yield loss\n",
-    "        return\n",
-    "\n",
-    "    # When there are multiple losses per-optimizer, we need\n",
-    "    # to save out current grad accumulation, since we won't be\n",
-    "    # able to unscale this particulare loss once the grads are\n",
-    "    # all mixed together.\n",
-    "    cached_grads = []\n",
-    "    if self._loss_idx > 0:\n",
-    "        for p in master_params(self._optimizer):\n",
-    "            if p.grad is not None:\n",
-    "                cached_grads.append(p.grad.data.detach().clone())\n",
-    "            else:\n",
-    "                cached_grads.append(None)\n",
-    "        self._optimizer.zero_grad()\n",
-    "\n",
-    "    loss_scale = self._cur_loss_scaler().loss_scale()\n",
-    "    yield loss * loss_scale"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "5f4813d2",
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: apex/tests/L0/run_amp/test_fused_sgd.py\n",
-    "\"\"\"\n",
-    "\n",
-    "with amp.scale_loss(loss0, optimizer, loss_id=loss_ids[0]) as scaled_loss:\n",
-    "    scaled_loss.backward()\n",
-    "    if i == inject_inf and which_backward == 0:\n",
-    "        if inject_inf_loc == \"fp32\":\n",
-    "            model0.weight0.grad[0] = float('inf')\n",
-    "        elif inject_inf_loc == \"fp16\":\n",
-    "            model0.weight1.grad[0] = float('inf')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "d8e2f8c3",
-   "metadata": {},
-   "source": [
-    "실제로 아래 그림처럼 Loss에 큰 값을 곱해주면 발산하지 않고 학습이 잘 되었다고 합니다. 회색 그래프는 scaling을 하지 않았을때, 녹색은 scaling 했을때의 성능입니다. 놀랍게도 FP32와 성능이 거의 흡사하죠.\n",
-    "\n",
-    "![](../images/mixed_precision_2.png)\n",
-    "\n",
-    "이러한 이유로 FP16과 FP32를 함께 사용하는 Mixed precision은 현대 뉴럴넷 학습에 거의 필수가 되었습니다. FP16 정도의 저장 용량으로 FP32의 커버리지를 커버하는 bfloat16 (Google TPU) 방식이 지금보다 더 다양한 GPU에서 지원되고 대중화 되기 전까지는 FP16 + 32의 Mixed precision training은 뉴럴넷 학습에 필수적으로 쓰이는 기술일 것입니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### Mixed Precision의 동작방식\n",
-    "\n",
-    "다음은 Mixed Precision의 동작 방식을 나타낸 그림입니다.  코드와 수식을 이용해 진행 과정을 자세히 살펴봅시다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/mixed_precision_33.png)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "c3b82a79",
-   "metadata": {},
-   "source": [
-    "### 0) 모델과 옵티마이저 생성 \n",
-    "\n",
-    "2개의 레이어를 가진 뉴럴넷을 정의합니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "id": "13f68e55",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import torch\n",
-    "import torch.nn as nn\n",
-    "\n",
-    "class Net(nn.Module):\n",
-    "    def __init__(self):\n",
-    "        super().__init__()\n",
-    "        self.w1 = nn.Linear(512, 512, bias=False)\n",
-    "        self.w2 = nn.Linear(512, 1, bias=False)\n",
-    "    \n",
-    "    def forward(self, x):\n",
-    "        z1 = self.w1(x)\n",
-    "        z2 = self.w2(z1)\n",
-    "        return z2"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "82ecdfd8",
-   "metadata": {},
-   "source": [
-    "학습할 뉴럴넷과, 옵티마이저 생성합니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 2,
-   "id": "a9969279",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "from torch.optim import SGD\n",
-    "\n",
-    "fp32_model= Net().to(\"cuda\")\n",
-    "optimizer = SGD(fp32_model.parameters(), lr=1e-2)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 3,
-   "id": "68989b0d",
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "data": {
-      "text/plain": [
-       "'GPU = 1.001953125 GiB'"
-      ]
-     },
-     "execution_count": 3,
-     "metadata": {},
-     "output_type": "execute_result"
-    }
-   ],
-   "source": [
-    "f\"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB\""
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "76eb3afb",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "### 1)  Float2Half\n",
-    "\n",
-    "이 과정은 단순히 `0.524796132`와 같은 파라미터를 `0.5247`과 같이 잘라내는 작업입니다.\n",
-    "\n",
-    "보시다시피 용량도 FP32 모델의 절반정도 사이즈를 가집니다. (1.0 GB + 0.5 GB)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 4,
-   "id": "b9e1e4cc",
-   "metadata": {},
-   "outputs": [
-    {
-     "data": {
-      "text/plain": [
-       "<All keys matched successfully>"
-      ]
-     },
-     "execution_count": 4,
-     "metadata": {},
-     "output_type": "execute_result"
-    }
-   ],
-   "source": [
-    "fp16_model = Net().half().to(\"cuda\")\n",
-    "fp16_model.load_state_dict(fp32_model.state_dict())"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 5,
-   "id": "b9da7079",
-   "metadata": {},
-   "outputs": [
-    {
-     "data": {
-      "text/plain": [
-       "'GPU = 1.5029296875 GiB'"
-      ]
-     },
-     "execution_count": 5,
-     "metadata": {},
-     "output_type": "execute_result"
-    }
-   ],
-   "source": [
-    "f\"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB\""
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "310dbf91",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "### 2) Forward\n",
-    "\n",
-    "fp16으로 복사된 모델을 이용하여 forward pass를 수행합니다.\n",
-    "\n",
-    "$z_1 = w_1 \\cdot x \\; $ (FWD: layer1)\n",
-    "\n",
-    "$z_2 = w_2 \\cdot z_1 \\; $ (FWD: layer2)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 6,
-   "id": "799f9620",
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "data": {
-      "text/plain": [
-       "'logits type = torch.float16'"
-      ]
-     },
-     "execution_count": 6,
-     "metadata": {},
-     "output_type": "execute_result"
-    }
-   ],
-   "source": [
-    "import torch\n",
-    "\n",
-    "# example input sizes\n",
-    "batch_size, hidden_size = 4, 512\n",
-    "\n",
-    "# create dummy data (bsz=4, hid=256)\n",
-    "x = torch.randn(batch_size,hidden_size, dtype=torch.half, device=\"cuda\") \n",
-    "\n",
-    "# do forward\n",
-    "z2 = fp16_model(x)\n",
-    "\n",
-    "# check dtypr of output logits\n",
-    "f\"logits type = {z2.dtype}\""
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "859da756",
-   "metadata": {},
-   "source": [
-    "계산된 FP16의 출력값을 이용하여 Loss를 계산합니다.\n",
-    "\n",
-    "$L = \\frac{(y - z_2)^2}{2} \\; $ (Loss computation)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 7,
-   "id": "bc12ca00",
-   "metadata": {},
-   "outputs": [
-    {
-     "data": {
-      "text/plain": [
-       "'loss type = torch.float16'"
-      ]
-     },
-     "execution_count": 7,
-     "metadata": {},
-     "output_type": "execute_result"
-    }
-   ],
-   "source": [
-    "# craete dummy data (bsz=4)\n",
-    "y = torch.tensor([[1.9], [9.5], [0.9], [1.2]], dtype=torch.half, device=\"cuda\")\n",
-    "\n",
-    "# compute mean square error loss\n",
-    "L = torch.nn.functional.mse_loss(z2, y)\n",
-    "\n",
-    "# check dtype of loss\n",
-    "f\"loss type = {L.dtype}\""
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "83f14130",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "### 3) Backward \n",
-    "\n",
-    "이제 $w_n := w_n - lr \\cdot \\frac{dL}{dw_n}$와 같은 Gradient Descent Rule로 모델의 파라미터를 업데이트 해야 합니다.\n",
-    "\n",
-    "따라서 $\\frac{dL}{dw_1}$과 $\\frac{dL}{dw_2}$와 같은 Gradient를 구해야 하는데요. 이들은 대략 아래와 같습니다. (chain rule에 의해서 원하는 결과를 얻을 수 있습니다.)\n",
-    "\n",
-    "$\\frac{dL}{dw_2} = \\frac{dL}{dz_2} \\cdot \\frac{dz_2}{dw_2}$\n",
-    "\n",
-    "$\\frac{dL}{dw_1} = \\frac{dL}{dz_2} \\cdot \\frac{dz_2}{dz_1} \\cdot \\frac{dz_1}{dw_1}$\n",
-    "\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "\n",
-    "구체적으로는 아래와 같습니다.\n",
-    "\n",
-    "$\\frac{dL}{dz_2} =  y - z_2 \\; $ (BWD-activation: layer2)\n",
-    "\n",
-    "$\\frac{dz_2}{dw_2} = z_1 \\;$ (BWD-weight: layer2)\n",
-    "\n",
-    "$\\frac{dz_2}{dz_1} = w_2 \\;$ (BWD-activation: layer1)\n",
-    "\n",
-    "$\\frac{dz_1}{dw_1} = x \\; $ (BWD-weight: layer1)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "$\\frac{dL}{dw_2} = (y - z_2) \\cdot z_1$\n",
-    "\n",
-    "$\\frac{dL}{dw_1} = (y - z_2) \\cdot w_2 \\cdot x$\n"
-   ]
-  },
-  {
-   "cell_type": "code",
+# Zero Redundancy Optimization (ZeRO)\n",
+
+이번 세션에는 Microsoft의 뉴럴넷 학습 최적화 솔루션인 ZeRO에 대해서 알아보도록 하겠습니다.
+ 
+## 1. Mixed Precision
+최신 GPU들이 Lower precision에 대한 계산을 지원하면서 현대의 뉴럴넷 학습은 대부분 FP16(half)과 FP32(single)을 함께 사용하는 Mixed precision 방식을 사용합니다. V100 기준으로 FP32에서 속도가 14TFLOPS 정도라면, FP16에서는 100TFLOPS의 속도로 모델을 학습할 수 있습니다. 또한 FP16을 사용하면 모델의 사이즈가 줄기 때문에 학습 뿐만 아니라 배포시에도 장점이 있죠.
+ 
+![](../images/mixed_precision_1.png)
+    
+### 그런데 왜 Mixed?
+그런데 여기에서 의문이 듭니다. FP16으로만 모델을 학습시키면 되지, 굳이 FP32와 FP16을 같이 쓸 필요가 있을까요? 결과부터 말하자면 FP16만으로 학습시 Loss가 심하게 발산하여 학습이 거의 불가능합니다. Gradient를 FP16로 유지하면 대부분의 소수점을 버리는 것이기 때문에 정밀한 학습이 불가능해집니다. 따라서 속도가 빠른 FP16과 정확도가 높은 FP32를 모두 사용해서 두 방식의 장점만을 취하려고 하는 것이죠. 
+
+![](../images/ddp_analysis_3.png)
+    
+Computation cost가 큰 Forward와 Backward는 FP16 모델로 하고, 계산된 Gradient를 정밀도가 높은 FP32 모델에 복사해서 weight를 업데이트 합니다. 그런데 여기서 궁금한 점이 생깁니다. FP16의 Gradient를 FP32에 적용하려면 어떻게 해야할까요? 연구진이 실험한 결과, FP16으로 계산된 Loss를 Backward 하면 크기가 크기가 작았던 일부 값들(그림에서 왼쪽)은 계산이 되면서 0으로 변해버렸다고 합니다.
+    
+![](../images/mixed_precision_4.png)
+ 
+### Loss Scaling
+이러한 문제를 어떻게 해결할 수 있을까요? 매우 심플한 아이디어로, Loss Gradient에 매우 큰 값을 곱해줘서 분포를 오른쪽으로 밀어주면 됩니다. 이러한 기술의 이름을 Loss scaling이라고 합니다. FP16의 Loss에 매우 큰 값을 곱하면, FP32에 적용 했을 때 사라져 버릴 수 있는 값들도 잘 살려낼 수 있죠.\n",
+    
+![](../images/mixed_precision_5.png)
+
+```
+"""
+참고: apex/apex/amp/opt.py
+"""
+
+import contextlib
+
+@contextlib.contextmanager
+def scale_loss(self, loss):
+    if not self._amp_handle.is_active():
+        yield loss
+        return
+
+    # When there are multiple losses per-optimizer, we need
+    # to save out current grad accumulation, since we won't be
+    # able to unscale this particulare loss once the grads are
+    # all mixed together.
+    cached_grads = []
+    if self._loss_idx > 0:
+        for p in master_params(self._optimizer):
+            if p.grad is not None:
+                cached_grads.append(p.grad.data.detach().clone())
+            else:
+                cached_grads.append(None)
+        self._optimizer.zero_grad()
+
+    loss_scale = self._cur_loss_scaler().loss_scale()
+    yield loss * loss_scale
+```
+```
+"""
+참고: apex/tests/L0/run_amp/test_fused_sgd.py
+"""
+
+with amp.scale_loss(loss0, optimizer, loss_id=loss_ids[0]) as scaled_loss:
+    scaled_loss.backward()
+    if i == inject_inf and which_backward == 0:
+        if inject_inf_loc == "fp32":
+            model0.weight0.grad[0] = float('inf')
+        elif inject_inf_loc == "fp16":
+            model0.weight1.grad[0] = float('inf')
+```
+
+실제로 아래 그림처럼 Loss에 큰 값을 곱해주면 발산하지 않고 학습이 잘 되었다고 합니다. 회색 그래프는 scaling을 하지 않았을때, 녹색은 scaling 했을때의 성능입니다. 놀랍게도 FP32와 성능이 거의 흡사하죠.
+
+![](../images/mixed_precision_2.png)
+
+이러한 이유로 FP16과 FP32를 함께 사용하는 Mixed precision은 현대 뉴럴넷 학습에 거의 필수가 되었습니다. FP16 정도의 저장 용량으로 FP32의 커버리지를 커버하는 bfloat16 (Google TPU) 방식이 지금보다 더 다양한 GPU에서 지원되고 대중화 되기 전까지는 FP16 + 32의 Mixed precision training은 뉴럴넷 학습에 필수적으로 쓰이는 기술일 것입니다.
+   
+### Mixed Precision의 동작방식
+  
+다음은 Mixed Precision의 동작 방식을 나타낸 그림입니다.  코드와 수식을 이용해 진행 과정을 자세히 살펴봅시다.
+   
+![](../images/mixed_precision_33.png)
+
+### 0) 모델과 옵티마이저 생성
+
+2개의 레이어를 가진 뉴럴넷을 정의합니다.
+```
+import torch
+import torch.nn as nn
+
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.w1 = nn.Linear(512, 512, bias=False)
+        self.w2 = nn.Linear(512, 1, bias=False)
+    
+    def forward(self, x):
+        z1 = self.w1(x)
+        z2 = self.w2(z1)
+        return z2
+```
+
+학습할 뉴럴넷과, 옵티마이저 생성합니다.
+```
+from torch.optim import SGD
+
+fp32_model= Net().to("cuda")
+optimizer = SGD(fp32_model.parameters(), lr=1e-2)
+```
+```
+f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB"
+'GPU = 1.001953125 GiB'
+```
+
+### 1)  Float2Half
+    
+이 과정은 단순히 `0.524796132`와 같은 파라미터를 `0.5247`과 같이 잘라내는 작업입니다.
+   
+보시다시피 용량도 FP32 모델의 절반정도 사이즈를 가집니다. (1.0 GB + 0.5 GB)
+```
+fp16_model = Net().half().to("cuda")
+fp16_model.load_state_dict(fp32_model.state_dict())
+<All keys matched successfully>
+```
+```
+f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB"
+```
+'GPU = 1.5029296875 GiB'
+
+
+### 2) Forward
+    
+fp16으로 복사된 모델을 이용하여 forward pass를 수행합니다.
+   
+$z_1 = w_1 \\cdot x$ (FWD: layer1)
+    
+$z_2 = w_2 \\cdot z_1$ (FWD: layer2)
+
+```
+import torch
+
+# example input sizes
+batch_size, hidden_size = 4, 512
+
+# create dummy data (bsz=4, hid=256)
+x = torch.randn(batch_size,hidden_size, dtype=torch.half, device="cuda") 
+
+# do forward
+z2 = fp16_model(x)
+
+# check dtypr of output logits
+f"logits type = {z2.dtype}"
+'logits type = torch.float16'
+```
+
+계산된 FP16의 출력값을 이용하여 Loss를 계산합니다.
+    
+$L = \\frac{(y - z_2)^2}{2} \\; $ (Loss computation)
+
+```
+# craete dummy data (bsz=4)
+y = torch.tensor([[1.9], [9.5], [0.9], [1.2]], dtype=torch.half, device="cuda")
+
+# compute mean square error loss
+L = torch.nn.functional.mse_loss(z2, y)
+
+# check dtype of loss
+f"loss type = {L.dtype}"
+```
+'loss type = torch.float16'
+
+
+### 3) Backward
+
+이제 $w_n := w_n - lr \\cdot \\frac{dL}{dw_n}$와 같은 Gradient Descent Rule로 모델의 파라미터를 업데이트 해야 합니다.
+   
+따라서 $\\frac{dL}{dw_1}$과 $\\frac{dL}{dw_2}$와 같은 Gradient를 구해야 하는데요. 이들은 대략 아래와 같습니다. (chain rule에 의해서 원하는 결과를 얻을 수 있습니다.)
+    
+$\\frac{dL}{dw_2} = \\frac{dL}{dz_2} \\cdot \\frac{dz_2}{dw_2}$
+
+$\\frac{dL}{dw_1} = \\frac{dL}{dz_2} \\cdot \\frac{dz_2}{dz_1} \\cdot \\frac{dz_1}{dw_1}$
+
+구체적으로는 아래와 같습니다.
+ 
+$\\frac{dL}{dz_2} =  y - z_2 \\; $ (BWD-activation: layer2)
+   
+$\\frac{dz_2}{dw_2} = z_1$ (BWD-weight: layer2)
+    
+$\\frac{dz_2}{dz_1} = w_2$ (BWD-activation: layer1)
+    
+$\\frac{dz_1}{dw_1} = x$ (BWD-weight: layer1)
+   
+$\\frac{dL}{dw_2} = (y - z_2) \\cdot z_1$
+  
+$\\frac{dL}{dw_1} = (y - z_2) \\cdot w_2 \\cdot x$
+
    "execution_count": 8,
    "id": "2bb6019c",
    "metadata": {},
