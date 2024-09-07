@@ -117,10 +117,19 @@ for i, data in enumerate(data_loader):
 Using custom data configuration default
 Reusing dataset multi_nli (/home/ubuntu/.cache/huggingface/datasets/multi_nli/default/0.0.0/591f72eb6263d1ab527561777936b199b714cda156d35716881158a2bd144f39)
 100%|█████████████████████████████████████████████| 3/3 [00:00<00:00, 58.31it/s]
-Some weights of the model checkpoint at bert-base-cased were not used when initializing BertForSequenceClassification: ['cls.predictions.bias', 'cls.predictions.transform.dense.bias', 'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.weight', 'cls.seq_relationship.weight']
-- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
-- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
-Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+Some weights of the model checkpoint at bert-base-cased were not used when initializing
+BertForSequenceClassification: ['cls.predictions.bias', 'cls.predictions.transform.dense.bias',
+'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.weight',
+'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.weight',
+'cls.seq_relationship.weight']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on
+another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a
+BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that
+you expect to be exactly identical (initializing a BertForSequenceClassification model frm
+BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased
+and are newly initialized: ['classifier.bias', 'classifier.weight']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
 step:0, loss:1.1612184047698975
 step:10, loss:1.1026676893234253
@@ -413,29 +422,59 @@ Reusing dataset multi_nli (/home/ubuntu/.cache/huggingface/datasets/multi_nli/de
 Using custom data configuration default
 Reusing dataset multi_nli (/home/ubuntu/.cache/huggingface/datasets/multi_nli/default/0.0.0/591f72eb6263d1ab527561777936b199b714cda156d35716881158a2bd144f39)
 100%|████████████████████████████████████████████| 3/3 [00:00<00:00, 361.84it/s]
-Some weights of the model checkpoint at bert-base-cased were not used when initializing BertForSequenceClassification: ['cls.predictions.decoder.weight', 'cls.predictions.transform.dense.weight', 'cls.seq_relationship.bias', 'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.weight', 'cls.predictions.bias', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.LayerNorm.weight']
-- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
-- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
-Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+Some weights of the model checkpoint at bert-base-cased were not used when initializing
+BertForSequenceClassification: ['cls.predictions.decoder.weight', 'cls.predictions.transform.dense.weight',
+'cls.seq_relationship.bias', 'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.weight',
+'cls.predictions.bias', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.LayerNorm.weight']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on
+another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a
+BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that
+you expect to be exactly identical (initializing a BertForSequenceClassification model from a
+BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased
+and are newly initialized: ['classifier.bias', 'classifier.weight']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
 Some weights of the model checkpoint at bert-base-cased were not used when initializing
 BertForSequenceClassification: ['cls.predictions.transform.dense.weight', 'cls.predictions.bias',
 'cls.seq_relationship.bias',
 'cls.predictions.transform.LayerNorm.bias','cls.predictions.transform.LayerNorm.weight',
 'cls.predictions.transform.dense.bias', 'cls.seq_relationship.weight', 'cls.predictions.decoder.weight']
-- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
-- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
-Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.weight', 'classifier.bias']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on
+another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a
+BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that
+you expect to be exactly identical (initializing a BertForSequenceClassification model from a
+BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased
+and are newly initialized: ['classifier.weight', 'classifier.bias']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
-Some weights of the model checkpoint at bert-base-cased were not used when initializing BertForSequenceClassification: ['cls.predictions.transform.dense.weight', 'cls.predictions.bias', 'cls.seq_relationship.weight', 'cls.predictions.decoder.weight', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.LayerNorm.bias']
-- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
-- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
-Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+Some weights of the model checkpoint at bert-base-cased were not used when initializing
+BertForSequenceClassification: ['cls.predictions.transform.dense.weight', 'cls.predictions.bias',
+'cls.seq_relationship.weight', 'cls.predictions.decoder.weight', 'cls.seq_relationship.bias',
+'cls.predictions.transform.dense.bias', 'cls.predictions.transform.LayerNorm.weight', '
+cls.predictions.transform.LayerNorm.bias']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on
+another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a
+BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that
+you expect to be exactly identical (initializing a BertForSequenceClassification model from a
+BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased
+and are newly initialized: ['classifier.bias', 'classifier.weight']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
-Some weights of the model checkpoint at bert-base-cased were not used when initializing BertForSequenceClassification: ['cls.predictions.transform.dense.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.bias', 'cls.seq_relationship.weight', 'cls.predictions.transform.dense.weight', 'cls.predictions.decoder.weight']
-- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
-- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
-Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.weight', 'classifier.bias']
+Some weights of the model checkpoint at bert-base-cased were not used when initializing
+BertForSequenceClassification: ['cls.predictions.transform.dense.bias', 'cls.seq_relationship.bias',
+'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.bias',
+'cls.seq_relationship.weight', 'cls.predictions.transform.dense.weight', 'cls.predictions.decoder.weight']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on
+another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a
+BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that
+you expect to be exactly identical (initializing a BertForSequenceClassification model from a
+BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased
+and are newly initialized: ['classifier.weight', 'classifier.bias']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
 step:0, loss:1.1451387405395508
 step:10, loss:1.0912988185882568
