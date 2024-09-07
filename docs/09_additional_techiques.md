@@ -1,4 +1,4 @@
-# Additional Techniques\n",
+# Additional Techniques
 지금까지는 거의 대부분 병렬화 및 메모리에 관련된 영역을 다루었습니다. 그러나 병렬화 말고도 large-scale 모델링에 유용한 테크닉들이 많이 있습니다. 이번 세션에서는 그러한 몇몇 테크닉을 간단하게 소개드리도록 하겠습니다.
 
 ## 1. Kernel Fusion
@@ -43,19 +43,19 @@ __host__ void func(){...}
 - [Turbo Transformer Kernel](https://github.com/Tencent/TurboTransformers)
 - [Effective Transformer Kernel](https://github.com/bytedance/effective_transformer)"
  
-## 2. Progressive Layer Dropping (PLD)\n",
+## 2. Progressive Layer Dropping (PLD)
    
 Progressive Layer Dropping은 랜덤하게 Layer를 Skip해서 학습 속도와 성능을 개선하는 방법입니다. 논문의 저자들은 BERT의 학습과정을 아래와 같은 두가지의 인사이트를 얻을 수 있었다고 합니다.
    
 ![](../images/pld_1.png)
  
 - **학습 초반**에는 Layer에 따른 Input과 Output의 L2-Norm과 Cos similiarity **차이가** 크지만 **후반으로 갈 수록 작아진다.**
-  - 즉, 학습 초반에는 많은 것들을 새로 배우고 변하게 되지만 학습 후반에는 거의 미세한 교정만 하는 것으로 보인다.\n",
+  - 즉, 학습 초반에는 많은 것들을 새로 배우고 변하게 되지만 학습 후반에는 거의 미세한 교정만 하는 것으로 보인다.
     
   - Pre-LN 모델의 경우 **앞쪽 레이어**는 Input과 Output의 차이가 꽤 있지만, **뒤쪽은 레이어는 거의 비슷한 출력**을 내놓는다.
-  - 뒤쪽 Layer로 갈수록 기존 결과를 크게 바꾸지 않고 아주 미세한 교정만 하는 것으로 보인다.\n",
+  - 뒤쪽 Layer로 갈수록 기존 결과를 크게 바꾸지 않고 아주 미세한 교정만 하는 것으로 보인다.
   
-이를 기반으로 학습중에 일부 레이어를 dropping 하도록 구현해서 학습 속도와 성능을 개선합니다. 실험에서 얻은 인사이트를 바탕으로 학습에 중요하다고 여겨지는 학습초반 / 앞쪽 레이어는 비교적 덜 dropping 하고 학습에 덜 중요하다고 여겨지는 학습 후반 / 뒤쪽 레이어는 자주 dropping시켜서 좋은 성능을 얻었다고 합니다.\n",
+이를 기반으로 학습중에 일부 레이어를 dropping 하도록 구현해서 학습 속도와 성능을 개선합니다. 실험에서 얻은 인사이트를 바탕으로 학습에 중요하다고 여겨지는 학습초반 / 앞쪽 레이어는 비교적 덜 dropping 하고 학습에 덜 중요하다고 여겨지는 학습 후반 / 뒤쪽 레이어는 자주 dropping시켜서 좋은 성능을 얻었다고 합니다.
 
 ![](../images/pld_2.png)
     
@@ -65,7 +65,7 @@ Gate Function이 0을 가리키게 되면, 단순히 Identity Mapping만 다음 
     
 현재 DeepSpeed에 탑재되어있는 기능인데, ZeRO 등과 아직 호환이 되지 않아서 실제로 large-scale 모델 개발할 때 사용하는건 어려울 것 같습니다. PLD도 DeepSpeed 내의 다른 기능들과 하루 빨리 결합되었으면 좋겠네요 :) 더 자세한 내용은 논문 https://arxiv.org/abs/2010.13369 을 참고하세요.
 
-## 3. 1Bit Compressive Optimizers\n",
+## 3. 1Bit Compressive Optimizers
    
 - 1bit Adam
 - 1bit Ladam
