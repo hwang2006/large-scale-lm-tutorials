@@ -1,4 +1,4 @@
-# Zero Redundancy Optimization (ZeRO)\n",
+# Zero Redundancy Optimization (ZeRO)
 
 이번 세션에는 Microsoft의 뉴럴넷 학습 최적화 솔루션인 ZeRO에 대해서 알아보도록 하겠습니다.
  
@@ -17,7 +17,7 @@ Computation cost가 큰 Forward와 Backward는 FP16 모델로 하고, 계산된 
 ![](../images/mixed_precision_4.png)
  
 ### Loss Scaling
-이러한 문제를 어떻게 해결할 수 있을까요? 매우 심플한 아이디어로, Loss Gradient에 매우 큰 값을 곱해줘서 분포를 오른쪽으로 밀어주면 됩니다. 이러한 기술의 이름을 Loss scaling이라고 합니다. FP16의 Loss에 매우 큰 값을 곱하면, FP32에 적용 했을 때 사라져 버릴 수 있는 값들도 잘 살려낼 수 있죠.\n",
+이러한 문제를 어떻게 해결할 수 있을까요? 매우 심플한 아이디어로, Loss Gradient에 매우 큰 값을 곱해줘서 분포를 오른쪽으로 밀어주면 됩니다. 이러한 기술의 이름을 Loss scaling이라고 합니다. FP16의 Loss에 매우 큰 값을 곱하면, FP32에 적용 했을 때 사라져 버릴 수 있는 값들도 잘 살려낼 수 있죠.
     
 ![](../images/mixed_precision_5.png)
 
@@ -1162,7 +1162,7 @@ step:290, loss:2.23046875
 step:300, loss:3.48828125
 ```
  
-## 4. Activation Checkpointing\n",
+## 4. Activation Checkpointing
     
 FP 16과 32의 model, gradient, optimizer state 이외에 또 하나의 큰 메모리 영역은 Activation Memory 영역입니다. Activation은 model weight에 곱해지는 입력텐서들을 의미하는데요. 만약 $y = w_1 \\cdot (w_2 \\cdot x)$와 같은 뉴럴넷이 있다면, $w_1$과 곱해지는 $x$와 $w_2$와 곱해지는 $w_2 \\cdot x$ 등의 텐서들이 Activation Memory에 해당합니다. 
 ```
@@ -1200,7 +1200,7 @@ class ReLU(torch.autograd.Function):
     
 ![](../images/checkpoint_no_act.gif)
     
-따라서 Activation 텐서를 저장하지 않는다면 메모리 소비량을 훨씬 아낄 수 있습니다. 그러나 Activation 텐서를 저장하지 않으면, 위와 같이 Backward 시점에 Forward를 한번 더 해서 Activation 텐서를 구해야합니다. Activation Checkpointing은 두가지 장점을 결합한 방식으로 중간 중간마다 Activation을 저장해둡니다.\n",
+따라서 Activation 텐서를 저장하지 않는다면 메모리 소비량을 훨씬 아낄 수 있습니다. 그러나 Activation 텐서를 저장하지 않으면, 위와 같이 Backward 시점에 Forward를 한번 더 해서 Activation 텐서를 구해야합니다. Activation Checkpointing은 두가지 장점을 결합한 방식으로 중간 중간마다 Activation을 저장해둡니다.
    
 ![](../images/checkpoint_act.gif)
     
@@ -1264,7 +1264,7 @@ ZeRO-R은 Activation Memory, Communication Bucket 등의 영역을 고도로 최
  
 ### 1) Activation Memory Partitioning
    
-![](../images/zero_r_2.png)\n",
+![](../images/zero_r_2.png)
     
 Activation Checkpointing이 메모리 효율성과 속도 향상에 도움이 될 수도 있지만, 큰 모델을 학습할 때는 상당한 메모리 문제를 야기할 수 있습니다. 특히 모델 병렬화와 결합될 경우 Forward가 계산되고나서 여기저기에 Activation Tensor의 사본들이 많이 생겨나게 됩니다. **ZeRO-R은 이러한 Activation Tensor들을 All-gather하여 그 중 필요한 것들만 추려서 GPU로 Partitioning합니다.** 또한 너무 커다란 Activation 들은 속도를 약간 희생하더라도 CPU RAM에 Checkpointing 시켜서 GPU 메모리를 절약합니다.
 
@@ -1274,17 +1274,17 @@ Constant Memory Buffer는 All-reduce, All-gather 등에 사용되는 **버킷의
   
 ### 3) Memory Defragmentation (Contiguous Checkpointing)
     
-![](../images/zero_r_3.jpeg)\
+![](../images/zero_r_3.jpeg)
     
 모델을 학습하다보면 텐서들이 많이 생겨나고 제거됨에 따라 **GPU 메모리의 단편화가 매우 자주 발생**합니다. 때로는 GPU 내의 용량이 충분히 많지만 공간이 단편화 되어있어서 Contiguous한 텐서를 올리지 못하는 문제가 발생할 수 있습니다. 따라서 ZeRO-R은 **빈 공간에 Activation, Gradient 등을 담을 수 있는 빈 메모리 공간을 미리 만들어두고** 비슷한 사이즈의 텐서들이 생성되면 **해당 공간으로 옮겨서 단편화**를 최대한 방지합니다.
   
 ZeRO-DP와 마찬가지로 간단한 Configuration만 작성하면 됩니다. 
 - **Constant Buffer Size** 
   - `allgather_bucket_size`와 `reduce_bucket_size`를 통해 버킷 사이즈의 최대값을 결정하였음.
-- **Activation Memory** \n",
+- **Activation Memory** 
   - `partition_activations`을 통해 activation 메모리의 GPU 간에 분할함.
   - `cpu_checkpointing`을 통해 매우 큰 activation 텐서는 CPU로 오프로드
-- **Memory Defragmentation**:\n",
+- **Memory Defragmentation**:
   - `contiguous_memory_optimization`를 통해 메모리 단편화 완화.
    
 이러한 기법들 외에도 수 많은 기법이 존재합니다. 더 다양한 옵션들에 대해 자세히 알고 싶으시면 논문과 도큐먼트를 참고하세요.
@@ -1620,7 +1620,7 @@ GPU에서 Forward & Backward이 모두 완료되고나서 CPU로 보내기 시�
  
 ### ZeRO Offload + ZeRO DP
     
-![](../images/zero_off_4.png)\n",
+![](../images/zero_off_4.png)
     
 ZeRO Offload 기술은 ZeRO DP와 결합할 수 있습니다. 만약 ZeRO-DP를 적용한 상태로 Optimizer States와 Gradient를 CPU로 Offload하면 위와 같은 형태를 띄게 됩니다. 참고로 ZeRO DP와 Offload 간의 결합은 stage 2부터 가능하며, 파라미터까지 Offload 시키려면 ZeRO stage를 3로 설정해야 합니다.
     
