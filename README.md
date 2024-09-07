@@ -6,8 +6,7 @@
 
 - 목차의 대분류는 '세션', 소분류는 '챕터'라고 명명하였습니다.
 - 모든 소스코드 및 노트북 파일은 [Github](https://github.com/hwang2006/large-scale-lm-tutorials) 에 공개되어 있습니다. <br>
-<!--- - Github에서 열람하시는 것보다 [NBViewer](https://nbviewer.org/github/tunib-ai/large-scale-lm-tutorials/tree/main/notebooks/) 로 열람하시는 것을 추천드립니다.
--->
+- Github에서 열람하시는 것보다 [NBViewer](https://nbviewer.org/github/hwang2006/large-scale-lm-tutorials/tree/main/notebooks/) 로 열람하시는 것을 추천드립니다.
 
 ## Contents
 
