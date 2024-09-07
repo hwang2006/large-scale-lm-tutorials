@@ -224,247 +224,102 @@ process_group = dist.new_group([0])
 # 0번 프로세스가 속한 프로세스 그룹 생성
 
 print(process_group)
-```   
-  {
-   "cell_type": "code",
-   "execution_count": 5,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Traceback (most recent call last):\r\n",
-      "  File \"../src/process_group_1.py\", line 8, in <module>\r\n",
-      "    dist.init_process_group(backend=\"nccl\", rank=0, world_size=1)\r\n",
-      "  File \"/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/distributed/distributed_c10d.py\", line 436, in init_process_group\r\n",
-      "    store, rank, world_size = next(rendezvous_iterator)\r\n",
-      "  File \"/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/distributed/rendezvous.py\", line 166, in _env_rendezvous_handler\r\n",
-      "    raise _env_error(\"MASTER_ADDR\")\r\n",
-      "ValueError: Error initializing torch.distributed using env:// rendezvous: environment variable MASTER_ADDR expected, but not set\r\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python ../src/process_group_1.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "위 코드를 실행하면 에러가 발생합니다. 그 이유는 `MASTER_ADDR`, `MASTER_PORT` 등 필요한 변수가 설정되지 않았기 때문입니다. 이 값들을 설정하고 다시 실행시키겠습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/process_group_2.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch.distributed as dist\n",
-    "import os\n",
-    "\n",
-    "\n",
-    "# 일반적으로 이 값들도 환경변수로 등록하고 사용합니다.\n",
-    "os.environ[\"RANK\"] = \"0\"\n",
-    "os.environ[\"LOCAL_RANK\"] = \"0\"\n",
-    "os.environ[\"WORLD_SIZE\"] = \"1\"\n",
-    "\n",
-    "# 통신에 필요한 주소를 설정합니다.\n",
-    "os.environ[\"MASTER_ADDR\"] = \"localhost\"  # 통신할 주소 (보통 localhost를 씁니다.)\n",
-    "os.environ[\"MASTER_PORT\"] = \"29500\"  # 통신할 포트 (임의의 값을 설정해도 좋습니다.)\n",
-    "\n",
-    "dist.init_process_group(backend=\"nccl\", rank=0, world_size=1)\n",
-    "# 프로세스 그룹 초기화\n",
-    "\n",
-    "process_group = dist.new_group([0])\n",
-    "# 0번 프로세스가 속한 프로세스 그룹 생성\n",
-    "\n",
-    "print(process_group)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 6,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "<torch.distributed.ProcessGroupNCCL object at 0x7fb7524254b0>\r\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python ../src/process_group_2.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "위 예제는 프로세스 그룹의 API를 보여주기 위해서 메인프로세스에서 실행하였습니다. (프로세스가 1개 뿐이라 상관없었음) 실제로는 멀티프로세스 작업시 프로세스 그룹 생성 등의 작업은 반드시 서브프로세스에서 실행되어야 합니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/process_group_3.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch.multiprocessing as mp\n",
-    "import torch.distributed as dist\n",
-    "import os\n",
-    "\n",
-    "\n",
-    "# 서브프로세스에서 동시에 실행되는 영역\n",
-    "def fn(rank, world_size):\n",
-    "    # rank는 기본적으로 들어옴. world_size는 입력됨.\n",
-    "    dist.init_process_group(backend=\"nccl\", rank=rank, world_size=world_size)\n",
-    "    group = dist.new_group([_ for _ in range(world_size)])\n",
-    "    print(f\"{group} - rank: {rank}\")\n",
-    "\n",
-    "\n",
-    "# 메인 프로세스\n",
-    "if __name__ == \"__main__\":\n",
-    "    os.environ[\"MASTER_ADDR\"] = \"localhost\"\n",
-    "    os.environ[\"MASTER_PORT\"] = \"29500\"\n",
-    "    os.environ[\"WORLD_SIZE\"] = \"4\"\n",
-    "\n",
-    "    mp.spawn(\n",
-    "        fn=fn,\n",
-    "        args=(4,),  # world_size 입력\n",
-    "        nprocs=4,  # 만들 프로세스 개수\n",
-    "        join=True,  # 프로세스 join 여부\n",
-    "        daemon=False,  # 데몬 여부\n",
-    "        start_method=\"spawn\",  # 시작 방법 설정\n",
-    "    )"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 7,
-   "metadata": {
-    "scrolled": false
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "<torch.distributed.ProcessGroupNCCL object at 0x7f409fffd270> - rank: 2\r\n",
-      "<torch.distributed.ProcessGroupNCCL object at 0x7fe7db7d5230> - rank: 3\r\n",
-      "<torch.distributed.ProcessGroupNCCL object at 0x7fe6f02d6130> - rank: 1\r\n",
-      "<torch.distributed.ProcessGroupNCCL object at 0x7f7f67c77b70> - rank: 0\r\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python ../src/process_group_3.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "`python -m torch.distributed.launch --nproc_per_node=n OOO.py`를 사용할때는 아래와 같이 처리합니다. `dist.get_rank()`, `dist_get_world_size()`와 같은 함수를 이용하여 `rank`와 `world_size`를 알 수 있습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/process_group_4.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(backend=\"nccl\")\n",
-    "# 프로세스 그룹 초기화\n",
-    "\n",
-    "group = dist.new_group([_ for _ in range(dist.get_world_size())])\n",
-    "# 프로세스 그룹 생성\n",
-    "\n",
-    "print(f\"{group} - rank: {dist.get_rank()}\\n\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 9,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "<torch.distributed.ProcessGroupNCCL object at 0x7fd3059bc4f0> - rank: 1\n",
-      "<torch.distributed.ProcessGroupNCCL object at 0x7f051d38e470> - rank: 3\n",
-      "<torch.distributed.ProcessGroupNCCL object at 0x7fd233c31430> - rank: 2\n",
-      "<torch.distributed.ProcessGroupNCCL object at 0x7f0f34a853f0> - rank: 0\n",
-      "\n",
-      "\n",
-      "\n",
-      "\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=4 ../src/process_group_4.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "### P2P Communication (Point to point) \n",
-    "\n",
-    "![](../images/p2p.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "P2P (Point to point, 점 대 점) 통신은 특정 프로세스에서 다른 프로세스 데이터를 전송하는 통신이며 `torch.distributed` 패키지의 `send`, `recv` 함수를 활용하여 통신할 수 있습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/p2p_communication.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(\"gloo\")\n",
-    "# 현재 nccl은 send, recv를 지원하지 않습니다. (2021/10/21)\n",
-    "\n",
-    "if dist.get_rank() == 0:\n",
-    "    tensor = torch.randn(2, 2)\n",
+```
+
+```
+[glogin01]$ python ../src/process_group_1.py
+Traceback (most recent call last):
+  File "../src/process_group_1.py", line 8, in <module>
+    dist.init_process_group(backend="nccl", rank=0, world_size=1)
+  File "/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/distributed/distributed_c10d.py", line 436, in init_process_group
+    store, rank, world_size = next(rendezvous_iterator)
+  File "/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/distributed/rendezvous.py", line 166, in _env_rendezvous_handler
+    raise _env_error("MASTER_ADDR")
+ValueError: Error initializing torch.distributed using env:// rendezvous: environment variable MASTER_ADDR expected, but not set
+```
+위 코드를 실행하면 에러가 발생합니다. 그 이유는 `MASTER_ADDR`, `MASTER_PORT` 등 필요한 변수가 설정되지 않았기 때문입니다. 이 값들을 설정하고 다시 실행시키겠습니다.
+```
+"""
+src/process_group_2.py
+"""
+
+import torch.distributed as dist
+import os
+
+
+# 일반적으로 이 값들도 환경변수로 등록하고 사용합니다.
+os.environ["RANK"] = "0"
+os.environ["LOCAL_RANK"] = "0"
+os.environ["WORLD_SIZE"] = "1"
+
+# 통신에 필요한 주소를 설정합니다.
+os.environ["MASTER_ADDR"] = "localhost"  # 통신할 주소 (보통 localhost를 씁니다.)
+os.environ["MASTER_PORT"] = "29500"  # 통신할 포트 (임의의 값을 설정해도 좋습니다.)
+
+dist.init_process_group(backend="nccl", rank=0, world_size=1)
+# 프로세스 그룹 초기화
+
+process_group = dist.new_group([0])
+# 0번 프로세스가 속한 프로세스 그룹 생성
+
+print(process_group)
+```
+
+```
+[globin01]$ python ../src/process_group_2.py
+<torch.distributed.ProcessGroupNCCL object at 0x7fb7524254b0>
+```
+
+위 예제는 프로세스 그룹의 API를 보여주기 위해서 메인프로세스에서 실행하였습니다. (프로세스가 1개 뿐이라 상관없었음) 실제로는 멀티프로세스 작업시 프로세스 그룹 생성 등의 작업은 반드시 서브프로세스에서 실행되어야 합니다.
+
+```
+"""
+src/process_group_3.py
+"""
+
+import torch.multiprocessing as mp
+import torch.distributed as dist
+import os
+
+
+# 서브프로세스에서 동시에 실행되는 영역
+def fn(rank, world_size):
+    # rank는 기본적으로 들어옴. world_size는 입력됨.
+    dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    group = dist.new_group([_ for _ in range(world_size)])
+    print(f"{group} - rank: {rank}")
+
+
+# 메인 프로세스
+if __name__ == "__main__":
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "29500"
+    os.environ["WORLD_SIZE"] = "4"
+
+    mp.spawn(
+        fn=fn,
+        args=(4,),  # world_size 입력
+        nprocs=4,  # 만들 프로세스 개수
+        join=True,  # 프로세스 join 여부
+        daemon=False,  # 데몬 여부
+        start_method="spawn",  # 시작 방법 설정
+    )
+```
+
+```
+[glogin01]$ python ../src/process_group_3.py
+<torch.distributed.ProcessGroupNCCL object at 0x7f409fffd270> - rank: 2
+<torch.distributed.ProcessGroupNCCL object at 0x7fe7db7d5230> - rank: 3
+<torch.distributed.ProcessGroupNCCL object at 0x7fe6f02d6130> - rank: 1
+<torch.distributed.ProcessGroupNCCL object at 0x7f7f67c77b70> - rank: 0
+```
+python -m torch.distributed.launch --nproc_per_node=n OOO.py를 사용할때는 아래와 같이 처리합니다. dist.get_rank(), dist_get_world_size()와 같은 함수를 이용하여 rank와 world_size를 알 수 있습니다.
+
+```
+
+
+  
+    "\"\"\"\n",rch.randn(2, 2)\n",
     "    dist.send(tensor, dst=1)\n",
     "\n",
     "elif dist.get_rank() == 1:\n",
