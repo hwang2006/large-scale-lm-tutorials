@@ -70,30 +70,16 @@ p.s. 실제로는 `Forkserver` 방식도 있지만 자주 사용되지 않는 �
         for process in processes:
             process.join()
             # 서브 프로세스 join (=완료되면 종료)
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 2,
-   "metadata": {
-    "scrolled": false
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "A0 B1 - rank: 0\n",
-      "A0 B1 - rank: 2\n",
-      "A0 B1 - rank: 3\n",
-      "A0 B1 - rank: 1\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python ../src/multi_process_1.py"
-   ]
-  },
+```
+
+```
+[glogin01]$ python ../src/multi_process_1.py
+A0 B1 - rank: 0
+A0 B1 - rank: 2
+A0 B1 - rank: 3
+A0 B1 - rank: 1
+```
+
   {
    "cell_type": "markdown",
    "metadata": {},
