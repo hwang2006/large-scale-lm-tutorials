@@ -484,334 +484,103 @@ after rank 3: tensor([[-0.7522, -0.2532],
 after rank 2: tensor([[-0.7522, -0.2532],
         [ 0.9788,  1.0834]], device='cuda:2')
 ```
+`send`, `recv` 등의 P2P 연산이 지원되지 않을때 않아서 `broadcast`를 P2P 통신 용도로 사용하기도 합니다. src=0, dst=1 일때, `new_group([0, 1])` 그룹을 만들고 `broadcast`를 수행하면 0 -> 1 P2P와 동일합니다.
 
-    "\"\"\"\n",
-    "src/broadcast.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(\"nccl\")\n",
-    "rank = dist.get_rank()\n",
-    "torch.cuda.set_device(rank)\n",
-    "# device를 setting하면 이후에 rank에 맞는 디바이스에 접근 가능합니다.\n",
-    "\n",
-    "if rank == 0:\n",
-    "    tensor = torch.randn(2, 2).to(torch.cuda.current_device())\n",
-    "else:\n",
-    "    tensor = torch.zeros(2, 2).to(torch.cuda.current_device())\n",
-    "\n",
-    "print(f\"before rank {rank}: {tensor}\\n\")\n",
-    "dist.broadcast(tensor, src=0)\n",
-    "print(f\"after rank {rank}: {tensor}\\n\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 17,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "before rank 3: tensor([[0., 0.],\n",
-      "        [0., 0.]], device='cuda:3')\n",
-      "before rank 1: tensor([[0., 0.],\n",
-      "        [0., 0.]], device='cuda:1')\n",
-      "\n",
-      "\n",
-      "before rank 2: tensor([[0., 0.],\n",
-      "        [0., 0.]], device='cuda:2')\n",
-      "\n",
-      "before rank 0: tensor([[-0.7522, -0.2532],\n",
-      "        [ 0.9788,  1.0834]], device='cuda:0')\n",
-      "\n",
-      "after rank 0: tensor([[-0.7522, -0.2532],\n",
-      "        [ 0.9788,  1.0834]], device='cuda:0')\n",
-      "\n",
-      "after rank 1: tensor([[-0.7522, -0.2532],\n",
-      "        [ 0.9788,  1.0834]], device='cuda:1')\n",
-      "\n",
-      "after rank 3: tensor([[-0.7522, -0.2532],\n",
-      "        [ 0.9788,  1.0834]], device='cuda:3')\n",
-      "\n",
-      "after rank 2: tensor([[-0.7522, -0.2532],\n",
-      "        [ 0.9788,  1.0834]], device='cuda:2')\n",
-      "\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=4 ../src/broadcast.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "`send`, `recv` 등의 P2P 연산이 지원되지 않을때 않아서 `broadcast`를 P2P 통신 용도로 사용하기도 합니다. src=0, dst=1 일때, `new_group([0, 1])` 그룹을 만들고 `broadcast`를 수행하면 0 -> 1 P2P와 동일합니다.\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: deepspeed/deepspeed/runtime/pipe/p2p.py\n",
-    "\"\"\"\n",
-    "\n",
-    "def send(tensor, dest_stage, async_op=False):\n",
-    "    global _groups\n",
-    "    assert async_op == False, \"Doesnt support async_op true\"\n",
-    "    src_stage = _grid.get_stage_id()\n",
-    "    _is_valid_send_recv(src_stage, dest_stage)\n",
-    "\n",
-    "    dest_rank = _grid.stage_to_global(stage_id=dest_stage)\n",
-    "    if async_op:\n",
-    "        global _async\n",
-    "        op = dist.isend(tensor, dest_rank)\n",
-    "        _async.append(op)\n",
-    "    else:\n",
-    "\n",
-    "        if can_send_recv():\n",
-    "            return dist.send(tensor, dest_rank)\n",
-    "        else:\n",
-    "            group = _get_send_recv_group(src_stage, dest_stage)\n",
-    "            src_rank = _grid.stage_to_global(stage_id=src_stage)\n",
-    "            return dist.broadcast(tensor, src_rank, group=group, async_op=async_op)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "#### 2) Reduce\n",
-    "Reduce는 각 프로세스가 가진 데이터로 특정 연산을 수행해서 출력을 하나의 디바이스로 모아주는 연산입니다. 연산은 주로 sum, max, min 등이 가능합니다.\n",
-    "\n",
-    "![](../images/reduce.png)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/reduce_sum.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(\"nccl\")\n",
-    "rank = dist.get_rank()\n",
-    "torch.cuda.set_device(rank)\n",
-    "\n",
-    "tensor = torch.ones(2, 2).to(torch.cuda.current_device()) * rank\n",
-    "# rank==0 => [[0, 0], [0, 0]]\n",
-    "# rank==1 => [[1, 1], [1, 1]]\n",
-    "# rank==2 => [[2, 2], [2, 2]]\n",
-    "# rank==3 => [[3, 3], [3, 3]]\n",
-    "\n",
-    "dist.reduce(tensor, op=torch.distributed.ReduceOp.SUM, dst=0)\n",
-    "\n",
-    "if rank == 0:\n",
-    "    print(tensor)\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 18,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "tensor([[6., 6.],\n",
-      "        [6., 6.]], device='cuda:0')\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_sum.py"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/reduce_max.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(\"nccl\")\n",
-    "rank = dist.get_rank()\n",
-    "torch.cuda.set_device(rank)\n",
-    "\n",
-    "tensor = torch.ones(2, 2).to(torch.cuda.current_device()) * rank\n",
-    "# rank==0 => [[0, 0], [0, 0]]\n",
-    "# rank==1 => [[1, 1], [1, 1]]\n",
-    "# rank==2 => [[2, 2], [2, 2]]\n",
-    "# rank==3 => [[3, 3], [3, 3]]\n",
-    "\n",
-    "dist.reduce(tensor, op=torch.distributed.ReduceOp.MAX, dst=0)\n",
-    "\n",
-    "if rank == 0:\n",
-    "    print(tensor)\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 19,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "tensor([[3., 3.],\n",
-      "        [3., 3.]], device='cuda:0')\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_max.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "#### 3) Scatter\n",
-    "Scatter는 여러개의 element를 쪼개서 각 device에 뿌려주는 연산입니다.\n",
-    "\n",
-    "![](../images/scatter.png)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/scatter.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(\"gloo\")\n",
-    "# nccl은 scatter를 지원하지 않습니다.\n",
-    "rank = dist.get_rank()\n",
-    "torch.cuda.set_device(rank)\n",
-    "\n",
-    "\n",
-    "output = torch.zeros(1)\n",
-    "print(f\"before rank {rank}: {output}\\n\")\n",
-    "\n",
-    "if rank == 0:\n",
-    "    inputs = torch.tensor([10.0, 20.0, 30.0, 40.0])\n",
-    "    inputs = torch.split(inputs, dim=0, split_size_or_sections=1)\n",
-    "    # (tensor([10]), tensor([20]), tensor([30]), tensor([40]))\n",
-    "    dist.scatter(output, scatter_list=list(inputs), src=0)\n",
-    "else:\n",
-    "    dist.scatter(output, src=0)\n",
-    "\n",
-    "print(f\"after rank {rank}: {output}\\n\")\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 37,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "before rank 0: tensor([0.])\n",
-      "\n",
-      "before rank 3: tensor([0.])\n",
-      "\n",
-      "after rank 3: tensor([40.])\n",
-      "\n",
-      "before rank 1: tensor([0.])\n",
-      "\n",
-      "before rank 2: tensor([0.])\n",
-      "\n",
-      "after rank 0: tensor([10.])\n",
-      "after rank 1: tensor([20.])\n",
-      "\n",
-      "\n",
-      "after rank 2: tensor([30.])\n",
-      "\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=4 ../src/scatter.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "nccl에서는 scatter가 지원되지 않기 때문에 아래와 같은 방법으로 scatter 연산을 수행합니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/scatter_nccl.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(\"nccl\")\n",
-    "rank = dist.get_rank()\n",
-    "torch.cuda.set_device(rank)\n",
-    "\n",
-    "inputs = torch.tensor([10.0, 20.0, 30.0, 40.0])\n",
-    "inputs = torch.split(tensor=inputs, dim=-1, split_size_or_sections=1)\n",
-    "output = inputs[rank].contiguous().to(torch.cuda.current_device())\n",
-    "print(f\"after rank {rank}: {output}\\n\")"
-   ]
-  },
-  {
-   "cell_type": "code",
+```
+"""
+참고: deepspeed/deepspeed/runtime/pipe/p2p.py
+"""
+
+def send(tensor, dest_stage, async_op=False):
+    global _groups
+    assert async_op == False, "Doesnt support async_op true"
+    src_stage = _grid.get_stage_id()
+    _is_valid_send_recv(src_stage, dest_stage)
+
+    dest_rank = _grid.stage_to_global(stage_id=dest_stage)
+    if async_op:
+        global _async
+        op = dist.isend(tensor, dest_rank)
+        _async.append(op)
+    else:
+
+        if can_send_recv():
+            return dist.send(tensor, dest_rank)
+        else:
+            group = _get_send_recv_group(src_stage, dest_stage)
+            src_rank = _grid.stage_to_global(stage_id=src_stage)
+            return dist.broadcast(tensor, src_rank, group=group, async_op=async_op)
+```
+#### 2) Reduce
+Reduce는 각 프로세스가 가진 데이터로 특정 연산을 수행해서 출력을 하나의 디바이스로 모아주는 연산입니다. 연산은 주로 sum, max, min 등이 가능합니다.
+![](../images/reduce.png)"
+```
+"""
+src/reduce_sum.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("nccl")
+rank = dist.get_rank()
+torch.cuda.set_device(rank)
+
+tensor = torch.ones(2, 2).to(torch.cuda.current_device()) * rank
+# rank==0 => [[0, 0], [0, 0]]
+# rank==1 => [[1, 1], [1, 1]]
+# rank==2 => [[2, 2], [2, 2]]
+# rank==3 => [[3, 3], [3, 3]]
+
+dist.reduce(tensor, op=torch.distributed.ReduceOp.SUM, dst=0)
+
+if rank == 0:
+    print(tensor)
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_sum.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+tensor([[6., 6.],
+        [6., 6.]], device='cuda:0')
+```
+
+```
+"""
+src/reduce_max.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("nccl")
+rank = dist.get_rank()
+torch.cuda.set_device(rank)
+
+tensor = torch.ones(2, 2).to(torch.cuda.current_device()) * rank
+# rank==0 => [[0, 0], [0, 0]]
+# rank==1 => [[1, 1], [1, 1]]
+# rank==2 => [[2, 2], [2, 2]]
+# rank==3 => [[3, 3], [3, 3]]
+
+dist.reduce(tensor, op=torch.distributed.ReduceOp.MAX, dst=0)
+
+if rank == 0:
+    print(tensor)
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_max.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+tensor([[3., 3.],
+        [3., 3.]], device='cuda:0')
+3) Scatter
+```
+ 
+  
+    "#### 3) Scatter\n",e",
    "execution_count": 40,
    "metadata": {
     "scrolled": true
