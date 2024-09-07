@@ -466,7 +466,7 @@ step:290, loss:0.8398311138153076
 step:300, loss:0.45668572187423706
 ```
 
-### 그런데 잠깐, All-reduce를 언제 수행하는게 좋을까요?\
+### 그런데 잠깐, All-reduce를 언제 수행하는게 좋을까요?
 - All-reduce를 `backward()`연산과 함께 하는게 좋을까요?
 - 아니면 `backward()`가 모두 끝나고 `step()` 시작 전에 하는게 좋을까요?
    
@@ -484,11 +484,11 @@ step:300, loss:0.45668572187423706
 ![](../images/ddp_analysis_4.png)
   
 ### 이 때, 생길 수 있는 궁금증들...
-- Q1: `backward()` 연산 중에 Gradient가 모두 계산되지 않았는데 어떻게 `all-reduce`를 수행합니까?\n",
- - A1: `backward()`는 뒤쪽 레이어부터 순차적으로 이루어지기 때문에 계산이 끝난 레이어 먼저 전송하면 됩니다.\n",
+- Q1: `backward()` 연산 중에 Gradient가 모두 계산되지 않았는데 어떻게 `all-reduce`를 수행합니까?
+  - A1: `backward()`는 뒤쪽 레이어부터 순차적으로 이루어지기 때문에 계산이 끝난 레이어 먼저 전송하면 됩니다.
     
-- Q2: 그렇다면 언제마다 `all-reduce`를 수행하나요? 레이어마다 이루어지나요?\n",
-  - A2: 아닙니다. Gradient Bucketing을 수행합니다. Bucket이 가득차면 All-reduce를 수행합니다.\n",
+- Q2: 그렇다면 언제마다 `all-reduce`를 수행하나요? 레이어마다 이루어지나요?
+  - A2: 아닙니다. Gradient Bucketing을 수행합니다. Bucket이 가득차면 All-reduce를 수행합니다.
    
 ### Gradient Bucekting
 Gradient Bucekting는 Gradient를 일정한 사이즈의 bucket에 저장해두고 가득차면 다른 프로세스로 전송하는 방식입니다. 가장 먼저 `backward()` 연산 도중 뒤쪽부터 계산된 Gradient들을 차례대로 bucket에 저장하다가 bucket의 용량이 가득차면 All-reduce를 수행해서 각 device에 Gradient의 합을 전달합니다. 그림 때문에 헷갈릴 수도 있는데, bucket에 저장되는 것은 모델의 파라미터가 아닌 해당 레이어에서 출력된 Gradient입니다. 모든 bucket은 일정한 사이즈를 가지고 있으며 `bucket_size_mb` 인자를 통해 mega-byte 단위로 용량을 설정 할 수 있습니다.
