@@ -314,7 +314,8 @@ if __name__ == "__main__":
 <torch.distributed.ProcessGroupNCCL object at 0x7fe6f02d6130> - rank: 1
 <torch.distributed.ProcessGroupNCCL object at 0x7f7f67c77b70> - rank: 0
 ```
-python -m torch.distributed.launch --nproc_per_node=n OOO.py를 사용할때는 아래와 같이 처리합니다. dist.get_rank(), dist_get_world_size()와 같은 함수를 이용하여 rank와 world_size를 알 수 있습니다.
+
+`python -m torch.distributed.launch --nproc_per_node=n OOO.py`를 사용할때는 아래와 같이 처리합니다. `dist.get_rank()`, `dist_get_world_size()`와 같은 함수를 이용하여 `rank`와 `world_size`를 알 수 있습니다.
 
 ```
 """
