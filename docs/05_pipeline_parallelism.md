@@ -18,7 +18,7 @@ GPipe는 Google에서 개발된 파이프라인 병렬화 기법으로 Inter Lay
 
 ![](../images/pipeline_parallelism2.png)
  
-### Micro-batch\n",
+### Micro-batch
 - Mini-batch는 전체 데이터셋을 n개로 분할한 서브샘플 집합입니다.
 - Micro-batch는 Mini-batch를 m개로 한번 더 분할한 서브샘플 집합입니다.
     
@@ -156,7 +156,7 @@ if __name__ == "__main__":
 ```
 ```
 # !python -m torch.distributed.launch --nproc_per_node=4 ../src/gpipe.py
-!python ../src/gpipe.py
+[glogin01]$ python ../src/gpipe.py
 Reusing dataset squad (/home/ubuntu/.cache/huggingface/datasets/squad/plain_text/1.0.0/d6ec3ceb99ca480ce37cdd35555d6cb2511d223b9150cce08a837ef62ffea453)
 100%|█████████████████████████████████████████████| 2/2 [00:00<00:00, 55.94it/s]
 step: 0, loss: 6.084661483764648
