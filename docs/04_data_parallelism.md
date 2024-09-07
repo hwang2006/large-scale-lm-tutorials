@@ -419,7 +419,8 @@ for i, data in enumerate(data_loader):
 ```
 [glogin01]$ python -m  torch.distributed.launch --nproc_per_node=4 ../src/ddp.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 Using custom data configuration default
 Using custom data configuration default
