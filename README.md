@@ -152,9 +152,8 @@ conda 24.3.0
 ## Creating a Conda Virtual Environment
 You need to create a virtual envrionment for a large-scale language model tutorial.
 
-1. Load modules and create a conda virtual environment with a python version 3.10
+1. Create a conda virtual environment with a python version 3.10
 ```
-[glogin01]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 [glogin01]$ conda create -n large-scale-lm python=3.10 -y
 Channels:
  - defaults
@@ -186,9 +185,9 @@ Executing transaction: done
 
 2. Install PyTorch
 ```
+[glogin01]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 [glogin01]$ conda activate large-scale-lm
 (large-scale-lm) [glogin01]$ conda install pytorch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 pytorch-cuda=12.1 -c pytorch -c nvidia -y
-
 ```
 
 ## LICENSE
