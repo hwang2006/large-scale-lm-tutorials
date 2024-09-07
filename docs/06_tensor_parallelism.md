@@ -1,423 +1,276 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "# Tensor Parallelism\n",
-    "이번 세션에서는 Tensor parallelism에 대해서 알아보겠습니다."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "## 1. Intra-layer model parallelism\n",
-    "Tensor Parallelism은 Intra-layer 모델 병렬화 방식으로 **레이어 내부에서 텐서 단위로 모델을 쪼갭니다.** Inter-layer 모델 병렬화는 상식적으로 이해가 가지만, Intra-layer 병렬화의 경우는 처음 보시는 분들은 어떻게 이 것이 가능한지 궁금하실거에요.\n",
-    "\n",
-    "![](../images/intra_layer.png)\n",
-    "\n",
-    "우리가 흔히 사용하는 내적 연산은 연산하고자 하는 행렬을 쪼개서 병렬적으로 수행하고 결과를 더하거나 이어붙여도 최종 출력값이 변하지 않는 성질이 있습니다. 이러한 내적 연산의 성질을 이용하여 모델을 병렬화 하는것을 Tensor 병렬화라고 합니다. 용어가 다소 헷갈릴 수 있는데 Intra-layer는 레이어 단위에서 일어나지 않는 모든 병렬화를 의미하기 때문에 더 큰 범주이고, Tensor 병렬화는 Intra-layer 병렬화의 구현하는 방법 중 한가지 입니다."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "## 2. Megatron-LM\n",
-    "Megatron-LM은 NVIDA에서 공개한 Intra-layer 모델 병렬화 구현체로, 현재 Large-scale 모델 개발에 있어서 가장 중요한 프로젝트 중 하나입니다.\n",
-    "\n",
-    "<img src=\"../images/megatron_lm.jpeg\" width=540>\n",
-    "\n",
-    "### Column & Row parallelism\n",
-    "다음은 Megatron-LM에서 사용되는 column parallelism과 row parallelism을 그림으로 나타낸 것입니다.\n",
-    "\n",
-    "- Column parallelism은 **모델의 파라미터(A)를 수직방향으로 분할(A1, A2)하는 방법**입니다.\n",
-    "- Row parallelism은 **모델의 파라미터(A)를 수평방향으로 분할(A1, A2)하는 방법**입니다.\n",
-    "\n",
-    "![](../images/intra_layer_2.png)\n",
-    "\n",
-    "직접 코딩해서 결과를 확인해봅시다. 가장 먼저 텐서 X와 텐서 A의 행렬곱 결과는 다음과 같습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "tensor([[ 74,  98],\n",
-      "        [258, 346]])\n"
-     ]
-    }
-   ],
-   "source": [
-    "\"\"\"\n",
-    "src/non_parallelism.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "\n",
-    "X = torch.tensor(\n",
-    "    [\n",
-    "        [0, 1, 2, 3],\n",
-    "        [4, 5, 6, 7],\n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "A = torch.tensor(\n",
-    "    [\n",
-    "        [10, 14],\n",
-    "        [11, 15],\n",
-    "        [12, 16],\n",
-    "        [13, 17],        \n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "Y = X @ A\n",
-    "\n",
-    "print(Y)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "column parallelism은 모델의 파라미터(A)를 수직방향으로 자른 뒤 연산후 연산 결과를 concat하는 방식입니다. 그림에서와 같이 X는 복제하고 텐서 A를 수직방향으로 분할한 뒤 연산 후 concat 해보겠습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 2,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "tensor([[ 74],\n",
-      "        [258]])\n",
-      "tensor([[ 98],\n",
-      "        [346]])\n",
-      "tensor([[ 74,  98],\n",
-      "        [258, 346]])\n"
-     ]
-    }
-   ],
-   "source": [
-    "\"\"\"\n",
-    "src/column_parallelism.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "\n",
-    "X = torch.tensor(\n",
-    "    [\n",
-    "        [0, 1, 2, 3],\n",
-    "        [4, 5, 6, 7],\n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "A1 = torch.tensor(\n",
-    "    [\n",
-    "        [10],\n",
-    "        [11],\n",
-    "        [12],\n",
-    "        [13],        \n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "A2 = torch.tensor(\n",
-    "    [\n",
-    "        [14],\n",
-    "        [15],\n",
-    "        [16],\n",
-    "        [17],        \n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "Y1 = X @ A1\n",
-    "Y2 = X @ A2\n",
-    "\n",
-    "print(Y1)\n",
-    "print(Y2)\n",
-    "\n",
-    "Y = torch.cat([Y1, Y2], dim=1)\n",
-    "print(Y)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "병렬화 전 후의 연산 결과가 동일한 것을 확인 할 수 있습니다. \n",
-    "\n",
-    "그 다음으로 row parallelism를 알아봅시다. row parallelism은 모델의 파라미터(A)를 수평방향으로 분할 한 뒤 연산 결과를 더하는 방식입니다. 그림과 같이 X와 Y 모두를 분할한 뒤 연산 후 결과 값을 더해보겠습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 3,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "tensor([[ 11,  15],\n",
-      "        [ 95, 131]])\n",
-      "tensor([[ 63,  83],\n",
-      "        [163, 215]])\n",
-      "tensor([[ 74,  98],\n",
-      "        [258, 346]])\n"
-     ]
-    }
-   ],
-   "source": [
-    "\"\"\"\n",
-    "src/row_parallelism.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "\n",
-    "X1 = torch.tensor(\n",
-    "    [\n",
-    "        [0, 1],\n",
-    "        [4, 5],\n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "X2 = torch.tensor(\n",
-    "    [\n",
-    "        [2, 3],\n",
-    "        [6, 7],\n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "A1 = torch.tensor(\n",
-    "    [\n",
-    "        [10, 14],\n",
-    "        [11, 15],      \n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "A2 = torch.tensor(\n",
-    "    [\n",
-    "        [12, 16],\n",
-    "        [13, 17],        \n",
-    "    ]\n",
-    ")\n",
-    "\n",
-    "Y1 = X1 @ A1\n",
-    "Y2 = X2 @ A2\n",
-    "\n",
-    "print(Y1)\n",
-    "print(Y2)\n",
-    "\n",
-    "Y = Y1 + Y2\n",
-    "\n",
-    "print(Y)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "연산 결과가 동일한 것을 확인할 수 있습니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### Column parallelism: $(D, D) → (D, \\frac{D}{n}) \\times n$\n",
-    "\n",
-    "앞선 예시에서 본 것 처럼, Column Parallelism은 **입력텐서(X)를 복사**하고, 모델의 파라미터(A)를 **수직방향으로 분할(A1, A2)하여 내적** 후 concat하는 연산입니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/column_parallel.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "Megatron-LM에서는 **분할된 파라미터 (A1, A2)를 서로 다른 디바이스에 올려서 모델을 병렬화** 합니다. 이에 따라 행렬 곱 연산도 여러개의 GPU에서 동시에 일어나게 되고, 이를 처리하기 위해 분산 프로그래밍이 필요합니다. Column Parallelism을 위해서는 Broadcast와 All-gather 연산을 사용합니다.\n",
-    "\n",
-    "- 서로 다른 GPU에 동일한 입력을 전송하기 위해 **Broadcast** 연산를 사용합니다.\n",
-    "- 행렬 곱 연산 결과를 모으기 위해 **All-gather** 연산을 사용합니다.\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: ColumnParallelLinear in megatron-lm/megatron/mpu/layers.py\n",
-    "\"\"\"\n",
-    "\n",
-    "def forward(self, input_):\n",
-    "    bias = self.bias if not self.skip_bias_add else None\n",
-    "\n",
-    "    # Set up backprop all-reduce.\n",
-    "    input_parallel = copy_to_tensor_model_parallel_region(input_)\n",
-    "\n",
-    "    # Matrix multiply.\n",
-    "    output_parallel = F.linear(input_parallel, self.weight, bias)\n",
-    "\n",
-    "    if self.gather_output:\n",
-    "        output = gather_from_tensor_model_parallel_region(output_parallel)\n",
-    "    else:\n",
-    "        output = output_parallel\n",
-    "    \n",
-    "    output_bias = self.bias if self.skip_bias_add else None\n",
-    "    return output, output_bias"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "### Row parallelism: $(D, D) → (\\frac{D}{n}, D) \\times n$\n",
-    "\n",
-    "Row Parallelism은 **입력텐서(X)를 분할**하고, 모델의 파라미터(A)를 **수평방향으로 분할(A1, A2)하여 내적** 후 더하는 연산입니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/row_parallelism.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "마찬가지로 Row Parallelism을 여러 GPU에서 실행하기 위해서는 분산 프로그래밍이 필요합니다. Row Parallelism을 위해서는 Scatter와 All-reduce을 사용합니다.\n",
-    "\n",
-    "- 서로 다른 GPU에 입력을 분할하여 전송하기 위해 **Scatter** 연산를 사용합니다.\n",
-    "- 행렬 곱 연산 결과를 더하기 위해서 **All-reduce** 연산을 사용합니다.\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: RowParallelLinear in megatron-lm/megatron/mpu/layers.py\n",
-    "\"\"\"\n",
-    "\n",
-    "def forward(self, input_):\n",
-    "    # Set up backprop all-reduce.\n",
-    "    if self.input_is_parallel:\n",
-    "        input_parallel = input_\n",
-    "    else:\n",
-    "        input_parallel = scatter_to_tensor_model_parallel_region(input_)\n",
-    "    \n",
-    "    # Matrix multiply.\n",
-    "    output_parallel = F.linear(input_parallel, self.weight)\n",
-    "    \n",
-    "    # All-reduce across all the partitions.\n",
-    "    output_ = reduce_from_tensor_model_parallel_region(output_parallel)\n",
-    "    \n",
-    "    if not self.skip_bias_add:\n",
-    "        output = output_ + self.bias if self.bias is not None else output_\n",
-    "        output_bias = None\n",
-    "    else:\n",
-    "        output = output_\n",
-    "        output_bias = self.bias\n",
-    "    return output, output_bias"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "\n",
-    "### Transformer Block\n",
-    "\n",
-    "이제 Column, Row parallelism에 대해 이해했으니 본격적으로 어떻게 Transformer를 병렬화 할지 살펴봅시다. 우리가 흔히 아는 Transformer Block은 다음과 같이 구성되어 있습니다. Megatron-LM은 여기에서 파라미터의 크기가 매우 적은 Layer Norm 레이어는 파라미터를 모든 디바이스로 복제하고, Layer Norm 레이어를 제외한 다른 레이어들(Attention, MLP)은 위와 같이 Column, Row parallelism을 통해 병렬처리를 수행합니다.\n",
-    "\n",
-    "![](../images/megatron_block.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### MLP Layer\n",
-    "\n",
-    "가장 먼저 MLP 레이어에 대해 알아보겠습니다. MLP 레이어는 `Linear1` → `GeLU` → `Linear2` → `Dropout`순으로 진행됩니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/megatron_mlp.png)\n",
-    "\n",
-    "<br>\n",
-    "\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고 transformers/models/gpt_neo/modeling_gpt_neo.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch.nn as nn\n",
-    "\n",
-    "\n",
-    "class GPTNeoMLP(nn.Module):\n",
-    "    def __init__(self, intermediate_size, config):  # in MLP: intermediate_size= 4 * hidden_size\n",
-    "        super().__init__()\n",
-    "        embed_dim = config.hidden_size\n",
-    "        self.c_fc = nn.Linear(embed_dim, intermediate_size)\n",
-    "        self.c_proj = nn.Linear(intermediate_size, embed_dim)\n",
-    "        self.act = ACT2FN[config.activation_function]\n",
-    "        self.dropout = nn.Dropout(config.resid_dropout)\n",
-    "\n",
-    "    def forward(self, hidden_states):\n",
-    "        hidden_states = self.c_fc(hidden_states)\n",
-    "        hidden_states = self.act(hidden_states)\n",
-    "        hidden_states = self.c_proj(hidden_states)\n",
-    "        hidden_states = self.dropout(hidden_states)\n",
-    "        return hidden_states"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "여기에서 **첫번째 Linear는 Coulmn Parallelism**을, **두번째 Linear는 Row Parallelism**을 적용합니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/megatron_mlp_2.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "MLP 레이어에서 Column-Row 순으로 병렬화를 적용하는 이유는 두가지가 있습니다.\n",
-    "\n",
-    "- 첫번째 이유는 **`All-gather` 연산과 `Scatter` 연산을 생략** 할 수 있기 때문입니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/megatron_mlp_3.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "왼쪽 녹색 영역의 연산 결과는 입 력데이터 X와 각 디바이스로 병렬화된 W를 내적한 것입니다. 그리고 나서 붉은색 영역에서 이 결과값을 `All-gather`해서 이어붙인 다음에 다시 `Scatter`하여 쪼개죠. 여기에서 흥미로운 사실은 이어 붙인 텐서를 다시 쪼갰기 때문에 이는 이어붙이기 전과 동일하다는 것입니다.  따라서 오른쪽의 녹색 영역과 왼쪽의 녹색영역 값은 동일하죠. 결과적으로 붉은색 영역 (`All-gather`-`Scatter`)을 생략할 수 있고, 속도 면에서 큰 이득을 가져올 수 있습니다. \n",
-    "\n",
-    "이는 Column-Row 순으로 병렬화 할때만 나타나는 독특한 현상으로, 만약 Column-Column, Row-Column, Row-Row와 같이 병렬화 한다면 두 Linear 레이어 사이에서 발생하는 통신을 생략할 수 없게 됩니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/megatron_mlp_4.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "`All-gather`와 `Scatter`를 생략하는 기법은 Megatron-LM에 `input_is_parallel`와 `gather_output`라는 파라미터로 구현되어있습니다."
+# Tensor Parallelism
+이번 세션에서는 Tensor parallelism에 대해서 알아보겠습니다.
+  
+## 1. Intra-layer model parallelism
+Tensor Parallelism은 Intra-layer 모델 병렬화 방식으로 **레이어 내부에서 텐서 단위로 모델을 쪼갭니다.** Inter-layer 모델 병렬화는 상식적으로 이해가 가지만, Intra-layer 병렬화의 경우는 처음 보시는 분들은 어떻게 이 것이 가능한지 궁금하실거에요.
+
+![](../images/intra_layer.png)
+
+우리가 흔히 사용하는 내적 연산은 연산하고자 하는 행렬을 쪼개서 병렬적으로 수행하고 결과를 더하거나 이어붙여도 최종 출력값이 변하지 않는 성질이 있습니다. 이러한 내적 연산의 성질을 이용하여 모델을 병렬화 하는것을 Tensor 병렬화라고 합니다. 용어가 다소 헷갈릴 수 있는데 Intra-layer는 레이어 단위에서 일어나지 않는 모든 병렬화를 의미하기 때문에 더 큰 범주이고, Tensor 병렬화는 Intra-layer 병렬화의 구현하는 방법 중 한가지 입니다.
+ 
+## 2. Megatron-LM
+Megatron-LM은 NVIDA에서 공개한 Intra-layer 모델 병렬화 구현체로, 현재 Large-scale 모델 개발에 있어서 가장 중요한 프로젝트 중 하나입니다.
+
+![](../images/megatron_lm.jpeg)
+  
+### Column & Row parallelism
+다음은 Megatron-LM에서 사용되는 column parallelism과 row parallelism을 그림으로 나타낸 것입니다.
+- Column parallelism은 **모델의 파라미터(A)를 수직방향으로 분할(A1, A2)하는 방법**입니다.
+- Row parallelism은 **모델의 파라미터(A)를 수평방향으로 분할(A1, A2)하는 방법**입니다.
+    
+![](../images/intra_layer_2.png)
+
+직접 코딩해서 결과를 확인해봅시다. 가장 먼저 텐서 X와 텐서 A의 행렬곱 결과는 다음과 같습니다.
+```
+"""
+src/non_parallelism.py
+"""
+
+import torch
+
+X = torch.tensor(
+    [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+    ]
+)
+
+A = torch.tensor(
+    [
+        [10, 14],
+        [11, 15],
+        [12, 16],
+        [13, 17],        
+    ]
+)
+
+Y = X @ A
+
+print(Y)
+```
+```
+[glogin01]$ python ../src/non_parallelism.py
+tensor([[ 74,  98],
+        [258, 346]])
+```
+
+column parallelism은 모델의 파라미터(A)를 수직방향으로 자른 뒤 연산후 연산 결과를 concat하는 방식입니다. 그림에서와 같이 X는 복제하고 텐서 A를 수직방향으로 분할한 뒤 연산 후 concat 해보겠습니다.
+```
+"""
+src/column_parallelism.py
+"""
+
+import torch
+
+X = torch.tensor(
+    [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+    ]
+)
+
+A1 = torch.tensor(
+    [
+        [10],
+        [11],
+        [12],
+        [13],        
+    ]
+)
+
+A2 = torch.tensor(
+    [
+        [14],
+        [15],
+        [16],
+        [17],        
+    ]
+)
+
+Y1 = X @ A1
+Y2 = X @ A2
+
+print(Y1)
+print(Y2)
+
+Y = torch.cat([Y1, Y2], dim=1)
+print(Y)
+```
+```
+[glogin01]$ python ../src/column_parallelism.py
+tensor([[ 74],
+        [258]])
+tensor([[ 98],
+        [346]])
+tensor([[ 74,  98],
+        [258, 346]])
+```
+
+병렬화 전 후의 연산 결과가 동일한 것을 확인 할 수 있습니다. 
+그 다음으로 row parallelism를 알아봅시다. row parallelism은 모델의 파라미터(A)를 수평방향으로 분할 한 뒤 연산 결과를 더하는 방식입니다. 그림과 같이 X와 Y 모두를 분할한 뒤 연산 후 결과 값을 더해보겠습니다.
+```
+"""
+src/row_parallelism.py
+"""
+
+import torch
+
+X1 = torch.tensor(
+    [
+        [0, 1],
+        [4, 5],
+    ]
+)
+
+X2 = torch.tensor(
+    [
+        [2, 3],
+        [6, 7],
+    ]
+)
+
+A1 = torch.tensor(
+    [
+        [10, 14],
+        [11, 15],      
+    ]
+)
+
+A2 = torch.tensor(
+    [
+        [12, 16],
+        [13, 17],        
+    ]
+)
+
+Y1 = X1 @ A1
+Y2 = X2 @ A2
+
+print(Y1)
+print(Y2)
+
+Y = Y1 + Y2
+
+print(Y)
+```
+```
+[glogin01]$ python ../src/row_parallelism.py
+tensor([[ 11,  15],
+        [ 95, 131]])
+tensor([[ 63,  83],
+        [163, 215]])
+tensor([[ 74,  98],
+        [258, 346]])
+```
+연산 결과가 동일한 것을 확인할 수 있습니다.
+    
+### Column parallelism: $(D, D) → (D, \\frac{D}{n}) \\times n$
+앞선 예시에서 본 것 처럼, Column Parallelism은 **입력텐서(X)를 복사**하고, 모델의 파라미터(A)를 **수직방향으로 분할(A1, A2)하여 내적** 후 concat하는 연산입니다.
+    
+![](../images/column_parallel.png)
+    
+Megatron-LM에서는 **분할된 파라미터 (A1, A2)를 서로 다른 디바이스에 올려서 모델을 병렬화** 합니다. 이에 따라 행렬 곱 연산도 여러개의 GPU에서 동시에 일어나게 되고, 이를 처리하기 위해 분산 프로그래밍이 필요합니다. Column Parallelism을 위해서는 Broadcast와 All-gather 연산을 사용합니다
+- 서로 다른 GPU에 동일한 입력을 전송하기 위해 **Broadcast** 연산를 사용합니다.
+- 행렬 곱 연산 결과를 모으기 위해 **All-gather** 연산을 사용합니다.
+
+```
+"""
+참고: ColumnParallelLinear in megatron-lm/megatron/mpu/layers.py
+"""
+
+def forward(self, input_):
+    bias = self.bias if not self.skip_bias_add else None
+
+    # Set up backprop all-reduce.
+    input_parallel = copy_to_tensor_model_parallel_region(input_)
+
+    # Matrix multiply.
+    output_parallel = F.linear(input_parallel, self.weight, bias)
+
+    if self.gather_output:
+        output = gather_from_tensor_model_parallel_region(output_parallel)
+    else:
+        output = output_parallel
+    
+    output_bias = self.bias if self.skip_bias_add else None
+    return output, output_bias
+```
+
+
+Row Parallelism은 **입력텐서(X)를 분할**하고, 모델의 파라미터(A)를 **수평방향으로 분할(A1, A2)하여 내적** 후 더하는 연산입니다.
+![](../images/row_parallelism.png)\n",
+마찬가지로 Row Parallelism을 여러 GPU에서 실행하기 위해서는 분산 프로그래밍이 필요합니다. Row Parallelism을 위해서는 Scatter와 All-reduce을 사용합니다.
+- 서로 다른 GPU에 입력을 분할하여 전송하기 위해 **Scatter** 연산를 사용합니다.
+- 행렬 곱 연산 결과를 더하기 위해서 **All-reduce** 연산을 사용합니다.
+
+```
+"""
+참고: RowParallelLinear in megatron-lm/megatron/mpu/layers.py
+"""
+
+def forward(self, input_):
+    # Set up backprop all-reduce.
+    if self.input_is_parallel:
+        input_parallel = input_
+    else:
+        input_parallel = scatter_to_tensor_model_parallel_region(input_)
+    
+    # Matrix multiply.
+    output_parallel = F.linear(input_parallel, self.weight)
+    
+    # All-reduce across all the partitions.
+    output_ = reduce_from_tensor_model_parallel_region(output_parallel)
+    
+    if not self.skip_bias_add:
+        output = output_ + self.bias if self.bias is not None else output_
+        output_bias = None
+    else:
+        output = output_
+        output_bias = self.bias
+    return output, output_bias
+```
+
+### Transformer Block
+이제 Column, Row parallelism에 대해 이해했으니 본격적으로 어떻게 Transformer를 병렬화 할지 살펴봅시다. 우리가 흔히 아는 Transformer Block은 다음과 같이 구성되어 있습니다. Megatron-LM은 여기에서 파라미터의 크기가 매우 적은 Layer Norm 레이어는 파라미터를 모든 디바이스로 복제하고, Layer Norm 레이어를 제외한 다른 레이어들(Attention, MLP)은 위와 같이 Column, Row parallelism을 통해 병렬처리를 수행합니다.
+![](../images/megatron_block.png)
+
+### MLP Layer
+가장 먼저 MLP 레이어에 대해 알아보겠습니다. MLP 레이어는 `Linear1` → `GeLU` → `Linear2` → `Dropout`순으로 진행됩니다.
+![](../images/megatron_mlp.png)
+```
+"""
+참고 transformers/models/gpt_neo/modeling_gpt_neo.py
+"""
+
+import torch.nn as nn
+
+
+class GPTNeoMLP(nn.Module):
+    def __init__(self, intermediate_size, config):  # in MLP: intermediate_size= 4 * hidden_size
+        super().__init__()
+        embed_dim = config.hidden_size
+        self.c_fc = nn.Linear(embed_dim, intermediate_size)
+        self.c_proj = nn.Linear(intermediate_size, embed_dim)
+        self.act = ACT2FN[config.activation_function]
+        self.dropout = nn.Dropout(config.resid_dropout)
+
+    def forward(self, hidden_states):
+        hidden_states = self.c_fc(hidden_states)
+        hidden_states = self.act(hidden_states)
+        hidden_states = self.c_proj(hidden_states)
+        hidden_states = self.dropout(hidden_states)
+        return hidden_states
+```
+여기에서 **첫번째 Linear는 Coulmn Parallelism**을, **두번째 Linear는 Row Parallelism**을 적용합니다.
+![](../images/megatron_mlp_2.png)
+MLP 레이어에서 Column-Row 순으로 병렬화를 적용하는 이유는 두가지가 있습니다.
+- 첫번째 이유는 **`All-gather` 연산과 `Scatter` 연산을 생략** 할 수 있기 때문입니다.
+![](../images/megatron_mlp_3.png)
+왼쪽 녹색 영역의 연산 결과는 입 력데이터 X와 각 디바이스로 병렬화된 W를 내적한 것입니다. 그리고 나서 붉은색 영역에서 이 결과값을 `All-gather`해서 이어붙인 다음에 다시 `Scatter`하여 쪼개죠. 여기에서 흥미로운 사실은 이어 붙인 텐서를 다시 쪼갰기 때문에 이는 이어붙이기 전과 동일하다는 것입니다.  따라서 오른쪽의 녹색 영역과 왼쪽의 녹색영역 값은 동일하죠. 결과적으로 붉은색 영역 (`All-gather`-`Scatter`)을 생략할 수 있고, 속도 면에서 큰 이득을 가져올 수 있습니다. 
+    
+이는 Column-Row 순으로 병렬화 할때만 나타나는 독특한 현상으로, 만약 Column-Column, Row-Column, Row-Row와 같이 병렬화 한다면 두 Linear 레이어 사이에서 발생하는 통신을 생략할 수 없게 됩니다.
+![](../images/megatron_mlp_4.png)
+`All-gather`와 `Scatter`를 생략하는 기법은 Megatron-LM에 `input_is_parallel`와 `gather_output`라는 파라미터로 구현되어있습니다.
    ]
   },
   {
