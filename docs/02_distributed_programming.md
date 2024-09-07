@@ -1,106 +1,75 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "# Distributed Programming\n",
-    "\n",
-    "Large-scale 모델은 크기가 크기 때문에 여러대의 GPU에 쪼개서 모델을 올려야 합니다. 그리고 쪼개진 각 모델의 조각들끼리 네트워크로 통신을 하면서 값을 주고 받아야 합니다. 이렇게 커다란 리소스를 여러대의 컴퓨터 혹은 여러대의 장비에 분산시켜서 처리하는 것을 '분산처리'라고 합니다. 이번 세션에서는 PyTorch를 이용한 분산 프로그래밍의 기초에 대해 알아보겠습니다."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "## 1. Multi-processing with PyTorch\n",
-    "\n",
-    "분산프로그래밍 튜토리얼에 앞서 PyTorch로 구현된 Multi-processing 애플리케이션에 대한 튜토리얼을 진행합니다. 쓰레드 및 프로세스의 개념 등은 Computer Scienece 전공자라면 운영체제 시간에 배우는 것들이니 생략하도록 하겠습니다. 만약 이러한 개념에 대해 잘 모르신다면, 구글에 검색하시거나 https://www.backblaze.com/blog/whats-the-diff-programs-processes-and-threads/ 와 같은 글을 먼저 읽어보는 것을 추천드립니다.\n",
-    "\n",
-    "### Multi-process 통신에 쓰이는 기본 용어\n",
-    "- Node: 일반적으로 컴퓨터라고 생각하시면 됩니다. 노드 3대라고 하면 컴퓨터 3대를 의미합니다.\n",
-    "- Global Rank: 원래는 프로세스의 우선순위를 의미하지만 **ML에서는 GPU의 ID**라고 보시면 됩니다.\n",
-    "- Local Rank: 원래는 한 노드내에서의 프로세스 우선순위를 의미하지만 **ML에서는 노드내의 GPU ID**라고 보시면 됩니다.\n",
-    "- World Size: 프로세스의 개수를 의미합니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/process_terms.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### Multi-process Application 실행 방법\n",
-    "PyTorch로 구현된 Multi-process 애플리케이션을 실행시키는 방법은 크게 두가지가 있습니다.\n",
-    "\n",
-    "1. 사용자의 코드가 메인프로세스가 되어 특정 함수를 서브프로세스로 분기한다.\n",
-    "2. PyTorch 런처가 메인프로세스가 되어 사용자 코드 전체를 서브프로세스로 분기한다.\n",
-    "\n",
-    "이 두가지 방법에 대해 모두 알아보겠습니다. 이때, '분기한다.'라는 표현이 나오는데, 이는 한 프로세스가 부모가 되어 여러개의 서브프로세스를 동시에 실행시키는 것을 의미합니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### 1) 사용자의 코드가 메인프로세스가 되어 특정 함수를 서브프로세스로 분기한다.\n",
-    "\n",
-    "이 방식은 사용자의 코드가 메인프로세스가 되며 특정 function을 서브프로세스로써 분기하는 방식입니다.\n",
-    "\n",
-    "![](../images/multi_process_1.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "일반적으로 `Spawn`과 `Fork` 등 두가지 방식으로 서브프로세스를 분기 할 수 있습니다.\n",
-    "\n",
-    "- `Spawn`\n",
-    "  - 메인프로세스의 자원을 물려주지 않고 필요한 만큼의 자원만 서브프로세스에게 새로 할당.\n",
-    "  - 속도가 느리지만 안전한 방식.\n",
-    "- `Fork`\n",
-    "  - 메인프로세스의 모든 자원을 서브프로세스와 공유하고 프로세스를 시작.\n",
-    "  - 속도가 빠르지만 위험한 방식.\n",
-    "  \n",
-    "p.s. 실제로는 `Forkserver` 방식도 있지만 자주 사용되지 않는 생소한 방식이기에 생략합니다.\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/multi_process_1.py\n",
-    "\n",
-    "참고:\n",
-    "Jupyter notebook은 멀티프로세싱 애플리케이션을 구동하는데에 많은 제약이 있습니다.\n",
-    "따라서 대부분의 경우 이곳에는 코드만 동봉하고 실행은 `src` 폴더에 있는 코드를 동작시키겠습니다.\n",
-    "실제 코드 동작은 `src` 폴더에 있는 코드를 실행시켜주세요.\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch.multiprocessing as mp\n",
-    "# 일반적으로 mp와 같은 이름을 사용합니다.\n",
-    "\n",
-    "\n",
-    "# 서브프로세스에서 동시에 실행되는 영역\n",
-    "def fn(rank, param1, param2):\n",
-    "    print(f\"{param1} {param2} - rank: {rank}\")\n",
-    "\n",
-    "\n",
-    "# 메인 프로세스\n",
-    "if __name__ == \"__main__\":\n",
-    "    processes = []\n",
-    "    # 시작 방법 설정\n",
-    "    mp.set_start_method(\"spawn\")\n",
-    "\n",
-    "    for rank in range(4):\n",
-    "        process = mp.Process(target=fn, args=(rank, \"A0\", \"B1\"))\n",
-    "        # 서브프로세스 생성\n",
-    "        process.daemon = False\n",
-    "        # 데몬 여부 (메인프로세스 종료시 함께 종료)\n",
-    "        process.start()\n",
-    "        # 서브프로세스 시작\n",
-    "        processes.append(process)\n",
-    "\n",
-    "    for process in processes:\n",
-    "        process.join()\n",
-    "        # 서브 프로세스 join (=완료되면 종료)\n"
+# Distributed Programming\n",
+Large-scale 모델은 크기가 크기 때문에 여러대의 GPU에 쪼개서 모델을 올려야 합니다. 그리고 쪼개진 각 모델의 조각들끼리 네트워크로 통신을 하면서 값을 주고 받아야 합니다. 이렇게 커다란 리소스를 여러대의 컴퓨터 혹은 여러대의 장비에 분산시켜서 처리하는 것을 '분산처리'라고 합니다. 이번 세션에서는 PyTorch를 이용한 분산 프로그래밍의 기초에 대해 알아보겠습니다.
+  
+## 1. Multi-processing with PyTorch
+   
+분산프로그래밍 튜토리얼에 앞서 PyTorch로 구현된 Multi-processing 애플리케이션에 대한 튜토리얼을 진행합니다. 쓰레드 및 프로세스의 개념 등은 Computer Scienece 전공자라면 운영체제 시간에 배우는 것들이니 생략하도록 하겠습니다. 만약 이러한 개념에 대해 잘 모르신다면, 구글에 검색하시거나 https://www.backblaze.com/blog/whats-the-diff-programs-processes-and-threads/ 와 같은 글을 먼저 읽어보는 것을 추천드립니다.
+
+### Multi-process 통신에 쓰이는 기본 용어
+- Node: 일반적으로 컴퓨터라고 생각하시면 됩니다. 노드 3대라고 하면 컴퓨터 3대를 의미합니다.
+- Global Rank: 원래는 프로세스의 우선순위를 의미하지만 **ML에서는 GPU의 ID**라고 보시면 됩니다.
+- Local Rank: 원래는 한 노드내에서의 프로세스 우선순위를 의미하지만 **ML에서는 노드내의 GPU ID**라고 보시면 됩니다
+- World Size: 프로세스의 개수를 의미합니다.
+    
+![](../images/process_terms.png)
+    
+### Multi-process Application 실행 방법
+PyTorch로 구현된 Multi-process 애플리케이션을 실행시키는 방법은 크게 두가지가 있습니다.
+1. 사용자의 코드가 메인프로세스가 되어 특정 함수를 서브프로세스로 분기한다.
+2. PyTorch 런처가 메인프로세스가 되어 사용자 코드 전체를 서브프로세스로 분기한다.
+    
+이 두가지 방법에 대해 모두 알아보겠습니다. 이때, '분기한다.'라는 표현이 나오는데, 이는 한 프로세스가 부모가 되어 여러개의 서브프로세스를 동시에 실행시키는 것을 의미합니다.
+   
+### 1) 사용자의 코드가 메인프로세스가 되어 특정 함수를 서브프로세스로 분기한다.
+이 방식은 사용자의 코드가 메인프로세스가 되며 특정 function을 서브프로세스로써 분기하는 방식입니다.
+
+![](../images/multi_process_1.png)
+    
+일반적으로 `Spawn`과 `Fork` 등 두가지 방식으로 서브프로세스를 분기 할 수 있습니다.
+- `Spawn`
+-- 메인프로세스의 자원을 물려주지 않고 필요한 만큼의 자원만 서브프로세스에게 새로 할당.
+-- 속도가 느리지만 안전한 방식.
+- `Fork`
+-- 메인프로세스의 모든 자원을 서브프로세스와 공유하고 프로세스를 시작.
+-- 속도가 빠르지만 위험한 방식.
+p.s. 실제로는 `Forkserver` 방식도 있지만 자주 사용되지 않는 생소한 방식이기에 생략합니다.
+
+```
+    """
+    src/multi_process_1.py\n
+
+    참고:
+    Jupyter notebook은 멀티프로세싱 애플리케이션을 구동하는데에 많은 제약이 있습니다.
+    따라서 대부분의 경우 이곳에는 코드만 동봉하고 실행은 `src` 폴더에 있는 코드를 동작시키겠습니다.
+    실제 코드 동작은 `src` 폴더에 있는 코드를 실행시켜주세요.
+    """
+
+    import torch.multiprocessing as mp
+    # 일반적으로 mp와 같은 이름을 사용합니다.
+    
+
+    # 서브프로세스에서 동시에 실행되는 영역
+    def fn(rank, param1, param2)
+        print(f\"{param1} {param2} - rank: {rank}\")
+  
+    # 메인 프로세스
+    if __name__ == "__main__":
+        processes = []
+        # 시작 방법 설정
+        mp.set_start_method(\"spawn\")
+
+        for rank in range(4):
+            process = mp.Process(target=fn, args=(rank, \"A0\", \"B1\"))
+            # 서브프로세스 생성
+            process.daemon = False
+            # 데몬 여부 (메인프로세스 종료시 함께 종료)
+            process.start()
+            # 서브프로세스 시작
+            processes.append(process)
+    
+        for process in processes:
+            process.join()
+            # 서브 프로세스 join (=완료되면 종료)
    ]
   },
   {
