@@ -271,1342 +271,1003 @@ MLP 레이어에서 Column-Row 순으로 병렬화를 적용하는 이유는 두
 이는 Column-Row 순으로 병렬화 할때만 나타나는 독특한 현상으로, 만약 Column-Column, Row-Column, Row-Row와 같이 병렬화 한다면 두 Linear 레이어 사이에서 발생하는 통신을 생략할 수 없게 됩니다.
 ![](../images/megatron_mlp_4.png)
 `All-gather`와 `Scatter`를 생략하는 기법은 Megatron-LM에 `input_is_parallel`와 `gather_output`라는 파라미터로 구현되어있습니다.
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: ColumnParallelLinear in megatron-lm/megatron/mpu/layers.py\n",
-    "\"\"\"\n",
-    "\n",
-    "def forward(self, input_):\n",
-    "    bias = self.bias if not self.skip_bias_add else None\n",
-    "\n",
-    "    # Set up backprop all-reduce.\n",
-    "    input_parallel = copy_to_tensor_model_parallel_region(input_)\n",
-    "\n",
-    "    # Matrix multiply.\n",
-    "    output_parallel = F.linear(input_parallel, self.weight, bias)\n",
-    "\n",
-    "    # gather_output을 False로 설정하여 output을 병렬화된 채로 출력합니다.\n",
-    "    if self.gather_output:\n",
-    "        output = gather_from_tensor_model_parallel_region(output_parallel)\n",
-    "    else:\n",
-    "        output = output_parallel\n",
-    "\n",
-    "    output_bias = self.bias if self.skip_bias_add else None\n",
-    "    return output, output_bias\n",
-    "\n",
-    "\n",
-    "\"\"\"\n",
-    "참고: RowParallelLinear in megatron-lm/megatron/mpu/layers.py\n",
-    "\"\"\"\n",
-    "\n",
-    "def forward(self, input_):\n",
-    "    # Set up backprop all-reduce.\n",
-    "\n",
-    "    # input_is_parallel True로 설정하여 input을 병렬화된 채로 입력받습니다.\n",
-    "    if self.input_is_parallel:\n",
-    "        input_parallel = input_\n",
-    "    else:\n",
-    "        input_parallel = scatter_to_tensor_model_parallel_region(input_)\n",
-    "    \n",
-    "    # Matrix multiply.\n",
-    "    output_parallel = F.linear(input_parallel, self.weight)\n",
-    "    \n",
-    "    # All-reduce across all the partitions.\n",
-    "    output_ = reduce_from_tensor_model_parallel_region(output_parallel)\n",
-    "    \n",
-    "    if not self.skip_bias_add:\n",
-    "        output = output_ + self.bias if self.bias is not None else output_\n",
-    "        output_bias = None\n",
-    "    else:\n",
-    "        output = output_\n",
-    "        output_bias = self.bias\n",
-    "    return output, output_bias"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "- Column-Row 방식으로 병렬화하는 2번째 이유는 `Scatter`와 `All-gather`를 생략하려면 **GeLU 연산**이 병렬화된 채로 수행되어야 하기 때문입니다.\n",
-    "  \n",
-    "<br>\n",
-    "\n",
-    "![](../images/megatron_mlp_5.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "위 그림은 `Scatter`와 `All-gather`를 생략하지 않는 상황에서 GeLU 연산을 두 Linear 레이어 사이에 삽입한 것입니다. 만약 여기에서 두 연산을 생략하도록 구현하면 아래와 같이 GeLU 연산은 반드시 각각의 디바이스에서 이루어져야 합니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/megatron_mlp_6.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "그러나 이렇게 GeLU 연산을 서로 다른 디바이스에서 하도록 병렬화 시키려면 반드시 병렬적으로 계산된 GeLU의 출력은 병렬화 되지 않은 상태에서 계산된 GeLU의 출력과 동일해야겠죠. 즉 다음과 같은 공식이 성립해야 합니다. ($\\circledcirc$ 기호는 concatenation을 의미합니다.)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "$$Row Paralleism: GeLU(XW1 + XW2) = GeLU(XW1) + GeLU(XW2)$$\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "$$Column Paralleism: GeLU(XW1 \\circledcirc XW2) = GeLU(XW1) \\circledcirc GeLU(XW2)$$\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "문제는 위와 같은 공식이 Column Parallelism에서만 성립하고, **Row Parallelism 에서는 성립하지 않는다는 것**입니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "$$Row Paralleism: GeLU(XW1 + XW2) \\neq GeLU(XW1) + GeLU(XW2)$$\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "이를 코드로 구현해서 확인해봅시다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 4,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Is GeLU in RowParallelLinear same with non-parallel = False\n",
-      "Is GeLU in ColumnParallelLinear same with non-parallel = True\n"
-     ]
-    }
-   ],
-   "source": [
-    "\"\"\"\n",
-    "src/megatron_mlp_gelu.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "from torch.nn.functional import gelu\n",
-    "\n",
-    "\n",
-    "w = torch.randn(6, 6)\n",
-    "x = torch.randn(6, 6)\n",
-    "\n",
-    "\n",
-    "class RowParallelLinear(torch.nn.Module):\n",
-    "    def __init__(self):\n",
-    "        super(RowParallelLinear, self).__init__()\n",
-    "        chunked = torch.chunk(w, 2, dim=0)\n",
-    "\n",
-    "        # row parallelized parameters\n",
-    "        self.w1 = chunked[0]  # [3, 6]\n",
-    "        self.w2 = chunked[1]  # [3, 6]\n",
-    "\n",
-    "    def forward(self, x):\n",
-    "        # GeLU(X1A1 + X2A2) != GeLU(X1A1) + GeLU(X2A2)\n",
-    "        x1, x2 = torch.chunk(x, 2, dim=1)\n",
-    "\n",
-    "        # parallel output\n",
-    "        y1 = gelu(x1 @ self.w1) + gelu(x2 @ self.w2)\n",
-    "\n",
-    "        # non-parallel output\n",
-    "        y2 = gelu(x1 @ self.w1 + x2 @ self.w2)\n",
-    "\n",
-    "        return torch.all(y1 == y2)\n",
-    "\n",
-    "\n",
-    "class ColumnParallelLinear(torch.nn.Module):\n",
-    "    def __init__(self):\n",
-    "        super(ColumnParallelLinear, self).__init__()\n",
-    "        chunked = torch.chunk(w, 2, dim=1)\n",
-    "\n",
-    "        # column parallelized parameters\n",
-    "        self.w1 = chunked[0]  # [6, 3]\n",
-    "        self.w2 = chunked[1]  # [6, 3]\n",
-    "\n",
-    "    def forward(self, x):\n",
-    "        # GeLU(X1A1 cat X2A2) == GeLU(X1A1) cat GeLU(X2A2)\n",
-    "\n",
-    "        # parallel output\n",
-    "        y1 = torch.cat([gelu(x @ self.w1), gelu(x @ self.w2)], dim=1)\n",
-    "\n",
-    "        # non-parallel output\n",
-    "        y2 = gelu(torch.cat([(x @ self.w1), (x @ self.w2)], dim=1))\n",
-    "\n",
-    "        return torch.all(y1 == y2)\n",
-    "\n",
-    "\n",
-    "# Row Parallelism\n",
-    "print(\"Is GeLU in RowParallelLinear same with non-parallel = \", end=\"\")\n",
-    "print(RowParallelLinear()(x).item())\n",
-    "\n",
-    "# Column Parallelism\n",
-    "print(\"Is GeLU in ColumnParallelLinear same with non-parallel = \", end=\"\")\n",
-    "print(ColumnParallelLinear()(x).item())"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "따라서 GeLU 연산을 병렬화 시키려면 반드시 GeLU 이전의 Linear 레이어는 Column 방향으로 병렬화 되어있어야 합니다. 따라서 Column-Row 순서로 병렬화 하는 것이 가장 효율적인 방식이죠."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "### Multi-head Attention Layer\n",
-    "\n",
-    "다음으로 Multi-head Attention 레이어에 대해 알아보겠습니다. Multi-head Attention 레이어는 `Linear1` → `Split heads` → `ScaleDotProductAttention` → `Concat(Merge) heads` → `Linear2` → `Dropout` 순으로 진행됩니다.\n",
-    "\n",
-    "![](../images/multi_head_attention.png)\n",
-    "\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고 transformers/models/gpt_neo/modeling_gpt_neo.py\n",
-    "\"\"\"\n",
-    "\n",
-    "class GPTNeoSelfAttention(nn.Module):\n",
-    "    def __init__(self, config, attention_type):\n",
-    "        super().__init__()\n",
-    "        self.attn_dropout = nn.Dropout(config.attention_dropout)\n",
-    "        self.resid_dropout = nn.Dropout(config.resid_dropout)\n",
-    "\n",
-    "        self.embed_dim = config.hidden_size\n",
-    "        self.num_heads = config.num_heads\n",
-    "        self.head_dim = self.embed_dim // self.num_heads\n",
-    "        if self.head_dim * self.num_heads != self.embed_dim:\n",
-    "            raise ValueError(\n",
-    "                f\"embed_dim must be divisible by num_heads (got `embed_dim`: {self.embed_dim} and `num_heads`: {self.num_heads}).\"\n",
-    "            )\n",
-    "\n",
-    "        self.k_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)\n",
-    "        self.v_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)\n",
-    "        self.q_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)\n",
-    "        self.out_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=True)\n",
-    "\n",
-    "    def forward(\n",
-    "        self,\n",
-    "        hidden_states,\n",
-    "        attention_mask=None,\n",
-    "        layer_past=None,\n",
-    "        head_mask=None,\n",
-    "        use_cache=False,\n",
-    "        output_attentions=False,\n",
-    "    ):\n",
-    "        # 1. linear projection\n",
-    "        query = self.q_proj(hidden_states)\n",
-    "        key = self.k_proj(hidden_states)\n",
-    "        value = self.v_proj(hidden_states)\n",
-    "        \n",
-    "        # 2. split heads\n",
-    "        query = self._split_heads(query, self.num_heads, self.head_dim)\n",
-    "        key = self._split_heads(key, self.num_heads, self.head_dim)\n",
-    "        value = self._split_heads(value, self.num_heads, self.head_dim)\n",
-    "\n",
-    "        # 3. scale dot product attention\n",
-    "        attn_output, attn_weights = self._attn(query, key, value, attention_mask, head_mask)\n",
-    "\n",
-    "        # 4. concat (merge) heads\n",
-    "        attn_output = self._merge_heads(attn_output, self.num_heads, self.head_dim)\n",
-    "        \n",
-    "        # 5. linear projection\n",
-    "        attn_output = self.out_proj(attn_output)\n",
-    "        \n",
-    "        # 6. dropout\n",
-    "        attn_output = self.resid_dropout(attn_output)\n",
-    "\n",
-    "        return outputs"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "![](../images/megatron_attention.jpeg)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "Megatron-LM은 Attention 레이어의 Q, K, V Linear projection과 Output projection 부분을 병렬화 합니다. 마찬가지로 Q, K, V Linear projection 부분은 Column parallelism, Output projection 부분은 Row parallelism으로 처리하여 **Column-Row의 패턴을 만듭니다.** 이를 통해 Attention 레이어에서도 MLP 레이어와 마찬가지로 `Scatter`, `All-gather` 연산을 생략 할 수 있습니다.\n",
-    "\n",
-    "<br>"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "### Vocab Parallel Embedding\n",
-    "\n",
-    "Megatron LM은 Word embedding 레이어도 역시 병렬화 합니다. 독특한 점은 Vocab size dimension을 기준으로 병렬화 한다는 점입니다. 예를 들어 Vocab size가 50000인 Word embedding matrix가 있다고 가정하면 이 matrix의 사이즈는 (50000, embedding_dim)인 됩니다. Megatron-LM은 여기에서 Vocab size dimension을 기준으로 matrix를 병렬화 합니다. 이러한 독특한 병렬화 기법을 **Vocab Parallel Embedding**이라고 합니다. \n",
-    "\n",
-    "![](../images/vpe_1.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "위 그림은 병렬화를 하지 않은 상태에서의 Word embedding을 나타냅니다. 길이가 6인 시퀀스가 입력되면 [6, embedding_dim]의 사이즈를 갖는 입력 텐서를 만듭니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/vpe_2.png)\n",
-    "\n",
-    "위 그림은 Vocab parallel embedding의 작동 방식을 나타냅니다. 기존의 임베딩 매트릭스를 절반으로 쪼개서 0번부터 24999번 토큰까지 담당하는 임베딩 매트릭스와 25000번부터 50000번 토큰까지 담당하는 임베딩 매트릭스로 분할합니다. 그리고 데이터가 들어오면 **해당 매트릭스가 커버하는 범위를 넘어서는 토큰은 마스킹**하여 처리합니다. 이후에 **마스킹 처리된 부분의 벡터는 전부 0으로 초기화** 한 뒤, 두 매트릭스를 **더하면 모든 단어의 벡터를 갖고 있는 완벽한 입력 텐서**가 됩니다.\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: VocabParallelEmbedding in megatron-lm/megatron/mpu/layers.py\n",
-    "\"\"\"\n",
-    "\n",
-    "def forward(self, input_):\n",
-    "    if self.tensor_model_parallel_size > 1:\n",
-    "        # Build the mask.\n",
-    "        input_mask = (input_ < self.vocab_start_index) | \\\n",
-    "                     (input_ >= self.vocab_end_index)\n",
-    "\n",
-    "        # Mask the input.\n",
-    "        masked_input = input_.clone() - self.vocab_start_index\n",
-    "        masked_input[input_mask] = 0\n",
-    "\n",
-    "    else:\n",
-    "        masked_input = input_\n",
-    "        # Get the embeddings.\n",
-    "    \n",
-    "    output_parallel = F.embedding(masked_input, self.weight,\n",
-    "                                  self.padding_idx, self.max_norm,\n",
-    "                                  self.norm_type, self.scale_grad_by_freq,\n",
-    "                                  self.sparse)\n",
-    "\n",
-    "    # Mask the output embedding.\n",
-    "    if self.tensor_model_parallel_size > 1:\n",
-    "        output_parallel[input_mask, :] = 0.0\n",
-    "    \n",
-    "    # Reduce across all the model parallel GPUs.\n",
-    "    output = reduce_from_tensor_model_parallel_region(output_parallel)\n",
-    "    return output"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "\n",
-    "그런데 여기에서 문제가 하나 발생합니다. Tensor parallelism은 반드시 짝수개의 GPU로 병렬화 되어야 하는데 52527은 짝수가 아니기 때문에 2로 나눌 수가 없습니다. 이를 위해 Word embedding matrix에 사용하지 않는 토큰을 추가하여 vocab size를 짝수로 만듭니다. 이를 `padded vocab size`라고 하며 Megatron-LM에서는 `make-vocab-size-divisible-by`이라는 argument로 vocab size를 조절할 수 있습니다. (vocab size가 설정한 값의 배수가 되도록 만듭니다.) \n",
-    "\n",
-    "결론적으로 Megatron-LM은 Vocab Parallel Embedding을 적용하여 메모리 효율성을 더욱 높힐 수 있습니다.\n"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "### Vocab Parallel Cross Entropy\n",
-    "\n",
-    "GPT2의 Causal Language Modeling이나 BERT의 Masked Language Modeling 같은 태스크는 최종 출력으로 자연어 토큰을 생성합니다. 따라서 마지막 Transformer 레이어를 거친 이후에 모델의 출력 사이즈는 (bsz, length, vocab_size)로 확장됩니다. (classification이나 tagging 같은 태스크는 해당하지 이에 않습니다.)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/lm_head.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "이 때, 만약 입력과 출력 임베딩을 묶는다면(weight tying) Language Modeling Head (이하 LM Head)에 사용되는 Linear 레이어의 파라미터를 새로 초기화 시키는 대신 word embedding matrix를 사용하게 됩니다. 현재 공개된 Bert, GPT2, GPTNeo 등의 대부분 모델들의 출력 임베딩(LM Head)은 입력 임베딩과 묶여있습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고 transformers/models/gpt_neo/modeling_gpt_neo.py\n",
-    "\"\"\"\n",
-    "\n",
-    "class GPTNeoForCausalLM(GPTNeoPreTrainedModel):\n",
-    "    _keys_to_ignore_on_load_missing = [\n",
-    "        r\"h\\.\\d+\\.attn\\.masked_bias\",\n",
-    "        r\"lm_head\\.weight\",\n",
-    "        r\"h\\.\\d+\\.attn\\.attention\\.bias\",\n",
-    "    ]\n",
-    "    _keys_to_ignore_on_save = [r\"lm_head.weight\"]\n",
-    "    # 3. 그렇기 때문에 `lm_head.weight` 파라미터는 load 및 save하지 않습니다.\n",
-    "    # 굳이 동일한 텐서를 두번 저장하거나 로드 할 필요 없기 때문이죠.\n",
-    "\n",
-    "    def __init__(self, config):\n",
-    "        super().__init__(config)\n",
-    "        self.transformer = GPTNeoModel(config)\n",
-    "        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)\n",
-    "        # 1. 언뜻 보면 nn.Linear 레이어의 파라미터를 새로 할당해서 사용하는 것 처럼 보입니다.\n",
-    "\n",
-    "        self.init_weights()\n",
-    "        # 2. 그러나 이 메서드를 호출하면서 입력과 출력 임베딩(lm head)을 묶게 됩니다. \n",
-    "        # 이 때 word embeddig matrix의 weight를 nn.Linear 레이어의 weight로 복사하게 됩니다.\n",
-    "        # 복사는 deep-copy가 아닌 shallow-copy를 수행합니다. (reference가 아닌 value만 공유)\n",
-    "        # 따라서 `lm_head.weight`은 word embedding과 동일한 주소 공간에 있는 하나의 텐서입니다.\n",
-    "\n",
-    "    def get_output_embeddings(self):\n",
-    "        return self.lm_head\n",
-    "\n",
-    "    def set_output_embeddings(self, new_embeddings):\n",
-    "        self.lm_head = new_embeddings"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고 transformers/modeling_utils.py\n",
-    "\"\"\"\n",
-    "\n",
-    "def init_weights(self):\n",
-    "    \"\"\"\n",
-    "    If needed prunes and maybe initializes weights.\n",
-    "    \"\"\"\n",
-    "    # Prune heads if needed\n",
-    "    if self.config.pruned_heads:\n",
-    "        self.prune_heads(self.config.pruned_heads)\n",
-    "\n",
-    "    if _init_weights:\n",
-    "        # Initialize weights\n",
-    "        self.apply(self._init_weights)\n",
-    "\n",
-    "        # weight tying을 지원하는 모델은 이 메서드가 호출됨과 동시에\n",
-    "        # 입력 임베딩과 출력 임베딩(= lm head)가 묶이게 됩니다.\n",
-    "        self.tie_weights()\n",
-    "\n",
-    "\n",
-    "def tie_weights(self):\n",
-    "    \"\"\"\n",
-    "    Tie the weights between the input embeddings and the output embeddings.\n",
-    "    If the :obj:`torchscript` flag is set in the configuration, can't handle parameter sharing so we are cloning\n",
-    "    the weights instead.\n",
-    "    \"\"\"\n",
-    "    output_embeddings = self.get_output_embeddings()\n",
-    "    if output_embeddings is not None and self.config.tie_word_embeddings:\n",
-    "        self._tie_or_clone_weights(output_embeddings, self.get_input_embeddings())\n",
-    "        # 이 메서드가 호출되면서 output 임베딩(lm head)이 input 임베딩과 묶이게 됩니다.\n",
-    "\n",
-    "    if self.config.is_encoder_decoder and self.config.tie_encoder_decoder:\n",
-    "        if hasattr(self, self.base_model_prefix):\n",
-    "            self = getattr(self, self.base_model_prefix)\n",
-    "        self._tie_encoder_decoder_weights(self.encoder, self.decoder, self.base_model_prefix)\n",
-    "\n",
-    "    for module in self.modules():\n",
-    "        if hasattr(module, \"_tie_weights\"):\n",
-    "            module._tie_weights()"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "그러나 여기서 문제가 생깁니다. 일반적으로 LM Head로 부터 출력된 Logits과 Target 데이터 사이의 Loss를 계산할 때는 다음과 같은 과정이 일어납니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/vpce_1.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "그러나 Megatron-LM은 Vocab Parallel Embedding을 사용하기 때문에 Embedding 레이어가 여러 디바이스를 걸쳐 분할되어 있습니다. 때문에 weight tying을 하게 된다면 **출력 임베딩(LM Head) 역시 여러 디바이스로 분할**되게 됩니다. 따라서 모델에서 출력되는 Logits의 사이즈는 vocab size를 분할한 사이즈가 됩니다. \n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/vpce_2.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "위 그림처럼 vocab size가 50,000이라면 원래는 (bsz, length, 50000)의 텐서가 출력되어야 하지만 위의 예시처럼 2개의 디바이스로 분할되어 있다면 (bsz, length, 25000)의 사이즈를 갖는 2개의 logits이 나오게 되며, 각 디바이스의 logits은 서로 다른 값을 갖게 될 것입니다. **이 것을 Parallel LM Logits이라고 부릅니다.** 이렇게 되면 target sentence와의 loss를 어떻게 계산해야 할까요? Traget 데이터에는 0번 부터 49999번째 토큰까지 모두 존재하는데 비해 logits의 사이즈는 그 절반밖에 되지 않으니까요.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "![](../images/vpce_3.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "이 경우 **기존의 cross entropy가 아닌 vocab parallel cross entropy라고 불리는 특별한 loss 함수를 사용**해야 합니다. Vocab parallel corss entropy loss의 연산은 위와 같이 진행됩니다. 계산된 Logit에서 해당 디바이스가 커버 할 수 있는 부분만 남기고 Masking하여 Loss를 계산합니다. 그리고 계산된 Loss들을 All-reduce 해서 최종 Loss를 계산합니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: _VocabParallelCrossEntropy in megatron-lm/megatron/mpu/cross_entropy.py\n",
-    "\"\"\"\n",
-    "\n",
-    "@staticmethod\n",
-    "def forward(ctx, vocab_parallel_logits, target):\n",
-    "    # Maximum value along vocab dimension across all GPUs.\n",
-    "    logits_max = torch.max(vocab_parallel_logits, dim=-1)[0]\n",
-    "    torch.distributed.all_reduce(logits_max,\n",
-    "                                 op=torch.distributed.ReduceOp.MAX,\n",
-    "                                 group=get_tensor_model_parallel_group())\n",
-    "\n",
-    "    # Subtract the maximum value.\n",
-    "    vocab_parallel_logits.sub_(logits_max.unsqueeze(dim=-1))\n",
-    "\n",
-    "    # Get the partition's vocab indecies\n",
-    "    get_vocab_range = VocabUtility.vocab_range_from_per_partition_vocab_size\n",
-    "    partition_vocab_size = vocab_parallel_logits.size()[-1]\n",
-    "    rank = get_tensor_model_parallel_rank()\n",
-    "    world_size = get_tensor_model_parallel_world_size()\n",
-    "    vocab_start_index, vocab_end_index = get_vocab_range(\n",
-    "        partition_vocab_size, rank, world_size)\n",
-    "\n",
-    "    # Create a mask of valid vocab ids (1 means it needs to be masked).\n",
-    "    target_mask = (target < vocab_start_index) | (target >= vocab_end_index)\n",
-    "    masked_target = target.clone() - vocab_start_index\n",
-    "    masked_target[target_mask] = 0\n",
-    "\n",
-    "    # Get predicted-logits = logits[target].\n",
-    "    # For Simplicity, we convert logits to a 2-D tensor with size\n",
-    "    # [*, partition-vocab-size] and target to a 1-D tensor of size [*].\n",
-    "    logits_2d = vocab_parallel_logits.view(-1, partition_vocab_size)\n",
-    "    masked_target_1d = masked_target.view(-1)\n",
-    "    arange_1d = torch.arange(start=0, end=logits_2d.size()[0],\n",
-    "                                 device=logits_2d.device)\n",
-    "    predicted_logits_1d = logits_2d[arange_1d, masked_target_1d]\n",
-    "    predicted_logits_1d = predicted_logits_1d.clone().contiguous()\n",
-    "    predicted_logits = predicted_logits_1d.view_as(target)\n",
-    "    predicted_logits[target_mask] = 0.0\n",
-    "    \n",
-    "    # All reduce is needed to get the chunks from other GPUs.\n",
-    "    torch.distributed.all_reduce(predicted_logits,\n",
-    "                                 op=torch.distributed.ReduceOp.SUM,\n",
-    "                                 group=get_tensor_model_parallel_group())\n",
-    "\n",
-    "    # Sum of exponential of logits along vocab dimension across all GPUs.\n",
-    "    exp_logits = vocab_parallel_logits\n",
-    "    torch.exp(vocab_parallel_logits, out=exp_logits)\n",
-    "    sum_exp_logits = exp_logits.sum(dim=-1)\n",
-    "    torch.distributed.all_reduce(sum_exp_logits,\n",
-    "                                 op=torch.distributed.ReduceOp.SUM,\n",
-    "                                 group=get_tensor_model_parallel_group())\n",
-    "\n",
-    "    # Loss = log(sum(exp(logits))) - predicted-logit.\n",
-    "    loss = torch.log(sum_exp_logits) - predicted_logits\n",
-    "\n",
-    "    # Store softmax, target-mask and masked-target for backward pass.\n",
-    "    exp_logits.div_(sum_exp_logits.unsqueeze(dim=-1))\n",
-    "    ctx.save_for_backward(exp_logits, target_mask, masked_target_1d)\n",
-    "\n",
-    "    return loss"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "### Megatron-LM으로 모델 학습해보기\n",
-    "\n",
-    "Megatron-LM을 사용해서 모델을 학습해보도록 하겠습니다. Megaton-LM은 Hugging Face `transformers`와 같이 코드레벨로 사용하는 프레임워크가 아니라 이미 잘 짜여진 코드를 활용하여 모델을 만드는 데에 쓰입니다. 따라서 레포를 클론한 뒤에 진행하도록 하겠습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 5,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Ign:1 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64  InRelease\n",
-      "Hit:2 http://archive.ubuntu.com/ubuntu bionic InRelease             \u001b[0m\n",
-      "Ign:3 https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64  InRelease\n",
-      "Hit:4 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64  Release\n",
-      "Get:5 http://security.ubuntu.com/ubuntu bionic-security InRelease [88.7 kB]m\n",
-      "Hit:6 https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64  Release\n",
-      "Get:7 http://archive.ubuntu.com/ubuntu bionic-updates InRelease [88.7 kB]      \u001b[0m\u001b[33m\n",
-      "Get:10 http://archive.ubuntu.com/ubuntu bionic-backports InRelease [74.6 kB]   \u001b[0m\u001b[33m\u001b[33m\u001b[33m\u001b[33m\u001b[33m\u001b[33m\n",
-      "Fetched 252 kB in 2s (126 kB/s)[0m \u001b[0m\u001b[33m\u001b[33m\n",
-      "Reading package lists... Done\n",
-      "Building dependency tree       \n",
-      "Reading state information... Done\n",
-      "54 packages can be upgraded. Run 'apt list --upgradable' to see them.\n",
-      "Reading package lists... Done\n",
-      "Building dependency tree       \n",
-      "Reading state information... Done\n",
-      "git is already the newest version (1:2.17.1-1ubuntu0.9).\n",
-      "wget is already the newest version (1.19.4-1ubuntu2.2).\n",
-      "0 upgraded, 0 newly installed, 0 to remove and 54 not upgraded.\n"
-     ]
-    }
-   ],
-   "source": [
-    "# git과 wget이 설치되어있지 않다면 아래 명령어를 통해 설치합니다.\n",
-    "!apt update && apt install git wget -y"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 6,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Cloning into 'Megatron-LM'...\n",
-      "remote: Enumerating objects: 6281, done.\u001b[K\n",
-      "remote: Counting objects: 100% (2295/2295), done.\u001b[K\n",
-      "remote: Compressing objects: 100% (689/689), done.\u001b[K\n",
-      "remote: Total 6281 (delta 1667), reused 2188 (delta 1602), pack-reused 3986\u001b[K\n",
-      "Receiving objects: 100% (6281/6281), 2.29 MiB | 6.63 MiB/s, done.\n",
-      "Resolving deltas: 100% (4648/4648), done.\n"
-     ]
-    }
-   ],
-   "source": [
-    "# Megatron-LM을 clone 합니다.\n",
-    "!git clone https://github.com/NVIDIA/Megatron-LM"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 7,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM\n"
-     ]
-    }
-   ],
-   "source": [
-    "%cd Megatron-LM"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "이제 필요한 몇가지 패키지를 설치해보도록 하겠습니다. Megatron-LM에는 `nltk`로 데이터를 문장단위로 분할해서 전처리 하는 기능이 있습니다. 저는 지금 이 기능을 사용하진 않을것이지만 설치되어 있지 않으면 에러가 발생하기 때문에 `nltk`를 설치하겠습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 8,
-   "metadata": {
-    "scrolled": false
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Requirement already satisfied: nltk in /opt/conda/lib/python3.7/site-packages (3.6.5)\n",
-      "Requirement already satisfied: tqdm in /opt/conda/lib/python3.7/site-packages (from nltk) (4.62.3)\n",
-      "Requirement already satisfied: click in /opt/conda/lib/python3.7/site-packages (from nltk) (8.0.3)\n",
-      "Requirement already satisfied: joblib in /opt/conda/lib/python3.7/site-packages (from nltk) (1.1.0)\n",
-      "Requirement already satisfied: regex>=2021.8.3 in /opt/conda/lib/python3.7/site-packages (from nltk) (2021.10.23)\n",
-      "Requirement already satisfied: importlib-metadata in /opt/conda/lib/python3.7/site-packages (from click->nltk) (4.8.1)\n",
-      "Requirement already satisfied: typing-extensions>=3.6.4 in /opt/conda/lib/python3.7/site-packages (from importlib-metadata->click->nltk) (3.7.4.3)\n",
-      "Requirement already satisfied: zipp>=0.5 in /opt/conda/lib/python3.7/site-packages (from importlib-metadata->click->nltk) (3.6.0)\n",
-      "\u001b[33mWARNING: Running pip as root will break packages and permissions. You should install packages reliably by using venv: https://pip.pypa.io/warnings/venv\u001b[0m\n"
-     ]
-    }
-   ],
-   "source": [
-    "!pip install nltk"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "Megatron-LM은 `pybind11`와 `apex` 패키지도 사용합니다. 설치하도록 하겠습니다. (CUDA 컴파일이 꽤 오래 걸리니 느긋하게 기다려주세요.)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 9,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Requirement already satisfied: pybind11 in /opt/conda/lib/python3.7/site-packages (2.8.0)\n",
-      "\u001b[33mWARNING: Running pip as root will break packages and permissions. You should install packages reliably by using venv: https://pip.pypa.io/warnings/venv\u001b[0m\n"
-     ]
-    }
-   ],
-   "source": [
-    "!pip install pybind11"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "!git clone https://github.com/NVIDIA/apex\n",
-    "%cd apex\n",
-    "!pip install -v --disable-pip-version-check --no-cache-dir --global-option=\"--cpp_ext\" --global-option=\"--cuda_ext\" ./\n",
-    "%cd .."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "이제 데이터셋을 만들어보도록 하겠습니다. Megatron-LM으로 모델을 Pre-training을 할 때는 `{\"text\": \"샘플\"}`과 같은 json 구조가 여러라인으로 구성된 간단한 구조의 jsonl 파일을 만들면 되고, Fine-tuning의 경우는 해당 태스크에 맞게 데이터셋을 구성해야 합니다. 본 튜토리얼에서는 Pre-training만 다루고 있기 때문에 Fine-tuning이 필요하시면 Megatron-LM 깃헙 레포를 참고해주세요."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/megatron_datasets.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import json\n",
-    "import os\n",
-    "from datasets import load_dataset\n",
-    "\n",
-    "train_samples, min_length = 10000, 512\n",
-    "filename = \"megatron_datasets.jsonl\"\n",
-    "curr_num_datasets = 0\n",
-    "\n",
-    "if os.path.exists(filename):\n",
-    "    os.remove(filename)\n",
-    "\n",
-    "datasets = load_dataset(\"wikitext\", \"wikitext-103-raw-v1\")\n",
-    "datasets = datasets.data[\"train\"][\"text\"]\n",
-    "dataset_fp_write = open(filename, mode=\"w\", encoding=\"utf-8\")\n",
-    "\n",
-    "for sample in datasets:\n",
-    "    sample = sample.as_py()\n",
-    "\n",
-    "    if len(sample) >= min_length:\n",
-    "        line = json.dumps(\n",
-    "            {\"text\": sample},\n",
-    "            ensure_ascii=False,\n",
-    "        )\n",
-    "\n",
-    "        dataset_fp_write.write(line + \"\\n\")\n",
-    "        curr_num_datasets += 1\n",
-    "\n",
-    "        # 튜토리얼이기 때문에 적은 양의 데이터만 만들겠습니다.\n",
-    "        if curr_num_datasets >= train_samples:\n",
-    "            break\n",
-    "\n",
-    "dataset_fp_read = open(filename, mode=\"r\", encoding=\"utf-8\")\n",
-    "dataset_read = dataset_fp_read.read().splitlines()[:3]\n",
-    "\n",
-    "# 데이터의 구조를 확인합니다.\n",
-    "for sample in dataset_read:\n",
-    "    print(sample, end=\"\\n\\n\")\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 11,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Reusing dataset wikitext (/root/.cache/huggingface/datasets/wikitext/wikitext-103-raw-v1/1.0.0/aa5e094000ec7afeb74c3be92c88313cd6f132d564c7effd961c10fd47c76f20)\n",
-      "100%|████████████████████████████████████████████| 3/3 [00:00<00:00, 369.35it/s]\n",
-      "{\"text\": \" Senjō no Valkyria 3 : Unrecorded Chronicles ( Japanese : 戦場のヴァルキュリア3 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first game and follows the \\\" Nameless \\\" , a penal military unit serving the nation of Gallia during the Second Europan War who perform secret black operations and are pitted against the Imperial unit \\\" Calamaty Raven \\\" . \\n\"}\n",
-      "\n",
-      "{\"text\": \" The game began development in 2010 , carrying over a large portion of the work done on Valkyria Chronicles II . While it retained the standard features of the series , it also underwent multiple adjustments , such as making the game more forgiving for series newcomers . Character designer Raita Honjou and composer Hitoshi Sakimoto both returned from previous entries , along with Valkyria Chronicles II director Takeshi Ozawa . A large team of writers handled the script . The game 's opening theme was sung by May 'n . \\n\"}\n",
-      "\n",
-      "{\"text\": \" It met with positive sales in Japan , and was praised by both Japanese and western critics . After release , it received downloadable content , along with an expanded edition in November of that year . It was also adapted into manga and an original video animation series . Due to low sales of Valkyria Chronicles II , Valkyria Chronicles III was not localized , but a fan translation compatible with the game 's expanded edition was released in 2014 . Media.Vision would return to the franchise with the development of Valkyria : Azure Revolution for the PlayStation 4 . \\n\"}\n",
-      "\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python ../../src/megatron_datasets.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "Tokenization에 사용할 Vocab을 다운로드 받습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 12,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "--2021-10-24 01:46:38--  https://huggingface.co/gpt2/raw/main/vocab.json\n",
-      "Resolving huggingface.co (huggingface.co)... 54.84.200.39, 107.23.77.87, 2600:1f18:147f:e850:859c:8fe1:ce4c:b9ed, ...\n",
-      "Connecting to huggingface.co (huggingface.co)|54.84.200.39|:443... connected.\n",
-      "HTTP request sent, awaiting response... 200 OK\n",
-      "Length: 1042301 (1018K) [application/json]\n",
-      "Saving to: ‘vocab.json’\n",
-      "\n",
-      "vocab.json          100%[===================>]   1018K   769KB/s    in 1.3s    \n",
-      "\n",
-      "2021-10-24 01:46:40 (769 KB/s) - ‘vocab.json’ saved [1042301/1042301]\n",
-      "\n",
-      "--2021-10-24 01:46:40--  https://huggingface.co/gpt2/raw/main/merges.txt\n",
-      "Resolving huggingface.co (huggingface.co)... 54.84.200.39, 107.23.77.87, 2600:1f18:147f:e800:db5d:bef3:91a:a059, ...\n",
-      "Connecting to huggingface.co (huggingface.co)|54.84.200.39|:443... connected.\n",
-      "HTTP request sent, awaiting response... 200 OK\n",
-      "Length: 456318 (446K) [text/plain]\n",
-      "Saving to: ‘merges.txt’\n",
-      "\n",
-      "merges.txt          100%[===================>] 445.62K   332KB/s    in 1.3s    \n",
-      "\n",
-      "2021-10-24 01:46:43 (332 KB/s) - ‘merges.txt’ saved [456318/456318]\n",
-      "\n"
-     ]
-    }
-   ],
-   "source": [
-    "!wget https://huggingface.co/gpt2/raw/main/vocab.json\n",
-    "!wget https://huggingface.co/gpt2/raw/main/merges.txt"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 13,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "LICENSE    \u001b[0m\u001b[01;34mmegatron\u001b[0m/                pretrain_ict.py  \u001b[01;34mtools\u001b[0m/\r\n",
-      "README.md  megatron_datasets.jsonl  pretrain_t5.py   vocab.json\r\n",
-      "\u001b[01;34mapex\u001b[0m/      merges.txt               pretrain_vit.py\r\n",
-      "\u001b[01;34mexamples\u001b[0m/  pretrain_bert.py         \u001b[01;34mtasks\u001b[0m/\r\n",
-      "\u001b[01;34mimages\u001b[0m/    pretrain_gpt.py          \u001b[01;34mtests\u001b[0m/\r\n"
-     ]
-    }
-   ],
-   "source": [
-    "%ls"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "이제 Dataset을 전처리합니다. 여기서 수행하는 전처리는 Tokenization과 Binarization을 함께 수행합니다. Megatron-LM의 전처리 코드는 Fairseq의 Indexed dataset의 코드를 카피해서 사용하고 있습니다. Fairseq의 데이터셋 전처리에 사용되는 방식은 크게 `lazy`, `cached`, `mmap` 등 크게 3가지가 존재하는데, 전처리 방식들에 대해 간략하게 설명하고 진행하겠습니다."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "#### 1) Lazy\n",
-    "`lazy`는 필요한 데이터를 매 스텝마다 디스크에서 메모리로 불러옵니다. 즉, `Dataset` 클래스에서 `__getitem__()`이 호출 될 때마다 지정된 주소에 접근하여 데이터를 메모리로 로드하는 방식입니다. 그러나 매 스텝마다 File Buffer를 통해 디스크와의 I/O를 수행하기 때문에 처리 속도가 다소 느릴 수 있습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: fairseq/fairseq/data/indexed_dataset.py \n",
-    "주석은 제가 직접 추가하였습니다.\n",
-    "\"\"\"\n",
-    "\n",
-    "\n",
-    "from typing import Union\n",
-    "import numpy as np\n",
-    "\n",
-    "\n",
-    "def __getitem__(self, idx: Union[int, slice]) -> np.ndarray:\n",
-    "    if not self.data_file:\n",
-    "        # 파일 버퍼 로드\n",
-    "        self.read_data(self.path)\n",
-    "\n",
-    "    if isinstance(idx, int):\n",
-    "        # 인덱스 유효성 체크\n",
-    "        self.check_index(idx)\n",
-    "\n",
-    "        # 로드할 텐서 사이즈 계산\n",
-    "        tensor_size = self.sizes[self.dim_offsets[idx] : self.dim_offsets[idx + 1]]\n",
-    "\n",
-    "        # 텐서를 담을 빈 메모리 공간 할당\n",
-    "        array = np.empty(tensor_size, dtype=self.dtype)\n",
-    "\n",
-    "        # offset을 기반으로 읽어올 파일의 디스크 주소를 지정\n",
-    "        self.data_file.seek(self.data_offsets[idx] * self.element_size)\n",
-    "\n",
-    "        # 디스크로부터 메모리로 데이터 로드 (파일 I/O)\n",
-    "        self.data_file.readinto(array)\n",
-    "        return array"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "#### 2) Cached\n",
-    "`cached`는 모든 데이터를 학습 이전에 prefetch 하여 인메모리에 올려두고 접근하는 방식입니다. 학습 중에 데이터 로딩을 위해 디스크에 접근하지 않기 때문에 속도가 다른 방식들 보다는 빠른 편이지만 메모리의 크기에는 한계가 존재하므로 데이터셋의 용량이 매우 큰 경우에는 사용하기 어렵습니다.\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: fairseq/fairseq/data/indexed_dataset.py\n",
-    "주석은 제가 직접 추가하였습니다.\n",
-    "\"\"\"\n",
-    "\n",
-    "\n",
-    "from typing import List\n",
-    "\n",
-    "\n",
-    "def prefetch(self, indices: List[int]) -> None:\n",
-    "    if all(i in self.cache_index for i in indices):\n",
-    "        # 이미 모든 데이터가 캐싱되었다면 메서드 종료\n",
-    "        return\n",
-    "\n",
-    "    if not self.data_file:\n",
-    "        # 파일버퍼가 로드되지 않았다면 파일버퍼를 로드\n",
-    "        self.read_data(self.path)\n",
-    "\n",
-    "    # 연속된 전체 메모리 사이즈를 계산하기 위해서 indices를 정렬\n",
-    "    indices = sorted(set(indices))\n",
-    "\n",
-    "    total_size = 0\n",
-    "    for i in indices:\n",
-    "        total_size += self.data_offsets[i + 1] - self.data_offsets[i]\n",
-    "\n",
-    "    # 캐시로 사용할 전체 메모리 공간 할당\n",
-    "    self.cache = np.empty(\n",
-    "        total_size,\n",
-    "        dtype=self.dtype,\n",
-    "    )\n",
-    "\n",
-    "    self.cache_index.clear()\n",
-    "    ptx = 0\n",
-    "\n",
-    "    for i in indices:\n",
-    "        # 전체 어레이 사이즈를 저장\n",
-    "        self.cache_index[i] = ptx\n",
-    "\n",
-    "        # offset으로부터 데이터 사이즈를 계산해서 현재 샘플이 저장될 메모리 공간을 변수에 할당\n",
-    "        size = self.data_offsets[i + 1] - self.data_offsets[i]\n",
-    "        array = self.cache[ptx : ptx + size]\n",
-    "\n",
-    "        # offset을 기반으로 읽어올 파일의 디스크 주소를 지정\n",
-    "        self.data_file.seek(self.data_offsets[i] * self.element_size)\n",
-    "\n",
-    "        # 현재의 샘플을 할당된 메모리에 씀\n",
-    "        self.data_file.readinto(array)\n",
-    "        ptx += size\n",
-    "\n",
-    "    if self.data_file:\n",
-    "        # 파일버퍼의 데이터를 모두 불러왔으니 버퍼를 닫고 참조를 해제\n",
-    "        self.data_file.close()\n",
-    "        self.data_file = None"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: fairseq/fairseq/data/indexed_dataset.py\n",
-    "주석은 제가 직접 추가하였습니다.\n",
-    "\"\"\"\n",
-    "\n",
-    "def __getitem__(self, idx: Union[int, tuple]) -> Union[np.ndarray, List]:\n",
-    "    if isinstance(idx, int):\n",
-    "        # 인덱스 유효성 검사\n",
-    "        self.check_index(idx)\n",
-    "\n",
-    "        # 텐서 사이즈 계산\n",
-    "        tensor_size = self.sizes[self.dim_offsets[idx] : self.dim_offsets[idx + 1]]\n",
-    "\n",
-    "        # 메모리 공간 할당\n",
-    "        array = np.empty(tensor_size, dtype=self.dtype)\n",
-    "\n",
-    "        # 프리패치된 데이터를 로드 (파일 I/O가 일어나지 않음)\n",
-    "        ptx = self.cache_index[idx]\n",
-    "\n",
-    "        # 캐시에 프리패치된 데이터를 메모리 공간에 복사\n",
-    "        np.copyto(array, self.cache[ptx : ptx + array.size])\n",
-    "        return array\n",
-    "\n",
-    "    elif isinstance(idx, slice):\n",
-    "        return [self[i] for i in range(*idx.indices(len(self)))]\n"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "#### 3) Mmap\n",
-    "`mmap`은 `lazy`와 동일하게 매 스텝마다 필요한 만큼의 데이터를 메모리로 로드하지만 File Buffer 대신 Memory Map을 사용하는 방식입니다. Memory Map은 File Buffer와 달리 현재 프로세스에게 할당된 가상메모리에 파일의 주소를 맵핑시키기 때문에 데이터가 마치 메모리 상에 존재하는 것 처럼 작업할 수 있습니다. 디스크와의 직접적인 I/O를 수행하지 않으며 페이지(4KB) 단위로 데이터를 로드 할 수 있고 실제로 메모리에서 모든 작업이 일어나기 때문에 File Buffer에 비해 처리 속도가 비교적 빠른 편입니다. "
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: fairseq/fairseq/data/indexed_dataset.py\n",
-    "주석은 제가 직접 추가하였습니다.\n",
-    "\"\"\"\n",
-    "\n",
-    "def __init__(self, path: str):\n",
-    "    with open(path, \"rb\") as stream:\n",
-    "        # 1. 매직 스트링 로드\n",
-    "        # 매직스트링은 현재 저장된 데이터 구조가 어떤 형식인지 구분하기 위한 것.\n",
-    "        # lazy인지 mmap인지 등등... (cached는 lazy와 같은 값을 가짐)\n",
-    "        magic_test = stream.read(9)\n",
-    "        assert magic_test == self._HDR_MAGIC, (\n",
-    "            \"Index file doesn't match expected format. \"\n",
-    "            \"Please check your configuration file.\"\n",
-    "        )\n",
-    "        \n",
-    "        # 2. 버전 로드 (little endian unsigned long long)\n",
-    "        # 코드 보니까 버전은 무조건 1로 쓰던데 별 의미 없는 변수인듯?\n",
-    "        # b'\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\n",
-    "        version = struct.unpack(\"<Q\", stream.read(8))\n",
-    "        assert (1,) == version\n",
-    "\n",
-    "        # 3. 데이터 타입 로드 (little endian unsigned char)\n",
-    "        (dtype_code,) = struct.unpack(\"<B\", stream.read(1))\n",
-    "        self._dtype = _code_to_dtype[dtype_code]\n",
-    "        self._dtype_size = self._dtype().itemsize\n",
-    "\n",
-    "        # 4. 데이터셋의 전체 길이 로드 (little endian unsigned long long)\n",
-    "        self._len = struct.unpack(\"<Q\", stream.read(8))[0]\n",
-    "\n",
-    "        # 5. 전체 샘플의 개수 로드 (little endian unsigned long long)\n",
-    "        self._doc_count = struct.unpack(\"<Q\", stream.read(8))[0]\n",
-    "        offset = stream.tell()\n",
-    "\n",
-    "    # 6. 캐시 warmup 수행 \n",
-    "    _warmup_mmap_file(path)\n",
-    "\n",
-    "    # 7. 메모리맵 어레이 생성\n",
-    "    self._bin_buffer_mmap = np.memmap(path, mode=\"r\", order=\"C\")\n",
-    "    self._bin_buffer = memoryview(self._bin_buffer_mmap)\n",
-    "\n",
-    "    # 8. 샘플들의 사이즈가 담긴 데이터를 메모리맵 어레이로 로드\n",
-    "    self._sizes = np.frombuffer(\n",
-    "        self._bin_buffer, dtype=np.int32, count=self._len, offset=offset\n",
-    "    )\n",
-    "\n",
-    "    # 9. 데이터 포인터(위치) 값들을 메모리맵 어레이로 로드\n",
-    "    self._pointers = np.frombuffer(\n",
-    "        self._bin_buffer,\n",
-    "        dtype=np.int64,\n",
-    "        count=self._len,\n",
-    "        offset=offset + self._sizes.nbytes,\n",
-    "    )\n",
-    "\n",
-    "    # 10. 데이터 인덱스들을 메모리맵 어레이로 로드\n",
-    "    self._doc_idx = np.frombuffer(\n",
-    "        self._bin_buffer,\n",
-    "        dtype=np.int64,\n",
-    "        count=self._doc_count,\n",
-    "        offset=offset + self._sizes.nbytes + self._pointers.nbytes,\n",
-    "    )"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: fairseq/fairseq/data/indexed_dataset.py\n",
-    "주석은 제가 직접 추가하였습니다.\n",
-    "\"\"\"\n",
-    "\n",
-    "from typing import Union\n",
-    "\n",
-    "def __getitem__(self, idx: Union[int, slice]) -> np.ndarray:\n",
-    "    if not self.data_file:\n",
-    "        # 인덱스 파일이 로드되지 않았다면 로드\n",
-    "        self.read_data(self.path)\n",
-    "\n",
-    "    if isinstance(idx, int):\n",
-    "        # 인덱스 유효성 검사\n",
-    "        self.check_index(idx)\n",
-    "\n",
-    "        # 텐서 사이즈 계산\n",
-    "        tensor_size = self.sizes[self.dim_offsets[idx] : self.dim_offsets[idx + 1]]\n",
-    "\n",
-    "        # 메모리 공간 할당\n",
-    "        array = np.empty(tensor_size, dtype=self.dtype)\n",
-    "\n",
-    "        # offset을 기반으로 읽어올 데이터의 가상메모리 주소를 지정\n",
-    "        self.data_file.seek(self.data_offsets[idx] * self.element_size)\n",
-    "\n",
-    "        # 메모리로 데이터 로드\n",
-    "        self.data_file.readinto(array)\n",
-    "        return array\n",
-    "\n",
-    "    elif isinstance(idx, slice):\n",
-    "        start, stop, step = idx.indices(len(self))\n",
-    "        if step != 1:\n",
-    "            # 슬라이스로 입력시 반드시 반드시 연속되어야 함\n",
-    "            raise ValueError(\"Slices into indexed_dataset must be contiguous\")\n",
-    "\n",
-    "        # 텐서의 사이즈들이 담긴 리스트와 전체 합을 계산\n",
-    "        sizes = self.sizes[self.dim_offsets[start] : self.dim_offsets[stop]]\n",
-    "        total_size = sum(sizes)\n",
-    "\n",
-    "        # 필요한 만큼의 메모리 공간 할당\n",
-    "        array = np.empty(total_size, dtype=self.dtype)\n",
-    "\n",
-    "        # offset을 기반으로 읽어올 데이터의 가상메모리 주소를 지정\n",
-    "        self.data_file.seek(self.data_offsets[start] * self.element_size)\n",
-    "        self.data_file.readinto(array)\n",
-    "\n",
-    "        # 텐서 사이즈를 기반으로 여러개의 샘플로 분할 \n",
-    "        offsets = list(accumulate(sizes))\n",
-    "        sentences = np.split(array, offsets[:-1])\n",
-    "        return sentences"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "이제 데이터셋 전처리를 수행합니다. 저는 `mmap` 방식을 사용하여 전처리 하도록 하겠습니다. \n",
-    "\n",
-    "이 때, `append-eod`라는 옵션이 보입니다. Megatron-LM은 패딩을 만들지 않기 위해 Pre-train 시에 모든 데이터를 연결해서 학습합니다. 예를 들어, `{\"text\": \"I am a boy.\"}`\"라는 샘플과 `{\"text\": \"You are so lucky\"}`라는 샘플이 있으면 Pre-train 할 때는 `input = \"I am a boy. You are so lucky ...\"`과 같이 모든 샘플을 연결합니다. 그리고나서 사용자가 설정한 길이(e.g. 2048)로 데이터를 잘라서 학습합니다. \n",
-    "\n",
-    "그러나 이렇게 모든 샘플을 하나의 문자열로 연결해버리면 샘플과 샘플사이에 구분이 없어지기 때문에 문제가 될 수 있는데요. `append-eod` 옵션을 추가하면 샘플들 사이에 `end of document`로써 토큰을 추가하여 샘플과 샘플을 구분합니다. GPT2의 경우, `eod` 토큰은 `eos`토큰으로 설정되어 있습니다. "
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 14,
-   "metadata": {
-    "scrolled": false
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Opening megatron_datasets.jsonl\n",
-      "> building GPT2BPETokenizer tokenizer ...\n",
-      " > padded vocab (size: 50257) with 47 dummy tokens (new size: 50304)\n",
-      "> building GPT2BPETokenizer tokenizer ...\n",
-      "Vocab size: 50257\n",
-      "Output prefix: my-gpt2\n",
-      "Time to startup: 0.10664248466491699\n",
-      " > padded vocab (size: 50257) with 47 dummy tokens (new size: 50304)\n",
-      "Processed 100 documents (341.3833406586251 docs/s, 0.3231593169572366 MB/s).\n",
-      "Processed 200 documents (444.607170228531 docs/s, 0.40740195023601483 MB/s).\n",
-      "Processed 300 documents (507.4913064836572 docs/s, 0.4595645619121138 MB/s).\n",
-      "Processed 400 documents (548.2460078910855 docs/s, 0.500913350338969 MB/s).\n",
-      "Processed 500 documents (599.4126924512631 docs/s, 0.5385256945623461 MB/s).\n",
-      "Processed 600 documents (632.3274718382903 docs/s, 0.567304677135345 MB/s).\n",
-      "Processed 700 documents (656.5582187492173 docs/s, 0.5942094322137902 MB/s).\n",
-      "Processed 800 documents (679.473341028289 docs/s, 0.6114298442783954 MB/s).\n",
-      "Processed 900 documents (694.3271845460217 docs/s, 0.62567246230091 MB/s).\n",
-      "Processed 1000 documents (711.744028291217 docs/s, 0.6423042951843672 MB/s).\n",
-      "Processed 1100 documents (729.9288697633211 docs/s, 0.6542551575749905 MB/s).\n",
-      "Processed 1200 documents (747.7031942801465 docs/s, 0.6652560847870334 MB/s).\n",
-      "Processed 1300 documents (764.753374323305 docs/s, 0.674766482549341 MB/s).\n",
-      "Processed 1400 documents (779.1577277991438 docs/s, 0.6864365578362863 MB/s).\n",
-      "Processed 1500 documents (790.4512469780717 docs/s, 0.6969633845696908 MB/s).\n",
-      "Processed 1600 documents (801.193106685724 docs/s, 0.7046774423849909 MB/s).\n",
-      "Processed 1700 documents (806.756631686137 docs/s, 0.7161883857098408 MB/s).\n",
-      "Processed 1800 documents (816.3964718380284 docs/s, 0.7252975026731121 MB/s).\n",
-      "Processed 1900 documents (831.3950475039509 docs/s, 0.7346526580053557 MB/s).\n",
-      "Processed 2000 documents (847.4097235137235 docs/s, 0.7413089470505299 MB/s).\n",
-      "Processed 2100 documents (860.2405635449649 docs/s, 0.7517782182921232 MB/s).\n",
-      "Processed 2200 documents (865.0414363514374 docs/s, 0.7580306631156802 MB/s).\n",
-      "Processed 2300 documents (873.5639245027145 docs/s, 0.7657585442996709 MB/s).\n",
-      "Processed 2400 documents (882.2530951029984 docs/s, 0.7761644859970351 MB/s).\n",
-      "Processed 2500 documents (891.107956554136 docs/s, 0.7840518788650122 MB/s).\n",
-      "Processed 2600 documents (897.586649345728 docs/s, 0.7875825232354006 MB/s).\n",
-      "Processed 2700 documents (905.6928118212825 docs/s, 0.7926364268970261 MB/s).\n",
-      "Processed 2800 documents (913.7765768432254 docs/s, 0.8018945842245223 MB/s).\n",
-      "Processed 2900 documents (921.524677708312 docs/s, 0.8078279296759729 MB/s).\n",
-      "Processed 3000 documents (927.0432557886642 docs/s, 0.8133901847218254 MB/s).\n",
-      "Processed 3100 documents (933.5282763595969 docs/s, 0.8191782812561477 MB/s).\n",
-      "Processed 3200 documents (939.0246851114703 docs/s, 0.8237833190795807 MB/s).\n",
-      "Processed 3300 documents (944.3738598478612 docs/s, 0.8299497689998975 MB/s).\n",
-      "Processed 3400 documents (949.8985798514814 docs/s, 0.8350220705057206 MB/s).\n",
-      "Processed 3500 documents (954.9541380070546 docs/s, 0.8388551190620309 MB/s).\n",
-      "Processed 3600 documents (961.0590894824982 docs/s, 0.8433869951112278 MB/s).\n",
-      "Processed 3700 documents (966.5140585535103 docs/s, 0.8475759648916847 MB/s).\n",
-      "Processed 3800 documents (970.2837410964693 docs/s, 0.8515277975713496 MB/s).\n",
-      "Processed 3900 documents (972.3412659421506 docs/s, 0.8543419280083547 MB/s).\n",
-      "Processed 4000 documents (977.5591959913655 docs/s, 0.8567109649824823 MB/s).\n",
-      "Processed 4100 documents (982.1164774000912 docs/s, 0.8622407256560518 MB/s).\n",
-      "Processed 4200 documents (988.3455181621163 docs/s, 0.8663715108177805 MB/s).\n",
-      "Processed 4300 documents (994.3620512933041 docs/s, 0.8692481274017909 MB/s).\n",
-      "Processed 4400 documents (1000.1573051427661 docs/s, 0.873466585121912 MB/s).\n",
-      "Processed 4500 documents (1005.4718143362228 docs/s, 0.8773737720380832 MB/s).\n",
-      "Processed 4600 documents (1011.1278894667505 docs/s, 0.8824701168076114 MB/s).\n",
-      "Processed 4700 documents (1015.2351380478192 docs/s, 0.8859525079616727 MB/s).\n",
-      "Processed 4800 documents (1019.9879167915307 docs/s, 0.8900802431435392 MB/s).\n",
-      "Processed 4900 documents (1025.282676115802 docs/s, 0.8932444033863115 MB/s).\n",
-      "Processed 5000 documents (1028.8323471665524 docs/s, 0.8972957799296275 MB/s).\n",
-      "Processed 5100 documents (1034.2091617577757 docs/s, 0.9009465518440909 MB/s).\n",
-      "Processed 5200 documents (1038.183730940605 docs/s, 0.9030075814649406 MB/s).\n",
-      "Processed 5300 documents (1041.6586495443958 docs/s, 0.9053369784979305 MB/s).\n",
-      "Processed 5400 documents (1044.9539766559153 docs/s, 0.9071277474789929 MB/s).\n",
-      "Processed 5500 documents (1046.3650306901518 docs/s, 0.9081639586462895 MB/s).\n",
-      "Processed 5600 documents (1048.7924539068933 docs/s, 0.9100967579157073 MB/s).\n",
-      "Processed 5700 documents (1052.2622870902087 docs/s, 0.9127531725504879 MB/s).\n",
-      "Processed 5800 documents (1054.5030800058553 docs/s, 0.9157142263287714 MB/s).\n",
-      "Processed 5900 documents (1059.7019272813493 docs/s, 0.9178686686803795 MB/s).\n",
-      "Processed 6000 documents (1059.6815063398376 docs/s, 0.9181303779496783 MB/s).\n",
-      "Processed 6100 documents (1063.2851114676184 docs/s, 0.9198782219223729 MB/s).\n",
-      "Processed 6200 documents (1066.3967801931324 docs/s, 0.9227200915033248 MB/s).\n",
-      "Processed 6300 documents (1069.4742049968804 docs/s, 0.9247615387280403 MB/s).\n",
-      "Processed 6400 documents (1071.4283102781826 docs/s, 0.9253310711247418 MB/s).\n",
-      "Processed 6500 documents (1076.4308423075795 docs/s, 0.927823003864186 MB/s).\n",
-      "Processed 6600 documents (1080.6832634984266 docs/s, 0.9302894964375688 MB/s).\n",
-      "Processed 6700 documents (1084.397451300038 docs/s, 0.9318886244572675 MB/s).\n",
-      "Processed 6800 documents (1086.1487193706437 docs/s, 0.9348595253581037 MB/s).\n",
-      "Processed 6900 documents (1087.0879823630048 docs/s, 0.9361755003019657 MB/s).\n",
-      "Processed 7000 documents (1089.6505729269404 docs/s, 0.9391088768093419 MB/s).\n",
-      "Processed 7100 documents (1093.8213019164195 docs/s, 0.9425288656669819 MB/s).\n",
-      "Processed 7200 documents (1095.2519889281548 docs/s, 0.9441749502405283 MB/s).\n",
-      "Processed 7300 documents (1096.064652681706 docs/s, 0.9454755215221007 MB/s).\n",
-      "Processed 7400 documents (1099.8706995407156 docs/s, 0.9476494730035326 MB/s).\n",
-      "Processed 7500 documents (1102.1014294958984 docs/s, 0.949519284921672 MB/s).\n",
-      "Processed 7600 documents (1105.5783850300058 docs/s, 0.9512555401678863 MB/s).\n",
-      "Processed 7700 documents (1108.5371715132862 docs/s, 0.953457808444335 MB/s).\n",
-      "Processed 7800 documents (1110.6911912777482 docs/s, 0.9559848048283311 MB/s).\n",
-      "Processed 7900 documents (1111.308633853119 docs/s, 0.9587627880560639 MB/s).\n",
-      "Processed 8000 documents (1112.5253845256852 docs/s, 0.9598524220291513 MB/s).\n",
-      "Processed 8100 documents (1107.9573503503889 docs/s, 0.9570326111709778 MB/s).\n",
-      "Processed 8200 documents (1101.5736838840019 docs/s, 0.9513888668691332 MB/s).\n",
-      "Processed 8300 documents (1104.7169150313523 docs/s, 0.9545691909319388 MB/s).\n",
-      "Processed 8400 documents (1105.1751785362064 docs/s, 0.955716897713522 MB/s).\n",
-      "Processed 8500 documents (1107.2811136051005 docs/s, 0.9568425534848921 MB/s).\n",
-      "Processed 8600 documents (1111.0993018845525 docs/s, 0.9593719961195478 MB/s).\n",
-      "Processed 8700 documents (1113.3003045048206 docs/s, 0.961563294988248 MB/s).\n",
-      "Processed 8800 documents (1116.428968728601 docs/s, 0.9632621638462902 MB/s).\n",
-      "Processed 8900 documents (1118.174477463872 docs/s, 0.9645029463232418 MB/s).\n",
-      "Processed 9000 documents (1119.366311295253 docs/s, 0.9668497240291574 MB/s).\n",
-      "Processed 9100 documents (1121.6658086995078 docs/s, 0.9681949708107495 MB/s).\n",
-      "Processed 9200 documents (1124.1491570526603 docs/s, 0.9693218680263417 MB/s).\n",
-      "Processed 9300 documents (1126.638738761637 docs/s, 0.9728182383237711 MB/s).\n",
-      "Processed 9400 documents (1128.1680778666728 docs/s, 0.9741808572135104 MB/s).\n",
-      "Processed 9500 documents (1130.7785091089281 docs/s, 0.9758539826709395 MB/s).\n",
-      "Processed 9600 documents (1133.1699075004083 docs/s, 0.9774758616877791 MB/s).\n",
-      "Processed 9700 documents (1135.8416609360074 docs/s, 0.9789269570433953 MB/s).\n",
-      "Processed 9800 documents (1137.7800453559933 docs/s, 0.9799055810547384 MB/s).\n",
-      "Processed 9900 documents (1139.50573789508 docs/s, 0.9805926001463556 MB/s).\n",
-      "Processed 10000 documents (1141.5376306433773 docs/s, 0.9824856620038298 MB/s).\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python tools/preprocess_data.py \\\n",
-    "       --input megatron_datasets.jsonl \\\n",
-    "       --output-prefix my-gpt2 \\\n",
-    "       --vocab vocab.json \\\n",
-    "       --dataset-impl mmap \\\n",
-    "       --tokenizer-type GPT2BPETokenizer \\\n",
-    "       --merge-file merges.txt \\\n",
-    "       --append-eod"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "데이터셋 전처리가 완료되었습니다. 데이터를 확인해봅시다.\n",
-    "\n",
-    "- my-gpt2_text_document.bin\n",
-    "- my-gpt2_text_document.idx\n",
-    "\n",
-    "와 같은 파일들이 생겼습니다. `idx`파일은 데이터의 위치 등의 메타데이터가 저장되어 있으며, `bin` 파일에는 실제로 Tokenized 된 데이터가 저장되어 있습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 15,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "LICENSE    \u001b[0m\u001b[01;34mmegatron\u001b[0m/                  pretrain_bert.py  \u001b[01;34mtasks\u001b[0m/\r\n",
-      "README.md  megatron_datasets.jsonl    pretrain_gpt.py   \u001b[01;34mtests\u001b[0m/\r\n",
-      "\u001b[01;34mapex\u001b[0m/      merges.txt                 pretrain_ict.py   \u001b[01;34mtools\u001b[0m/\r\n",
-      "\u001b[01;34mexamples\u001b[0m/  my-gpt2_text_document.bin  pretrain_t5.py    vocab.json\r\n",
-      "\u001b[01;34mimages\u001b[0m/    my-gpt2_text_document.idx  pretrain_vit.py\r\n"
-     ]
-    }
-   ],
-   "source": [
-    "%ls"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "이제 모델 학습을 시작해보겠습니다. "
+```
+"""
+참고: ColumnParallelLinear in megatron-lm/megatron/mpu/layers.py
+"""
+
+def forward(self, input_):
+    bias = self.bias if not self.skip_bias_add else None
+
+    # Set up backprop all-reduce.
+    input_parallel = copy_to_tensor_model_parallel_region(input_)
+
+    # Matrix multiply.
+    output_parallel = F.linear(input_parallel, self.weight, bias)
+
+    # gather_output을 False로 설정하여 output을 병렬화된 채로 출력합니다.
+    if self.gather_output:
+        output = gather_from_tensor_model_parallel_region(output_parallel)
+    else:
+        output = output_parallel
+
+    output_bias = self.bias if self.skip_bias_add else None
+    return output, output_bias
+
+
+"""
+참고: RowParallelLinear in megatron-lm/megatron/mpu/layers.py
+"""
+
+def forward(self, input_):
+    # Set up backprop all-reduce.
+
+    # input_is_parallel True로 설정하여 input을 병렬화된 채로 입력받습니다.
+    if self.input_is_parallel:
+        input_parallel = input_
+    else:
+        input_parallel = scatter_to_tensor_model_parallel_region(input_)
+    
+    # Matrix multiply.
+    output_parallel = F.linear(input_parallel, self.weight)
+    
+    # All-reduce across all the partitions.
+    output_ = reduce_from_tensor_model_parallel_region(output_parallel)
+    
+    if not self.skip_bias_add:
+        output = output_ + self.bias if self.bias is not None else output_
+        output_bias = None
+    else:
+        output = output_
+        output_bias = self.bias
+    return output, output_bias
+```
+
+- Column-Row 방식으로 병렬화하는 2번째 이유는 `Scatter`와 `All-gather`를 생략하려면 **GeLU 연산**이 병렬화된 채로 수행되어야 하기 때문입니다.
+![](../images/megatron_mlp_5.png)
+위 그림은 `Scatter`와 `All-gather`를 생략하지 않는 상황에서 GeLU 연산을 두 Linear 레이어 사이에 삽입한 것입니다. 만약 여기에서 두 연산을 생략하도록 구현하면 아래와 같이 GeLU 연산은 반드시 각각의 디바이스에서 이루어져야 합니다.
+   
+![](../images/megatron_mlp_6.png)
+   
+그러나 이렇게 GeLU 연산을 서로 다른 디바이스에서 하도록 병렬화 시키려면 반드시 병렬적으로 계산된 GeLU의 출력은 병렬화 되지 않은 상태에서 계산된 GeLU의 출력과 동일해야겠죠. 즉 다음과 같은 공식이 성립해야 합니다. ($\\circledcirc$ 기호는 concatenation을 의미합니다.)
+    
+$$Row Paralleism: GeLU(XW1 + XW2) = GeLU(XW1) + GeLU(XW2)$$
+
+$$Column Paralleism: GeLU(XW1 \\circledcirc XW2) = GeLU(XW1) \\circledcirc GeLU(XW2)$$
+   
+문제는 위와 같은 공식이 Column Parallelism에서만 성립하고, **Row Parallelism 에서는 성립하지 않는다는 것**입니다.
+  
+$$Row Paralleism: GeLU(XW1 + XW2) \\neq GeLU(XW1) + GeLU(XW2)$$
+ 
+이를 코드로 구현해서 확인해봅시다."
+```
+"""
+src/megatron_mlp_gelu.py
+"""
+
+import torch
+from torch.nn.functional import gelu
+
+
+w = torch.randn(6, 6)
+x = torch.randn(6, 6)
+
+
+class RowParallelLinear(torch.nn.Module):
+    def __init__(self):
+        super(RowParallelLinear, self).__init__()
+        chunked = torch.chunk(w, 2, dim=0)
+
+        # row parallelized parameters
+        self.w1 = chunked[0]  # [3, 6]
+        self.w2 = chunked[1]  # [3, 6]
+
+    def forward(self, x):
+        # GeLU(X1A1 + X2A2) != GeLU(X1A1) + GeLU(X2A2)
+        x1, x2 = torch.chunk(x, 2, dim=1)
+
+        # parallel output
+        y1 = gelu(x1 @ self.w1) + gelu(x2 @ self.w2)
+
+        # non-parallel output
+        y2 = gelu(x1 @ self.w1 + x2 @ self.w2)
+
+        return torch.all(y1 == y2)
+
+
+class ColumnParallelLinear(torch.nn.Module):
+    def __init__(self):
+        super(ColumnParallelLinear, self).__init__()
+        chunked = torch.chunk(w, 2, dim=1)
+
+        # column parallelized parameters
+        self.w1 = chunked[0]  # [6, 3]
+        self.w2 = chunked[1]  # [6, 3]
+
+    def forward(self, x):
+        # GeLU(X1A1 cat X2A2) == GeLU(X1A1) cat GeLU(X2A2)
+
+        # parallel output
+        y1 = torch.cat([gelu(x @ self.w1), gelu(x @ self.w2)], dim=1)
+
+        # non-parallel output
+        y2 = gelu(torch.cat([(x @ self.w1), (x @ self.w2)], dim=1))
+
+        return torch.all(y1 == y2)
+
+
+# Row Parallelism
+print("Is GeLU in RowParallelLinear same with non-parallel = ", end="")
+print(RowParallelLinear()(x).item())
+
+# Column Parallelism
+print("Is GeLU in ColumnParallelLinear same with non-parallel = ", end="")
+print(ColumnParallelLinear()(x).item())
+```
+
+따라서 GeLU 연산을 병렬화 시키려면 반드시 GeLU 이전의 Linear 레이어는 Column 방향으로 병렬화 되어있어야 합니다. 따라서 Column-Row 순서로 병렬화 하는 것이 가장 효율적인 방식이죠."
+
+### Multi-head Attention Layer
+  
+다음으로 Multi-head Attention 레이어에 대해 알아보겠습니다. Multi-head Attention 레이어는 `Linear1` → `Split heads` → `ScaleDotProductAttention` → `Concat(Merge) heads` → `Linear2` → `Dropout` 순으로 진행됩니다.
+    
+![](../images/multi_head_attention.png)
+
+```
+"""
+참고 transformers/models/gpt_neo/modeling_gpt_neo.py
+"""
+
+class GPTNeoSelfAttention(nn.Module):
+    def __init__(self, config, attention_type):
+        super().__init__()
+        self.attn_dropout = nn.Dropout(config.attention_dropout)
+        self.resid_dropout = nn.Dropout(config.resid_dropout)
+
+        self.embed_dim = config.hidden_size
+        self.num_heads = config.num_heads
+        self.head_dim = self.embed_dim // self.num_heads
+        if self.head_dim * self.num_heads != self.embed_dim:
+            raise ValueError(
+                f"embed_dim must be divisible by num_heads (got `embed_dim`: {self.embed_dim} and `num_heads`: {self.num_heads})."
+            )
+
+        self.k_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
+        self.v_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
+        self.q_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
+        self.out_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=True)
+
+    def forward(
+        self,
+        hidden_states,
+        attention_mask=None,
+        layer_past=None,
+        head_mask=None,
+        use_cache=False,
+        output_attentions=False,
+    ):
+        # 1. linear projection
+        query = self.q_proj(hidden_states)
+        key = self.k_proj(hidden_states)
+        value = self.v_proj(hidden_states)
+        
+        # 2. split heads
+        query = self._split_heads(query, self.num_heads, self.head_dim)
+        key = self._split_heads(key, self.num_heads, self.head_dim)
+        value = self._split_heads(value, self.num_heads, self.head_dim)
+
+        # 3. scale dot product attention
+        attn_output, attn_weights = self._attn(query, key, value, attention_mask, head_mask)
+
+        # 4. concat (merge) heads
+        attn_output = self._merge_heads(attn_output, self.num_heads, self.head_dim)
+        
+        # 5. linear projection
+        attn_output = self.out_proj(attn_output)
+        
+        # 6. dropout
+        attn_output = self.resid_dropout(attn_output)
+
+        return outputs
+```
+
+![](../images/megatron_attention.jpeg)\n",
+   
+Megatron-LM은 Attention 레이어의 Q, K, V Linear projection과 Output projection 부분을 병렬화 합니다. 마찬가지로 Q, K, V Linear projection 부분은 Column parallelism, Output projection 부분은 Row parallelism으로 처리하여 **Column-Row의 패턴을 만듭니다.** 이를 통해 Attention 레이어에서도 MLP 레이어와 마찬가지로 `Scatter`, `All-gather` 연산을 생략 할 수 있습니다.
+
+### Vocab Parallel Embedding
+Megatron LM은 Word embedding 레이어도 역시 병렬화 합니다. 독특한 점은 Vocab size dimension을 기준으로 병렬화 한다는 점입니다. 예를 들어 Vocab size가 50000인 Word embedding matrix가 있다고 가정하면 이 matrix의 사이즈는 (50000, embedding_dim)인 됩니다. Megatron-LM은 여기에서 Vocab size dimension을 기준으로 matrix를 병렬화 합니다. 이러한 독특한 병렬화 기법을 **Vocab Parallel Embedding**이라고 합니다. 
+  
+![](../images/vpe_1.png)
+ 
+위 그림은 병렬화를 하지 않은 상태에서의 Word embedding을 나타냅니다. 길이가 6인 시퀀스가 입력되면 [6, embedding_dim]의 사이즈를 갖는 입력 텐서를 만듭니다.
+
+![](../images/vpe_2.png)
+    
+위 그림은 Vocab parallel embedding의 작동 방식을 나타냅니다. 기존의 임베딩 매트릭스를 절반으로 쪼개서 0번부터 24999번 토큰까지 담당하는 임베딩 매트릭스와 25000번부터 50000번 토큰까지 담당하는 임베딩 매트릭스로 분할합니다. 그리고 데이터가 들어오면 **해당 매트릭스가 커버하는 범위를 넘어서는 토큰은 마스킹**하여 처리합니다. 이후에 **마스킹 처리된 부분의 벡터는 전부 0으로 초기화** 한 뒤, 두 매트릭스를 **더하면 모든 단어의 벡터를 갖고 있는 완벽한 입력 텐서**가 됩니다.
+
+```
+"""
+참고: VocabParallelEmbedding in megatron-lm/megatron/mpu/layers.py
+"""
+
+def forward(self, input_):
+    if self.tensor_model_parallel_size > 1:
+        # Build the mask.
+        input_mask = (input_ < self.vocab_start_index) | \
+                     (input_ >= self.vocab_end_index)
+
+        # Mask the input.
+        masked_input = input_.clone() - self.vocab_start_index
+        masked_input[input_mask] = 0
+
+    else:
+        masked_input = input_
+        # Get the embeddings.
+    
+    output_parallel = F.embedding(masked_input, self.weight,
+                                  self.padding_idx, self.max_norm,
+                                  self.norm_type, self.scale_grad_by_freq,
+                                  self.sparse)
+
+    # Mask the output embedding.
+    if self.tensor_model_parallel_size > 1:
+        output_parallel[input_mask, :] = 0.0
+    
+    # Reduce across all the model parallel GPUs.
+    output = reduce_from_tensor_model_parallel_region(output_parallel)
+    return output
+```
+
+그런데 여기에서 문제가 하나 발생합니다. Tensor parallelism은 반드시 짝수개의 GPU로 병렬화 되어야 하는데 52527은 짝수가 아니기 때문에 2로 나눌 수가 없습니다. 이를 위해 Word embedding matrix에 사용하지 않는 토큰을 추가하여 vocab size를 짝수로 만듭니다. 이를 `padded vocab size`라고 하며 Megatron-LM에서는 `make-vocab-size-divisible-by`이라는 argument로 vocab size를 조절할 수 있습니다. (vocab size가 설정한 값의 배수가 되도록 만듭니다.)
+
+결론적으로 Megatron-LM은 Vocab Parallel Embedding을 적용하여 메모리 효율성을 더욱 높힐 수 있습니다.
+ 
+### Vocab Parallel Cross Entropy
+GPT2의 Causal Language Modeling이나 BERT의 Masked Language Modeling 같은 태스크는 최종 출력으로 자연어 토큰을 생성합니다. 따라서 마지막 Transformer 레이어를 거친 이후에 모델의 출력 사이즈는 (bsz, length, vocab_size)로 확장됩니다. (classification이나 tagging 같은 태스크는 해당하지 이에 않습니다.)
+![](../images/lm_head.png)
+
+이 때, 만약 입력과 출력 임베딩을 묶는다면(weight tying) Language Modeling Head (이하 LM Head)에 사용되는 Linear 레이어의 파라미터를 새로 초기화 시키는 대신 word embedding matrix를 사용하게 됩니다. 현재 공개된 Bert, GPT2, GPTNeo 등의 대부분 모델들의 출력 임베딩(LM Head)은 입력 임베딩과 묶여있습니다.
+```
+"""
+참고 transformers/models/gpt_neo/modeling_gpt_neo.py
+"""
+
+class GPTNeoForCausalLM(GPTNeoPreTrainedModel):
+    _keys_to_ignore_on_load_missing = [
+        r"h\.\d+\.attn\.masked_bias",
+        r"lm_head\.weight",
+        r"h\.\d+\.attn\.attention\.bias",
+    ]
+    _keys_to_ignore_on_save = [r"lm_head.weight"]
+    # 3. 그렇기 때문에 `lm_head.weight` 파라미터는 load 및 save하지 않습니다.
+    # 굳이 동일한 텐서를 두번 저장하거나 로드 할 필요 없기 때문이죠.
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.transformer = GPTNeoModel(config)
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        # 1. 언뜻 보면 nn.Linear 레이어의 파라미터를 새로 할당해서 사용하는 것 처럼 보입니다.
+
+        self.init_weights()
+        # 2. 그러나 이 메서드를 호출하면서 입력과 출력 임베딩(lm head)을 묶게 됩니다. 
+        # 이 때 word embeddig matrix의 weight를 nn.Linear 레이어의 weight로 복사하게 됩니다.
+        # 복사는 deep-copy가 아닌 shallow-copy를 수행합니다. (reference가 아닌 value만 공유)
+        # 따라서 `lm_head.weight`은 word embedding과 동일한 주소 공간에 있는 하나의 텐서입니다.
+
+    def get_output_embeddings(self):
+        return self.lm_head
+
+    def set_output_embeddings(self, new_embeddings):
+        self.lm_head = new_embeddings
+```
+```
+"""
+참고 transformers/modeling_utils.py
+"""
+
+def init_weights(self):
+    """
+    If needed prunes and maybe initializes weights.
+    """
+    # Prune heads if needed
+    if self.config.pruned_heads:
+        self.prune_heads(self.config.pruned_heads)
+
+    if _init_weights:
+        # Initialize weights
+        self.apply(self._init_weights)
+
+        # weight tying을 지원하는 모델은 이 메서드가 호출됨과 동시에
+        # 입력 임베딩과 출력 임베딩(= lm head)가 묶이게 됩니다.
+        self.tie_weights()
+
+
+def tie_weights(self):
+    """
+    Tie the weights between the input embeddings and the output embeddings.
+    If the :obj:`torchscript` flag is set in the configuration, can't handle parameter sharing so we are cloning
+    the weights instead.
+    """
+    output_embeddings = self.get_output_embeddings()
+    if output_embeddings is not None and self.config.tie_word_embeddings:
+        self._tie_or_clone_weights(output_embeddings, self.get_input_embeddings())
+        # 이 메서드가 호출되면서 output 임베딩(lm head)이 input 임베딩과 묶이게 됩니다.
+
+    if self.config.is_encoder_decoder and self.config.tie_encoder_decoder:
+        if hasattr(self, self.base_model_prefix):
+            self = getattr(self, self.base_model_prefix)
+        self._tie_encoder_decoder_weights(self.encoder, self.decoder, self.base_model_prefix)
+
+    for module in self.modules():
+        if hasattr(module, "_tie_weights"):
+            module._tie_weights()
+```
+
+   
+그러나 여기서 문제가 생깁니다. 일반적으로 LM Head로 부터 출력된 Logits과 Target 데이터 사이의 Loss를 계산할 때는 다음과 같은 과정이 일어납니다.
+   
+![](../images/vpce_1.png)
+
+그러나 Megatron-LM은 Vocab Parallel Embedding을 사용하기 때문에 Embedding 레이어가 여러 디바이스를 걸쳐 분할되어 있습니다. 때문에 weight tying을 하게 된다면 **출력 임베딩(LM Head) 역시 여러 디바이스로 분할**되게 됩니다. 따라서 모델에서 출력되는 Logits의 사이즈는 vocab size를 분할한 사이즈가 됩니다. 
+
+![](../images/vpce_2.png)
+  
+위 그림처럼 vocab size가 50,000이라면 원래는 (bsz, length, 50000)의 텐서가 출력되어야 하지만 위의 예시처럼 2개의 디바이스로 분할되어 있다면 (bsz, length, 25000)의 사이즈를 갖는 2개의 logits이 나오게 되며, 각 디바이스의 logits은 서로 다른 값을 갖게 될 것입니다. **이 것을 Parallel LM Logits이라고 부릅니다.** 이렇게 되면 target sentence와의 loss를 어떻게 계산해야 할까요? Traget 데이터에는 0번 부터 49999번째 토큰까지 모두 존재하는데 비해 logits의 사이즈는 그 절반밖에 되지 않으니까요.
+    
+![](../images/vpce_3.png)
+  
+이 경우 **기존의 cross entropy가 아닌 vocab parallel cross entropy라고 불리는 특별한 loss 함수를 사용**해야 합니다. Vocab parallel corss entropy loss의 연산은 위와 같이 진행됩니다. 계산된 Logit에서 해당 디바이스가 커버 할 수 있는 부분만 남기고 Masking하여 Loss를 계산합니다. 그리고 계산된 Loss들을 All-reduce 해서 최종 Loss를 계산합니다.
+
+```
+"""
+참고: _VocabParallelCrossEntropy in megatron-lm/megatron/mpu/cross_entropy.py
+"""
+
+@staticmethod
+def forward(ctx, vocab_parallel_logits, target):
+    # Maximum value along vocab dimension across all GPUs.
+    logits_max = torch.max(vocab_parallel_logits, dim=-1)[0]
+    torch.distributed.all_reduce(logits_max,
+                                 op=torch.distributed.ReduceOp.MAX,
+                                 group=get_tensor_model_parallel_group())
+
+    # Subtract the maximum value.
+    vocab_parallel_logits.sub_(logits_max.unsqueeze(dim=-1))
+
+    # Get the partition's vocab indecies
+    get_vocab_range = VocabUtility.vocab_range_from_per_partition_vocab_size
+    partition_vocab_size = vocab_parallel_logits.size()[-1]
+    rank = get_tensor_model_parallel_rank()
+    world_size = get_tensor_model_parallel_world_size()
+    vocab_start_index, vocab_end_index = get_vocab_range(
+        partition_vocab_size, rank, world_size)
+
+    # Create a mask of valid vocab ids (1 means it needs to be masked).
+    target_mask = (target < vocab_start_index) | (target >= vocab_end_index)
+    masked_target = target.clone() - vocab_start_index
+    masked_target[target_mask] = 0
+
+    # Get predicted-logits = logits[target].
+    # For Simplicity, we convert logits to a 2-D tensor with size
+    # [*, partition-vocab-size] and target to a 1-D tensor of size [*].
+    logits_2d = vocab_parallel_logits.view(-1, partition_vocab_size)
+    masked_target_1d = masked_target.view(-1)
+    arange_1d = torch.arange(start=0, end=logits_2d.size()[0],
+                                 device=logits_2d.device)
+    predicted_logits_1d = logits_2d[arange_1d, masked_target_1d]
+    predicted_logits_1d = predicted_logits_1d.clone().contiguous()
+    predicted_logits = predicted_logits_1d.view_as(target)
+    predicted_logits[target_mask] = 0.0
+    
+    # All reduce is needed to get the chunks from other GPUs.
+    torch.distributed.all_reduce(predicted_logits,
+                                 op=torch.distributed.ReduceOp.SUM,
+                                 group=get_tensor_model_parallel_group())
+
+    # Sum of exponential of logits along vocab dimension across all GPUs.
+    exp_logits = vocab_parallel_logits
+    torch.exp(vocab_parallel_logits, out=exp_logits)
+    sum_exp_logits = exp_logits.sum(dim=-1)
+    torch.distributed.all_reduce(sum_exp_logits,
+                                 op=torch.distributed.ReduceOp.SUM,
+                                 group=get_tensor_model_parallel_group())
+
+    # Loss = log(sum(exp(logits))) - predicted-logit.
+    loss = torch.log(sum_exp_logits) - predicted_logits
+
+    # Store softmax, target-mask and masked-target for backward pass.
+    exp_logits.div_(sum_exp_logits.unsqueeze(dim=-1))
+    ctx.save_for_backward(exp_logits, target_mask, masked_target_1d)
+
+    return loss
+```
+
+### Megatron-LM으로 모델 학습해보기\n",
+Megatron-LM을 사용해서 모델을 학습해보도록 하겠습니다. Megaton-LM은 Hugging Face `transformers`와 같이 코드레벨로 사용하는 프레임워크가 아니라 이미 잘 짜여진 코드를 활용하여 모델을 만드는 데에 쓰입니다. 따라서 레포를 클론한 뒤에 진행하도록 하겠습니다.
+```
+# git과 wget이 설치되어있지 않다면 아래 명령어를 통해 설치합니다.
+[glogin01]$ apt update && apt install git wget -y
+Ign:1 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64  InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu bionic InRelease             
+Ign:3 https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64  InRelease
+Hit:4 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64  Release
+Get:5 http://security.ubuntu.com/ubuntu bionic-security InRelease [88.7 kB]m
+Hit:6 https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64  Release
+Get:7 http://archive.ubuntu.com/ubuntu bionic-updates InRelease [88.7 kB]      
+Get:10 http://archive.ubuntu.com/ubuntu bionic-backports InRelease [74.6 kB]   
+Fetched 252 kB in 2s (126 kB/s)[0m 
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+54 packages can be upgraded. Run 'apt list --upgradable' to see them.
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+git is already the newest version (1:2.17.1-1ubuntu0.9).
+wget is already the newest version (1.19.4-1ubuntu2.2).
+0 upgraded, 0 newly installed, 0 to remove and 54 not upgraded.
+```
+```
+# Megatron-LM을 clone 합니다.
+[glogin01]$ git clone https://github.com/NVIDIA/Megatron-LM
+Cloning into 'Megatron-LM'...
+remote: Enumerating objects: 6281, done.
+remote: Counting objects: 100% (2295/2295), done.
+remote: Compressing objects: 100% (689/689), done.
+remote: Total 6281 (delta 1667), reused 2188 (delta 1602), pack-reused 3986
+Receiving objects: 100% (6281/6281), 2.29 MiB | 6.63 MiB/s, done.
+Resolving deltas: 100% (4648/4648), done.
+```
+```
+[glogin01]$ cd Megatron-LM
+/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM
+```
+
+이제 필요한 몇가지 패키지를 설치해보도록 하겠습니다. Megatron-LM에는 `nltk`로 데이터를 문장단위로 분할해서 전처리 하는 기능이 있습니다. 저는 지금 이 기능을 사용하진 않을것이지만 설치되어 있지 않으면 에러가 발생하기 때문에 `nltk`를 설치하겠습니다.
+
+```
+[glogin01]$ pip install nltk
+Requirement already satisfied: nltk in /opt/conda/lib/python3.7/site-packages (3.6.5)
+Requirement already satisfied: tqdm in /opt/conda/lib/python3.7/site-packages (from nltk) (4.62.3)
+Requirement already satisfied: click in /opt/conda/lib/python3.7/site-packages (from nltk) (8.0.3)
+Requirement already satisfied: joblib in /opt/conda/lib/python3.7/site-packages (from nltk) (1.1.0)
+Requirement already satisfied: regex>=2021.8.3 in /opt/conda/lib/python3.7/site-packages (from nltk) (2021.10.23)
+Requirement already satisfied: importlib-metadata in /opt/conda/lib/python3.7/site-packages (from click->nltk) (4.8.1)
+Requirement already satisfied: typing-extensions>=3.6.4 in /opt/conda/lib/python3.7/site-packages (from importlib-metadata->click->nltk) (3.7.4.3)
+Requirement already satisfied: zipp>=0.5 in /opt/conda/lib/python3.7/site-packages (from importlib-metadata->click->nltk) (3.6.0)
+WARNING: Running pip as root will break packages and permissions. You should install packages reliably by using venv: https://pip.pypa.io/warnings/venv
+```
+
+```
+[glogin01]$ pip install pybind11
+Requirement already satisfied: pybind11 in /opt/conda/lib/python3.7/site-packages (2.8.0)
+WARNING: Running pip as root will break packages and permissions. You should install packages reliably by using venv: https://pip.pypa.io/warnings/venv
+```
+
+```
+[glogin01]$ git clone https://github.com/NVIDIA/apex
+[glogin01]$ cd apex
+[glogin01]$ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+[glogin01]$ cd ..
+```
+
+이제 데이터셋을 만들어보도록 하겠습니다. Megatron-LM으로 모델을 Pre-training을 할 때는 `{\"text\": \"샘플\"}`과 같은 json 구조가 여러라인으로 구성된 간단한 구조의 jsonl 파일을 만들면 되고, Fine-tuning의 경우는 해당 태스크에 맞게 데이터셋을 구성해야 합니다. 본 튜토리얼에서는 Pre-training만 다루고 있기 때문에 Fine-tuning이 필요하시면 Megatron-LM 깃헙 레포를 참고해주세요.
+```
+"""
+src/megatron_datasets.py
+"""
+
+import json
+import os
+from datasets import load_dataset
+
+train_samples, min_length = 10000, 512
+filename = "megatron_datasets.jsonl"
+curr_num_datasets = 0
+
+if os.path.exists(filename):
+    os.remove(filename)
+
+datasets = load_dataset("wikitext", "wikitext-103-raw-v1")
+datasets = datasets.data["train"]["text"]
+dataset_fp_write = open(filename, mode="w", encoding="utf-8")
+
+for sample in datasets:
+    sample = sample.as_py()
+
+    if len(sample) >= min_length:
+        line = json.dumps(
+            {"text": sample},
+            ensure_ascii=False,
+        )
+
+        dataset_fp_write.write(line + "\n")
+        curr_num_datasets += 1
+
+        # 튜토리얼이기 때문에 적은 양의 데이터만 만들겠습니다.
+        if curr_num_datasets >= train_samples:
+            break
+
+dataset_fp_read = open(filename, mode="r", encoding="utf-8")
+dataset_read = dataset_fp_read.read().splitlines()[:3]
+
+# 데이터의 구조를 확인합니다.
+for sample in dataset_read:
+    print(sample, end="\n\n")
+```
+
+```
+[glogin01]$ python ../../src/megatron_datasets.py
+Reusing dataset wikitext (/root/.cache/huggingface/datasets/wikitext/wikitext-103-raw-v1/1.0.0/aa5e094000ec7afeb74c3be92c88313cd6f132d564c7effd961c10fd47c76f20)
+100%|████████████████████████████████████████████| 3/3 [00:00<00:00, 369.35it/s]
+{"text": " Senjō no Valkyria 3 : Unrecorded Chronicles ( Japanese : 戦場のヴァルキュリア3 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first game and follows the \" Nameless \" , a penal military unit serving the nation of Gallia during the Second Europan War who perform secret black operations and are pitted against the Imperial unit \" Calamaty Raven \" . \n"}
+
+{"text": " The game began development in 2010 , carrying over a large portion of the work done on Valkyria Chronicles II . While it retained the standard features of the series , it also underwent multiple adjustments , such as making the game more forgiving for series newcomers . Character designer Raita Honjou and composer Hitoshi Sakimoto both returned from previous entries , along with Valkyria Chronicles II director Takeshi Ozawa . A large team of writers handled the script . The game 's opening theme was sung by May 'n . \n"}
+
+{"text": " It met with positive sales in Japan , and was praised by both Japanese and western critics . After release , it received downloadable content , along with an expanded edition in November of that year . It was also adapted into manga and an original video animation series . Due to low sales of Valkyria Chronicles II , Valkyria Chronicles III was not localized , but a fan translation compatible with the game 's expanded edition was released in 2014 . Media.Vision would return to the franchise with the development of Valkyria : Azure Revolution for the PlayStation 4 . \n"}
+```
+
+Tokenization에 사용할 Vocab을 다운로드 받습니다.
+```
+[glogin01]$ wget https://huggingface.co/gpt2/raw/main/vocab.json
+[glogin01]$ wget https://huggingface.co/gpt2/raw/main/merges.txt
+--2021-10-24 01:46:38--  https://huggingface.co/gpt2/raw/main/vocab.json
+Resolving huggingface.co (huggingface.co)... 54.84.200.39, 107.23.77.87, 2600:1f18:147f:e850:859c:8fe1:ce4c:b9ed, ...
+Connecting to huggingface.co (huggingface.co)|54.84.200.39|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 1042301 (1018K) [application/json]
+Saving to: ‘vocab.json’
+
+vocab.json          100%[===================>]   1018K   769KB/s    in 1.3s    
+
+2021-10-24 01:46:40 (769 KB/s) - ‘vocab.json’ saved [1042301/1042301]
+
+--2021-10-24 01:46:40--  https://huggingface.co/gpt2/raw/main/merges.txt
+Resolving huggingface.co (huggingface.co)... 54.84.200.39, 107.23.77.87, 2600:1f18:147f:e800:db5d:bef3:91a:a059, ...
+Connecting to huggingface.co (huggingface.co)|54.84.200.39|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 456318 (446K) [text/plain]
+Saving to: ‘merges.txt’
+
+merges.txt          100%[===================>] 445.62K   332KB/s    in 1.3s    
+
+2021-10-24 01:46:43 (332 KB/s) - ‘merges.txt’ saved [456318/456318]
+```
+```
+[glogin01]$ ls
+LICENSE    megatron/                pretrain_ict.py  tools/
+README.md  megatron_datasets.jsonl  pretrain_t5.py   vocab.json
+apex/      merges.txt               pretrain_vit.py
+examples/  pretrain_bert.py         tasks/
+images/    pretrain_gpt.py          tests/
+```
+이제 Dataset을 전처리합니다. 여기서 수행하는 전처리는 Tokenization과 Binarization을 함께 수행합니다. Megatron-LM의 전처리 코드는 Fairseq의 Indexed dataset의 코드를 카피해서 사용하고 있습니다. Fairseq의 데이터셋 전처리에 사용되는 방식은 크게 `lazy`, `cached`, `mmap` 등 크게 3가지가 존재하는데, 전처리 방식들에 대해 간략하게 설명하고 진행하겠습니다.
+
+#### 1) Lazy
+`lazy`는 필요한 데이터를 매 스텝마다 디스크에서 메모리로 불러옵니다. 즉, `Dataset` 클래스에서 `__getitem__()`이 호출 될 때마다 지정된 주소에 접근하여 데이터를 메모리로 로드하는 방식입니다. 그러나 매 스텝마다 File Buffer를 통해 디스크와의 I/O를 수행하기 때문에 처리 속도가 다소 느릴 수 있습니다.
+```
+"""
+참고: fairseq/fairseq/data/indexed_dataset.py 
+주석은 제가 직접 추가하였습니다.
+"""
+
+
+from typing import Union
+import numpy as np
+
+
+def __getitem__(self, idx: Union[int, slice]) -> np.ndarray:
+    if not self.data_file:
+        # 파일 버퍼 로드
+        self.read_data(self.path)
+
+    if isinstance(idx, int):
+        # 인덱스 유효성 체크
+        self.check_index(idx)
+
+        # 로드할 텐서 사이즈 계산
+        tensor_size = self.sizes[self.dim_offsets[idx] : self.dim_offsets[idx + 1]]
+
+        # 텐서를 담을 빈 메모리 공간 할당
+        array = np.empty(tensor_size, dtype=self.dtype)
+
+        # offset을 기반으로 읽어올 파일의 디스크 주소를 지정
+        self.data_file.seek(self.data_offsets[idx] * self.element_size)
+
+        # 디스크로부터 메모리로 데이터 로드 (파일 I/O)
+        self.data_file.readinto(array)
+        return array
+```
+
+#### 2) Cached
+`cached`는 모든 데이터를 학습 이전에 prefetch 하여 인메모리에 올려두고 접근하는 방식입니다. 학습 중에 데이터 로딩을 위해 디스크에 접근하지 않기 때문에 속도가 다른 방식들 보다는 빠른 편이지만 메모리의 크기에는 한계가 존재하므로 데이터셋의 용량이 매우 큰 경우에는 사용하기 어렵습니다.
+```
+"""
+참고: fairseq/fairseq/data/indexed_dataset.py
+주석은 제가 직접 추가하였습니다.
+"""
+
+
+from typing import List
+
+
+def prefetch(self, indices: List[int]) -> None:
+    if all(i in self.cache_index for i in indices):
+        # 이미 모든 데이터가 캐싱되었다면 메서드 종료
+        return
+
+    if not self.data_file:
+        # 파일버퍼가 로드되지 않았다면 파일버퍼를 로드
+        self.read_data(self.path)
+
+    # 연속된 전체 메모리 사이즈를 계산하기 위해서 indices를 정렬
+    indices = sorted(set(indices))
+
+    total_size = 0
+    for i in indices:
+        total_size += self.data_offsets[i + 1] - self.data_offsets[i]
+
+    # 캐시로 사용할 전체 메모리 공간 할당
+    self.cache = np.empty(
+        total_size,
+        dtype=self.dtype,
+    )
+
+    self.cache_index.clear()
+    ptx = 0
+
+    for i in indices:
+        # 전체 어레이 사이즈를 저장
+        self.cache_index[i] = ptx
+
+        # offset으로부터 데이터 사이즈를 계산해서 현재 샘플이 저장될 메모리 공간을 변수에 할당
+        size = self.data_offsets[i + 1] - self.data_offsets[i]
+        array = self.cache[ptx : ptx + size]
+
+        # offset을 기반으로 읽어올 파일의 디스크 주소를 지정
+        self.data_file.seek(self.data_offsets[i] * self.element_size)
+
+        # 현재의 샘플을 할당된 메모리에 씀
+        self.data_file.readinto(array)
+        ptx += size
+
+    if self.data_file:
+        # 파일버퍼의 데이터를 모두 불러왔으니 버퍼를 닫고 참조를 해제
+        self.data_file.close()
+        self.data_file = None
+```
+```
+"""
+참고: fairseq/fairseq/data/indexed_dataset.py
+주석은 제가 직접 추가하였습니다.
+"""
+
+def __getitem__(self, idx: Union[int, tuple]) -> Union[np.ndarray, List]:
+    if isinstance(idx, int):
+        # 인덱스 유효성 검사
+        self.check_index(idx)
+
+        # 텐서 사이즈 계산
+        tensor_size = self.sizes[self.dim_offsets[idx] : self.dim_offsets[idx + 1]]
+
+        # 메모리 공간 할당
+        array = np.empty(tensor_size, dtype=self.dtype)
+
+        # 프리패치된 데이터를 로드 (파일 I/O가 일어나지 않음)
+        ptx = self.cache_index[idx]
+
+        # 캐시에 프리패치된 데이터를 메모리 공간에 복사
+        np.copyto(array, self.cache[ptx : ptx + array.size])
+        return array
+
+    elif isinstance(idx, slice):
+        return [self[i] for i in range(*idx.indices(len(self)))]
+```
+
+#### 3) Mmap
+`mmap`은 `lazy`와 동일하게 매 스텝마다 필요한 만큼의 데이터를 메모리로 로드하지만 File Buffer 대신 Memory Map을 사용하는 방식입니다. Memory Map은 File Buffer와 달리 현재 프로세스에게 할당된 가상메모리에 파일의 주소를 맵핑시키기 때문에 데이터가 마치 메모리 상에 존재하는 것 처럼 작업할 수 있습니다. 디스크와의 직접적인 I/O를 수행하지 않으며 페이지(4KB) 단위로 데이터를 로드 할 수 있고 실제로 메모리에서 모든 작업이 일어나기 때문에 File Buffer에 비해 처리 속도가 비교적 빠른 편입니다. 
+```
+"""
+참고: fairseq/fairseq/data/indexed_dataset.py
+주석은 제가 직접 추가하였습니다.
+"""
+
+def __init__(self, path: str):
+    with open(path, "rb") as stream:
+        # 1. 매직 스트링 로드
+        # 매직스트링은 현재 저장된 데이터 구조가 어떤 형식인지 구분하기 위한 것.
+        # lazy인지 mmap인지 등등... (cached는 lazy와 같은 값을 가짐)
+        magic_test = stream.read(9)
+        assert magic_test == self._HDR_MAGIC, (
+            "Index file doesn't match expected format. "
+            "Please check your configuration file."
+        )
+        
+        # 2. 버전 로드 (little endian unsigned long long)
+        # 코드 보니까 버전은 무조건 1로 쓰던데 별 의미 없는 변수인듯?
+        # b'\x01\x00\x00\x00\x00\x00\x00\x00'
+        version = struct.unpack("<Q", stream.read(8))
+        assert (1,) == version
+
+        # 3. 데이터 타입 로드 (little endian unsigned char)
+        (dtype_code,) = struct.unpack("<B", stream.read(1))
+        self._dtype = _code_to_dtype[dtype_code]
+        self._dtype_size = self._dtype().itemsize
+
+        # 4. 데이터셋의 전체 길이 로드 (little endian unsigned long long)
+        self._len = struct.unpack("<Q", stream.read(8))[0]
+
+        # 5. 전체 샘플의 개수 로드 (little endian unsigned long long)
+        self._doc_count = struct.unpack("<Q", stream.read(8))[0]
+        offset = stream.tell()
+
+    # 6. 캐시 warmup 수행 
+    _warmup_mmap_file(path)
+
+    # 7. 메모리맵 어레이 생성
+    self._bin_buffer_mmap = np.memmap(path, mode="r", order="C")
+    self._bin_buffer = memoryview(self._bin_buffer_mmap)
+
+    # 8. 샘플들의 사이즈가 담긴 데이터를 메모리맵 어레이로 로드
+    self._sizes = np.frombuffer(
+        self._bin_buffer, dtype=np.int32, count=self._len, offset=offset
+    )
+
+    # 9. 데이터 포인터(위치) 값들을 메모리맵 어레이로 로드
+    self._pointers = np.frombuffer(
+        self._bin_buffer,
+        dtype=np.int64,
+        count=self._len,
+        offset=offset + self._sizes.nbytes,
+    )
+
+    # 10. 데이터 인덱스들을 메모리맵 어레이로 로드
+    self._doc_idx = np.frombuffer(
+        self._bin_buffer,
+        dtype=np.int64,
+        count=self._doc_count,
+        offset=offset + self._sizes.nbytes + self._pointers.nbytes,
+    )
+```
+
+```
+"""
+참고: fairseq/fairseq/data/indexed_dataset.py
+주석은 제가 직접 추가하였습니다.
+"""
+
+from typing import Union
+
+def __getitem__(self, idx: Union[int, slice]) -> np.ndarray:
+    if not self.data_file:
+        # 인덱스 파일이 로드되지 않았다면 로드
+        self.read_data(self.path)
+
+    if isinstance(idx, int):
+        # 인덱스 유효성 검사
+        self.check_index(idx)
+
+        # 텐서 사이즈 계산
+        tensor_size = self.sizes[self.dim_offsets[idx] : self.dim_offsets[idx + 1]]
+
+        # 메모리 공간 할당
+        array = np.empty(tensor_size, dtype=self.dtype)
+
+        # offset을 기반으로 읽어올 데이터의 가상메모리 주소를 지정
+        self.data_file.seek(self.data_offsets[idx] * self.element_size)
+
+        # 메모리로 데이터 로드
+        self.data_file.readinto(array)
+        return array
+
+    elif isinstance(idx, slice):
+        start, stop, step = idx.indices(len(self))
+        if step != 1:
+            # 슬라이스로 입력시 반드시 반드시 연속되어야 함
+            raise ValueError("Slices into indexed_dataset must be contiguous")
+
+        # 텐서의 사이즈들이 담긴 리스트와 전체 합을 계산
+        sizes = self.sizes[self.dim_offsets[start] : self.dim_offsets[stop]]
+        total_size = sum(sizes)
+
+        # 필요한 만큼의 메모리 공간 할당
+        array = np.empty(total_size, dtype=self.dtype)
+
+        # offset을 기반으로 읽어올 데이터의 가상메모리 주소를 지정
+        self.data_file.seek(self.data_offsets[start] * self.element_size)
+        self.data_file.readinto(array)
+
+        # 텐서 사이즈를 기반으로 여러개의 샘플로 분할 
+        offsets = list(accumulate(sizes))
+        sentences = np.split(array, offsets[:-1])
+        return sentences
+```
+
+이제 데이터셋 전처리를 수행합니다. 저는 `mmap` 방식을 사용하여 전처리 하도록 하겠습니다. 
+
+이 때, `append-eod`라는 옵션이 보입니다. Megatron-LM은 패딩을 만들지 않기 위해 Pre-train 시에 모든 데이터를 연결해서 학습합니다. 예를 들어, `{\"text\": \"I am a boy.\"}`\"라는 샘플과 `{\"text\": \"You are so lucky\"}`라는 샘플이 있으면 Pre-train 할 때는 `input = \"I am a boy. You are so lucky ...\"`과 같이 모든 샘플을 연결합니다. 그리고나서 사용자가 설정한 길이(e.g. 2048)로 데이터를 잘라서 학습합니다. 
+
+그러나 이렇게 모든 샘플을 하나의 문자열로 연결해버리면 샘플과 샘플사이에 구분이 없어지기 때문에 문제가 될 수 있는데요. `append-eod` 옵션을 추가하면 샘플들 사이에 `end of document`로써 토큰을 추가하여 샘플과 샘플을 구분합니다. GPT2의 경우, `eod` 토큰은 `eos`토큰으로 설정되어 있습니다. 
+
+```
+!python tools/preprocess_data.py \
+       --input megatron_datasets.jsonl \
+       --output-prefix my-gpt2 \
+       --vocab vocab.json \
+       --dataset-impl mmap \
+       --tokenizer-type GPT2BPETokenizer \
+       --merge-file merges.txt \
+       --append-eod
+Opening megatron_datasets.jsonl
+> building GPT2BPETokenizer tokenizer ...
+ > padded vocab (size: 50257) with 47 dummy tokens (new size: 50304)
+> building GPT2BPETokenizer tokenizer ...
+Vocab size: 50257
+Output prefix: my-gpt2
+Time to startup: 0.10664248466491699
+ > padded vocab (size: 50257) with 47 dummy tokens (new size: 50304)
+Processed 100 documents (341.3833406586251 docs/s, 0.3231593169572366 MB/s).
+Processed 200 documents (444.607170228531 docs/s, 0.40740195023601483 MB/s).
+Processed 300 documents (507.4913064836572 docs/s, 0.4595645619121138 MB/s).
+Processed 400 documents (548.2460078910855 docs/s, 0.500913350338969 MB/s).
+Processed 500 documents (599.4126924512631 docs/s, 0.5385256945623461 MB/s).
+Processed 600 documents (632.3274718382903 docs/s, 0.567304677135345 MB/s).
+Processed 700 documents (656.5582187492173 docs/s, 0.5942094322137902 MB/s).
+Processed 800 documents (679.473341028289 docs/s, 0.6114298442783954 MB/s).
+Processed 900 documents (694.3271845460217 docs/s, 0.62567246230091 MB/s).
+Processed 1000 documents (711.744028291217 docs/s, 0.6423042951843672 MB/s).
+Processed 1100 documents (729.9288697633211 docs/s, 0.6542551575749905 MB/s).
+Processed 1200 documents (747.7031942801465 docs/s, 0.6652560847870334 MB/s).
+Processed 1300 documents (764.753374323305 docs/s, 0.674766482549341 MB/s).
+Processed 1400 documents (779.1577277991438 docs/s, 0.6864365578362863 MB/s).
+Processed 1500 documents (790.4512469780717 docs/s, 0.6969633845696908 MB/s).
+Processed 1600 documents (801.193106685724 docs/s, 0.7046774423849909 MB/s).
+Processed 1700 documents (806.756631686137 docs/s, 0.7161883857098408 MB/s).
+Processed 1800 documents (816.3964718380284 docs/s, 0.7252975026731121 MB/s).
+Processed 1900 documents (831.3950475039509 docs/s, 0.7346526580053557 MB/s).
+Processed 2000 documents (847.4097235137235 docs/s, 0.7413089470505299 MB/s).
+Processed 2100 documents (860.2405635449649 docs/s, 0.7517782182921232 MB/s).
+Processed 2200 documents (865.0414363514374 docs/s, 0.7580306631156802 MB/s).
+Processed 2300 documents (873.5639245027145 docs/s, 0.7657585442996709 MB/s).
+Processed 2400 documents (882.2530951029984 docs/s, 0.7761644859970351 MB/s).
+Processed 2500 documents (891.107956554136 docs/s, 0.7840518788650122 MB/s).
+Processed 2600 documents (897.586649345728 docs/s, 0.7875825232354006 MB/s).
+Processed 2700 documents (905.6928118212825 docs/s, 0.7926364268970261 MB/s).
+Processed 2800 documents (913.7765768432254 docs/s, 0.8018945842245223 MB/s).
+Processed 2900 documents (921.524677708312 docs/s, 0.8078279296759729 MB/s).
+Processed 3000 documents (927.0432557886642 docs/s, 0.8133901847218254 MB/s).
+Processed 3100 documents (933.5282763595969 docs/s, 0.8191782812561477 MB/s).
+Processed 3200 documents (939.0246851114703 docs/s, 0.8237833190795807 MB/s).
+Processed 3300 documents (944.3738598478612 docs/s, 0.8299497689998975 MB/s).
+Processed 3400 documents (949.8985798514814 docs/s, 0.8350220705057206 MB/s).
+Processed 3500 documents (954.9541380070546 docs/s, 0.8388551190620309 MB/s).
+Processed 3600 documents (961.0590894824982 docs/s, 0.8433869951112278 MB/s).
+Processed 3700 documents (966.5140585535103 docs/s, 0.8475759648916847 MB/s).
+Processed 3800 documents (970.2837410964693 docs/s, 0.8515277975713496 MB/s).
+Processed 3900 documents (972.3412659421506 docs/s, 0.8543419280083547 MB/s).
+Processed 4000 documents (977.5591959913655 docs/s, 0.8567109649824823 MB/s).
+Processed 4100 documents (982.1164774000912 docs/s, 0.8622407256560518 MB/s).
+Processed 4200 documents (988.3455181621163 docs/s, 0.8663715108177805 MB/s).
+Processed 4300 documents (994.3620512933041 docs/s, 0.8692481274017909 MB/s).
+Processed 4400 documents (1000.1573051427661 docs/s, 0.873466585121912 MB/s).
+Processed 4500 documents (1005.4718143362228 docs/s, 0.8773737720380832 MB/s).
+Processed 4600 documents (1011.1278894667505 docs/s, 0.8824701168076114 MB/s).
+Processed 4700 documents (1015.2351380478192 docs/s, 0.8859525079616727 MB/s).
+Processed 4800 documents (1019.9879167915307 docs/s, 0.8900802431435392 MB/s).
+Processed 4900 documents (1025.282676115802 docs/s, 0.8932444033863115 MB/s).
+Processed 5000 documents (1028.8323471665524 docs/s, 0.8972957799296275 MB/s).
+Processed 5100 documents (1034.2091617577757 docs/s, 0.9009465518440909 MB/s).
+Processed 5200 documents (1038.183730940605 docs/s, 0.9030075814649406 MB/s).
+Processed 5300 documents (1041.6586495443958 docs/s, 0.9053369784979305 MB/s).
+Processed 5400 documents (1044.9539766559153 docs/s, 0.9071277474789929 MB/s).
+Processed 5500 documents (1046.3650306901518 docs/s, 0.9081639586462895 MB/s).
+Processed 5600 documents (1048.7924539068933 docs/s, 0.9100967579157073 MB/s).
+Processed 5700 documents (1052.2622870902087 docs/s, 0.9127531725504879 MB/s).
+Processed 5800 documents (1054.5030800058553 docs/s, 0.9157142263287714 MB/s).
+Processed 5900 documents (1059.7019272813493 docs/s, 0.9178686686803795 MB/s).
+Processed 6000 documents (1059.6815063398376 docs/s, 0.9181303779496783 MB/s).
+Processed 6100 documents (1063.2851114676184 docs/s, 0.9198782219223729 MB/s).
+Processed 6200 documents (1066.3967801931324 docs/s, 0.9227200915033248 MB/s).
+Processed 6300 documents (1069.4742049968804 docs/s, 0.9247615387280403 MB/s).
+Processed 6400 documents (1071.4283102781826 docs/s, 0.9253310711247418 MB/s).
+Processed 6500 documents (1076.4308423075795 docs/s, 0.927823003864186 MB/s).
+Processed 6600 documents (1080.6832634984266 docs/s, 0.9302894964375688 MB/s).
+Processed 6700 documents (1084.397451300038 docs/s, 0.9318886244572675 MB/s).
+Processed 6800 documents (1086.1487193706437 docs/s, 0.9348595253581037 MB/s).
+Processed 6900 documents (1087.0879823630048 docs/s, 0.9361755003019657 MB/s).
+Processed 7000 documents (1089.6505729269404 docs/s, 0.9391088768093419 MB/s).
+Processed 7100 documents (1093.8213019164195 docs/s, 0.9425288656669819 MB/s).
+Processed 7200 documents (1095.2519889281548 docs/s, 0.9441749502405283 MB/s).
+Processed 7300 documents (1096.064652681706 docs/s, 0.9454755215221007 MB/s).
+Processed 7400 documents (1099.8706995407156 docs/s, 0.9476494730035326 MB/s).
+Processed 7500 documents (1102.1014294958984 docs/s, 0.949519284921672 MB/s).
+Processed 7600 documents (1105.5783850300058 docs/s, 0.9512555401678863 MB/s).
+Processed 7700 documents (1108.5371715132862 docs/s, 0.953457808444335 MB/s).
+Processed 7800 documents (1110.6911912777482 docs/s, 0.9559848048283311 MB/s).
+Processed 7900 documents (1111.308633853119 docs/s, 0.9587627880560639 MB/s).
+Processed 8000 documents (1112.5253845256852 docs/s, 0.9598524220291513 MB/s).
+Processed 8100 documents (1107.9573503503889 docs/s, 0.9570326111709778 MB/s).
+Processed 8200 documents (1101.5736838840019 docs/s, 0.9513888668691332 MB/s).
+Processed 8300 documents (1104.7169150313523 docs/s, 0.9545691909319388 MB/s).
+Processed 8400 documents (1105.1751785362064 docs/s, 0.955716897713522 MB/s).
+Processed 8500 documents (1107.2811136051005 docs/s, 0.9568425534848921 MB/s).
+Processed 8600 documents (1111.0993018845525 docs/s, 0.9593719961195478 MB/s).
+Processed 8700 documents (1113.3003045048206 docs/s, 0.961563294988248 MB/s).
+Processed 8800 documents (1116.428968728601 docs/s, 0.9632621638462902 MB/s).
+Processed 8900 documents (1118.174477463872 docs/s, 0.9645029463232418 MB/s).
+Processed 9000 documents (1119.366311295253 docs/s, 0.9668497240291574 MB/s).
+Processed 9100 documents (1121.6658086995078 docs/s, 0.9681949708107495 MB/s).
+Processed 9200 documents (1124.1491570526603 docs/s, 0.9693218680263417 MB/s).
+Processed 9300 documents (1126.638738761637 docs/s, 0.9728182383237711 MB/s).
+Processed 9400 documents (1128.1680778666728 docs/s, 0.9741808572135104 MB/s).
+Processed 9500 documents (1130.7785091089281 docs/s, 0.9758539826709395 MB/s).
+Processed 9600 documents (1133.1699075004083 docs/s, 0.9774758616877791 MB/s).
+Processed 9700 documents (1135.8416609360074 docs/s, 0.9789269570433953 MB/s).
+Processed 9800 documents (1137.7800453559933 docs/s, 0.9799055810547384 MB/s).
+Processed 9900 documents (1139.50573789508 docs/s, 0.9805926001463556 MB/s).
+Processed 10000 documents (1141.5376306433773 docs/s, 0.9824856620038298 MB/s).
+```
+
+데이터셋 전처리가 완료되었습니다. 데이터를 확인해봅시다
+- my-gpt2_text_document.bin
+- my-gpt2_text_document.idx
+와 같은 파일들이 생겼습니다. `idx`파일은 데이터의 위치 등의 메타데이터가 저장되어 있으며, `bin` 파일에는 실제로 Tokenized 된 데이터가 저장되어 있습니다.
+```
+[glogin01]$ ls
+LICENSE    megatron/                  pretrain_bert.py  tasks/
+README.md  megatron_datasets.jsonl    pretrain_gpt.py   tests/
+apex/      merges.txt                 pretrain_ict.py   tools/
+examples/  my-gpt2_text_document.bin  pretrain_t5.py    vocab.json
+images/    my-gpt2_text_document.idx  pretrain_vit.py
+```
+
+이제 모델 학습을 시작해보겠습니다.
+```
+# 일단 Tensor parallelism만 사용해보도록 하겠습니다.
+# Data parallelism과 Pipeline parallelism은 Multi-dimensional Parallelism 세션에서 사용해봅시다. :)
+# 학습은 1000 스텝만 시키도록 하겠습니다. 실제 학습할 땐 더 많은 숫자로 설정해주세요.
+
+!python -m torch.distributed.launch \
+                  --nproc_per_node "4" \
+                  --nnodes "1" \
+                  --node_rank "0" \
+                  --master_addr "localhost" \
+                  --master_port "6000" \
+                  ./pretrain_gpt.py \
+                  --num-layers "24" \
+                  --hidden-size "1024" \
+                  --num-attention-heads "16" \
+                  --seq-length "1024" \
+                  --max-position-embeddings "1024" \
+                  --micro-batch-size "4" \
+                  --global-batch-size "8" \
+                  --lr "0.00015" \
+                  --train-iters "1000" \
+                  --lr-decay-iters "300" \
+                  --lr-decay-style cosine \
+                  --vocab-file "vocab.json" \
+                  --merge-file "merges.txt" \
+                  --lr-warmup-fraction ".01" \
+                  --fp16 \
+                  --log-interval "10" \
+                  --save-interval "500" \
+                  --eval-interval "100" \
+                  --eval-iters 10 \
+                  --activations-checkpoint-method "uniform" \
+                  --save "checkpoints/gpt2_345m" \
+                  --load "checkpoints/gpt2_345m" \
+                  --data-path "my-gpt2_text_document" \
+                  --tensor-model-parallel-size "4" \
+                  --pipeline-model-parallel-size "1" \
+                  --DDP-impl "torch"
+
+# Megatron-LM에는 위에 설정한 옵션 이외에도 굉장히 많은 옵션들이 있습니다.
+# 모든 옵션을 설명하기는 어려우니 아래 주소를 참고해주세요.
+# https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/arguments.py
+
+
+```
    ]
   },
   {
