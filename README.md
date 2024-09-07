@@ -10,7 +10,7 @@
 
 ## Contents
 
-1. [Motivation](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/02_motivation.ipynb)
+1. [Motivation](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/01_motivation.ipynb)
 2. [Distributed Programming](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/03_distributed_programming.ipynb)
 3. [Overview of Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/04_overview_of_parallelism.ipynb)
 4. [Data Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/05_data_parallelism.ipynb)
