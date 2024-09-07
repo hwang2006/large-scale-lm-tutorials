@@ -10,15 +10,15 @@
 
 ## Contents
 
-1. [Motivation](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/01_motivation.ipynb)
-2. [Distributed Programming](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/02_distributed_programming.ipynb)
-3. [Overview of Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/03_overview_of_parallelism.ipynb)
-4. [Data Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/04_data_parallelism.ipynb)
-5. [Pipeline Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/05_pipeline_parallelism.ipynb)
-6. [Tensor Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/06_tensor_parallelism.ipynb)
-7. [Zero Redundancy Optimization](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/07_zero_redundancy_optimization.ipynb)
-8. [Multi-dimensional Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/08_multi_dimensional_parallelism.ipynb)
-9. [Additional Techniques](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/notebooks/09_additional_techiques.ipynb)
+1. [Motivation](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/01_motivation.md)
+2. [Distributed Programming](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/02_distributed_programming.md)
+3. [Overview of Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/03_overview_of_parallelism.md)
+4. [Data Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/04_data_parallelism.md)
+5. [Pipeline Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/05_pipeline_parallelism.md)
+6. [Tensor Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/06_tensor_parallelism.md)
+7. [Zero Redundancy Optimization](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/07_zero_redundancy_optimization.md)
+8. [Multi-dimensional Parallelism](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/08_multi_dimensional_parallelism.md)
+9. [Additional Techniques](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/09_additional_techiques.md)
 
 ## Environments
 ### KISTI Neuron GPU Cluster
