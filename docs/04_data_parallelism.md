@@ -292,6 +292,7 @@ Python은 GIL (Global Interpreter Lock)에 의해 하나의 프로세스에서 �
 ### Reduce + Broadcast 구현 방식
 ![](../images/allreduce_1.png)
 
+
 ### All to All 구현 방식
 ![](../images/allreduce_2.png)
  
