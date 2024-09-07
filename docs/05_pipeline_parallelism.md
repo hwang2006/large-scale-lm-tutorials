@@ -1,4 +1,4 @@
-# Pipeline Parallelism\n",
+# Pipeline Parallelism
 이번 세션에서는 파이프라인 병렬화에 대해 알아보겠습니다.
    
 ## 1. Inter-layer model parallelism
@@ -11,7 +11,7 @@
 ![](../images/inter_layer_2.png)
 ![](../images/inter_layer_3.gif)
 
-## 2. GPipe\n",
+## 2. GPipe
 GPipe는 Google에서 개발된 파이프라인 병렬화 기법으로 Inter Layer 모델 병렬화 시 GPU가 쉬는 시간 (idle time)을 줄이기 위해 등장했으며, mini-batch를 micro-batch로 한번 더 쪼개서 학습 과정을 파이프라이닝 하는 방식으로 동작합니다.
     
 ![](../images/gpipe_1.png)
