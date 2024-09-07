@@ -104,8 +104,9 @@ optimizer = SGD(fp32_model.parameters(), lr=1e-2)
 ```
 ```
 f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB"
-'GPU = 1.001953125 GiB'
 ```
+'GPU = 1.001953125 GiB'
+
 
 ### 1)  Float2Half
     
@@ -115,8 +116,9 @@ f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB"
 ```
 fp16_model = Net().half().to("cuda")
 fp16_model.load_state_dict(fp32_model.state_dict())
-<All keys matched successfully>
 ```
+<All keys matched successfully>
+
 ```
 f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB"
 ```
@@ -126,10 +128,10 @@ f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB"
 ### 2) Forward
     
 fp16으로 복사된 모델을 이용하여 forward pass를 수행합니다.
-   
-$z_1 = w_1 \\cdot x$ (FWD: layer1)
+
+$z_1 = w_1 \\cdot x \\;$ (FWD: layer1)
     
-$z_2 = w_2 \\cdot z_1$ (FWD: layer2)
+$z_2 = w_2 \\cdot z_1 \\;$ (FWD: layer2)
 
 ```
 import torch
@@ -150,7 +152,7 @@ f"logits type = {z2.dtype}"
 
 계산된 FP16의 출력값을 이용하여 Loss를 계산합니다.
     
-$L = \\frac{(y - z_2)^2}{2} \\; $ (Loss computation)
+$L = \\frac{(y - z_2)^2}{2} \\;$ (Loss computation)
 
 ```
 # craete dummy data (bsz=4)
@@ -177,47 +179,34 @@ $\\frac{dL}{dw_1} = \\frac{dL}{dz_2} \\cdot \\frac{dz_2}{dz_1} \\cdot \\frac{dz_
 
 구체적으로는 아래와 같습니다.
  
-$\\frac{dL}{dz_2} =  y - z_2 \\; $ (BWD-activation: layer2)
+$\\frac{dL}{dz_2} =  y - z_2 \\;$ (BWD-activation: layer2)
    
-$\\frac{dz_2}{dw_2} = z_1$ (BWD-weight: layer2)
+$\\frac{dz_2}{dw_2} = z_1 \\;$ (BWD-weight: layer2)
     
-$\\frac{dz_2}{dz_1} = w_2$ (BWD-activation: layer1)
+$\\frac{dz_2}{dz_1} = w_2 \\;$ (BWD-activation: layer1)
     
-$\\frac{dz_1}{dw_1} = x$ (BWD-weight: layer1)
+$\\frac{dz_1}{dw_1} = x \\;$ (BWD-weight: layer1)
    
 $\\frac{dL}{dw_2} = (y - z_2) \\cdot z_1$
   
-$\\frac{dL}{dw_1} = (y - z_2) \\cdot w_2 \\cdot x$
+$\\frac{dL}{dw_1} = (y - z_2) \\cdot w_2 \\cdot x$ 
 
-   "execution_count": 8,
-   "id": "2bb6019c",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "# loss scaling\n",
-    "L *= 1024\n",
-    "\n",
-    "# do backward\n",
-    "L.backward()"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "ce2ce2c3",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "### 4) Update Weight\n",
-    "\n",
-    "마지막으로 파라미터를 업데이트하기 위해 `optimizer.step()`를 수행합니다.\n",
-    "\n",
-    "$w_1 := w_1 - lr \\cdot \\frac{dL}{dw_1} \\; $ (Weight Update)\n",
-    "\n",
-    "$w_2 := w_2 - lr \\cdot \\frac{dL}{dw_2} \\; $ (Weight Update)"
-   ]
-  },
-  {
+```
+# loss scaling
+L *= 1024
+
+# do backward
+L.backward()
+```
+
+### 4) Update Weight
+ 
+마지막으로 파라미터를 업데이트하기 위해 `optimizer.step()`를 수행합니다.
+   
+$w_1 := w_1 - lr \\cdot \\frac{dL}{dw_1} \\;$ (Weight Update)
+   
+$w_2 := w_2 - lr \\cdot \\frac{dL}{dw_2} \\;$ (Weight Update)
+
    "cell_type": "code",
    "execution_count": 9,
    "id": "0a2b932a",
