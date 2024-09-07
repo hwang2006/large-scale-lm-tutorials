@@ -166,7 +166,8 @@ print(f"hello world, {os.environ['RANK']}")
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/multi_process_3.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 hello world, 0
 hello world, 1
@@ -333,7 +334,8 @@ print(f"{group} - rank: {dist.get_rank()}\n")
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/process_group_4.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 <torch.distributed.ProcessGroupNCCL object at 0x7fd3059bc4f0> - rank: 1
 <torch.distributed.ProcessGroupNCCL object at 0x7f051d38e470> - rank: 3
@@ -412,7 +414,8 @@ print(f"rank {dist.get_rank()}: {tensor}")
 ```
 [globin01]$ python -m torch.distributed.launch --nproc_per_node=2 ../src/p2p_communication_non_blocking.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 rank 1: tensor([[-0.7049,  0.8836],
         [-0.4996,  0.4550]])
@@ -540,7 +543,8 @@ if rank == 0:
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_sum.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 tensor([[6., 6.],
         [6., 6.]], device='cuda:0')
@@ -572,7 +576,8 @@ if rank == 0:
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_max.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 tensor([[3., 3.],
         [3., 3.]], device='cuda:0')
@@ -610,7 +615,8 @@ print(f"after rank {rank}: {output}\n")
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/scatter.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 before rank 0: tensor([0.])
 
@@ -649,7 +655,7 @@ print(f"after rank {rank}: {output}\n")
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/scatter_nccl.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system beingoverloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 after rank 2: tensor([30.], device='cuda:2')
 
@@ -729,7 +735,8 @@ else:
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/gather.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 [tensor([0.]), tensor([1.]), tensor([2.]), tensor([3.])]
 ```
@@ -761,7 +768,8 @@ print(f"rank {rank}: {tensor}\n")
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/allreduce_sum.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 rank 1: tensor([[6., 6.],
         [6., 6.]], device='cuda:1')
@@ -801,7 +809,8 @@ print(f"rank {rank}: {tensor}\n")
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/allreduce_max.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 rank 3: tensor([[3., 3.],
         [3., 3.]], device='cuda:3')
@@ -850,7 +859,8 @@ print(outputs_list)
 ```
 [globin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/allgather.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 [tensor([0.], device='cuda:1'), tensor([1.], device='cuda:1'), tensor([2.], device='cuda:1'), tensor([3.], device='cuda:1')]
 [tensor([0.], device='cuda:0'), tensor([1.], device='cuda:0'), tensor([2.], device='cuda:0'), tensor([3.], device='cuda:0')]
@@ -892,7 +902,8 @@ print(f"rank {rank}: {output}\n")
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_scatter.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 rank 0: tensor([6], device='cuda:0')
 rank 2: tensor([600], device='cuda:2')
@@ -929,7 +940,8 @@ print(f"rank {rank}: barrier\n")
 ```
 [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/barrier.py
 *****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
+overloaded, please further tune the variable for optimal performance in your application as needed. 
 *****************************************
 rank 2: no-barrier
 rank 1: no-barrier
