@@ -1,93 +1,65 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "id": "5626dab0",
-   "metadata": {},
-   "source": [
-    "# Multi-dimensional Parallelism\n",
-    "\n",
-    "이번 세션에서는 Multi-dimensional Parallelism을 위해 사용되는 몇가지 개념과 실습을 진행해보도록 하겠습니다."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "ff28d00b",
-   "metadata": {},
-   "source": [
-    "## 1. Multi-dimensional Parallelism\n",
-    "\n",
-    "Multi-dimensional Parallelism (다차원 병렬화)는 지금까지 공부했던 다양한 병렬화 기법을 함께 사용하는 것입니다. 예를 들면 GPU가 0번부터 7번까지 8대가 있다면 2대는 Data parallelism, 2대는 Pipeline parallelism, 2대는 Tensor parallelism 등을 적용할 수 있습니다. 이때 몇개 차원으로 병렬화가 적용되는지에 따라 N차원 병렬화라고 불리며 방금의 예시는 (2x2x2)로 3차원 병렬화가 되겠죠.\n",
-    "\n",
-    "![](../images/parallelism.png)\n",
-    "\n",
-    "이렇게 다양한 병렬처리 기법을 동시에 적용하는 것은 매우 고난도의 기술이 필요합니다. 이번 세션에서는 이러한 병렬처리 기법을 동시에 다루는 방법에 대해 알아봅시다. \n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "## 2. MPU (Model Parallel Unit)\n",
-    "\n",
-    "https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/mpu/initialize.py#L57\n",
-    "\n",
-    "MPU는 Megatron-LM에서 제안된 개념으로 모델 병렬처리와 관련된 다양한 모듈들을 제공합니다. 특히 **MPU는 다차원 병렬화를 매우 손쉽게 수행할 수 있도록 프로세스 그룹을 자동으로 생성하고 관리해주는 기능**을 가지고 있습니다.\n",
-    "\n",
-    "다차원 병렬화를 위한 프로세스 그룹 예시를 살펴봅시다. \n",
-    "\n",
-    "우리가 16개의 GPU를 가지고 있다고 가정해봅시다. 그리고 (Data:2 x Tensor:2 x Pipeline:4)의 차원으로 모델을 병렬화 한다고 해봅시다. 그러면 Tensor parallelism group은 8개, Data parallelism group은 8개, Pipeline parallelism group 4개가 생성됩니다. 즉, 전체 GPU의 수를 해당 병렬화에 할당된 차원의 수로 나눈 값 만큼의 프로세스가 생성됩니다.\n",
-    "\n",
-    "- Tensor parallelism group은 다음과 같이 생성 될 수 있습니다.\n",
-    "  - `[0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13], [14, 15]`\n",
-    "  - 즉, 0번 gpu는 1번 gpu와 tensor parallel 통신을 수행할 수 있으며 2번 gpu는 3번 gpu와 통신 가능합니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "- Data parallelism group은 다음과 같이 생성 될 수 있습니다.\n",
-    "  - `[0, 2], [1, 3], [4, 6], [5, 7], [8, 10], [9, 11], [12, 14], [13, 15]`\n",
-    "  - 즉, 0번 gpu는 2번 gpu와 data parallel  통신을 수행할 수 있으며 1번 gpu는 3번 gpu와 통신 가능합니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "- Pipeline parallelism group은 다음과 같이 생성 될 수 있습니다.\n",
-    "  - `[0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15]`\n",
-    "  - Forward 시 0 → 4 → 8 → 12번 방향으로, Backward시 12 → 8 → 4 → 0번 방향으로 통신이 수행됩니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "꽤나 복잡하지만 프로세스가 생성되는 순서를 외우거나 할 필요는 없습니다. MPU 객체가 알아서 이를 처리합니다. 이를 그림으로 나타내면 아래와 같습니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "```\n",
-    "              +---------+  +---------+  +---------+  +---------+\n",
-    "      tensor  |   g00   |  |   g04   |  |   g08   |  |   g12   |\n",
-    "data          +---------+  +---------+  +---------+  +---------+ ===> forward\n",
-    "      tensor  |   g01   |  |   g05   |  |   g09   |  |   g13   |\n",
-    "              +---------+  +---------+  +---------+  +---------+\n",
-    "               pipeline     pipeline     pipeline     pipeline\n",
-    "\n",
-    "              +---------+  +---------+  +---------+  +---------+\n",
-    "      tensor  |   g02   |  |   g06   |  |   g10   |  |   g14   |\n",
-    "data          +---------+  +---------+  +---------+  +---------+ ===> forward\n",
-    "      tensor  |   g03   |  |   g07   |  |   g11   |  |   g15   |\n",
-    "              +---------+  +---------+  +---------+  +---------+\n",
-    "                pipeline     pipeline     pipeline     pipeline\n",
-    "```\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "3개의 차원으로 분할되었으니 아래와 같이 3D와 같은 육면체를 구성할 수도 있습니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "```\n",
-    "                        [g02, g06, g10, g14]\n",
-    "                      /  |              /  |\n",
-    "                     [g00, g04, g08, g12]  |\n",
-    "                     |   |             |   |\n",
-    "        3D parallel  |  [g03, g07, g11, g15]\n",
-    "                     |  /              |  /\n",
-    "                     [g01, g05, g09, g13]\n",
-    "```\n"
+# Multi-dimensional Parallelism\n"
+이번 세션에서는 Multi-dimensional Parallelism을 위해 사용되는 몇가지 개념과 실습을 진행해보도록 하겠습니다.
+
+## 1. Multi-dimensional Parallelism
+    
+Multi-dimensional Parallelism (다차원 병렬화)는 지금까지 공부했던 다양한 병렬화 기법을 함께 사용하는 것입니다. 예를 들면 GPU가 0번부터 7번까지 8대가 있다면 2대는 Data parallelism, 2대는 Pipeline parallelism, 2대는 Tensor parallelism 등을 적용할 수 있습니다. 이때 몇개 차원으로 병렬화가 적용되는지에 따라 N차원 병렬화라고 불리며 방금의 예시는 (2x2x2)로 3차원 병렬화가 되겠죠.
+    
+![](../images/parallelism.png)
+    
+이렇게 다양한 병렬처리 기법을 동시에 적용하는 것은 매우 고난도의 기술이 필요합니다. 이번 세션에서는 이러한 병렬처리 기법을 동시에 다루는 방법에 대해 알아봅시다. 
+   
+## 2. MPU (Model Parallel Unit)
+
+https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/mpu/initialize.py#L57
+    
+MPU는 Megatron-LM에서 제안된 개념으로 모델 병렬처리와 관련된 다양한 모듈들을 제공합니다. 특히 **MPU는 다차원 병렬화를 매우 손쉽게 수행할 수 있도록 프로세스 그룹을 자동으로 생성하고 관리해주는 기능**을 가지고 있습니다.
+    
+다차원 병렬화를 위한 프로세스 그룹 예시를 살펴봅시다. 
+
+우리가 16개의 GPU를 가지고 있다고 가정해봅시다. 그리고 (Data:2 x Tensor:2 x Pipeline:4)의 차원으로 모델을 병렬화 한다고 해봅시다. 그러면 Tensor parallelism group은 8개, Data parallelism group은 8개, Pipeline parallelism group 4개가 생성됩니다. 즉, 전체 GPU의 수를 해당 병렬화에 할당된 차원의 수로 나눈 값 만큼의 프로세스가 생성됩니다.
+
+- Tensor parallelism group은 다음과 같이 생성 될 수 있습니다.
+  - `[0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13], [14, 15]`
+  - 즉, 0번 gpu는 1번 gpu와 tensor parallel 통신을 수행할 수 있으며 2번 gpu는 3번 gpu와 통신 가능합니다.
+   
+- Data parallelism group은 다음과 같이 생성 될 수 있습니다.\n",
+  - `[0, 2], [1, 3], [4, 6], [5, 7], [8, 10], [9, 11], [12, 14], [13, 15]`\n",
+  - 즉, 0번 gpu는 2번 gpu와 data parallel  통신을 수행할 수 있으며 1번 gpu는 3번 gpu와 통신 가능합니다.
+   
+- Pipeline parallelism group은 다음과 같이 생성 될 수 있습니다.
+  - `[0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15]`
+  - Forward 시 0 → 4 → 8 → 12번 방향으로, Backward시 12 → 8 → 4 → 0번 방향으로 통신이 수행됩니다.
+   
+꽤나 복잡하지만 프로세스가 생성되는 순서를 외우거나 할 필요는 없습니다. MPU 객체가 알아서 이를 처리합니다. 이를 그림으로 나타내면 아래와 같습니다.
+   
+ ```
+               +---------+  +---------+  +---------+  +---------+
+       tensor  |   g00   |  |   g04   |  |   g08   |  |   g12   |
+ data          +---------+  +---------+  +---------+  +---------+ ===> forward\n",
+       tensor  |   g01   |  |   g05   |  |   g09   |  |   g13   |
+               +---------+  +---------+  +---------+  +---------+
+                pipeline     pipeline     pipeline     pipeline
+    
+               +---------+  +---------+  +---------+  +---------+
+       tensor  |   g02   |  |   g06   |  |   g10   |  |   g14   |
+ data          +---------+  +---------+  +---------+  +---------+ ===> forward\n",
+       tensor  |   g03   |  |   g07   |  |   g11   |  |   g15   |
+               +---------+  +---------+  +---------+  +---------+
+                 pipeline     pipeline     pipeline     pipeline
+```
+    
+3개의 차원으로 분할되었으니 아래와 같이 3D와 같은 육면체를 구성할 수도 있습니다.
+    
+```
+                        [g02, g06, g10, g14]
+                      /  |              /  |
+                     [g00, g04, g08, g12]  |
+                     |   |             |   |
+        3D parallel  |  [g03, g07, g11, g15]
+                     |  /              |  /
+                     [g01, g05, g09, g13]
+```
    ]
   },
   {
