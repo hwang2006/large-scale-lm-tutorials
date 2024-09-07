@@ -79,238 +79,152 @@ A0 B1 - rank: 2
 A0 B1 - rank: 3
 A0 B1 - rank: 1
 ```
+`torch.multiprocessing.spawn` 함수를 이용하면 이 과정을 매우 쉽게 진행 할 수 있습니다.
 
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "`torch.multiprocessing.spawn` 함수를 이용하면 이 과정을 매우 쉽게 진행 할 수 있습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/multi_process_2.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch.multiprocessing as mp\n",
-    "\n",
-    "\n",
-    "# 서브프로세스에서 동시에 실행되는 영역\n",
-    "def fn(rank, param1, param2):\n",
-    "    # rank는 기본적으로 들어옴. param1, param2는 spawn시에 입력됨.\n",
-    "    print(f\"{param1} {param2} - rank: {rank}\")\n",
-    "\n",
-    "\n",
-    "# 메인 프로세스\n",
-    "if __name__ == \"__main__\":\n",
-    "    mp.spawn(\n",
-    "        fn=fn,\n",
-    "        args=(\"A0\", \"B1\"),\n",
-    "        nprocs=4,  # 만들 프로세스 개수\n",
-    "        join=True,  # 프로세스 join 여부\n",
-    "        daemon=False,  # 데몬 여부\n",
-    "        start_method=\"spawn\",  # 시작 방법 설정\n",
-    "    )\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 3,
-   "metadata": {
-    "scrolled": false
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "A0 B1 - rank: 1\n",
-      "A0 B1 - rank: 0\n",
-      "A0 B1 - rank: 3\n",
-      "A0 B1 - rank: 2\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python ../src/multi_process_2.py"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: torch/multiprocessing/spawn.py\n",
-    "\n",
-    "mp.spawn 함수는 아래와 같이 동작합니다.\n",
-    "\"\"\"\n",
-    "\n",
-    "def start_processes(fn, args=(), nprocs=1, join=True, daemon=False, start_method='spawn'):\n",
-    "    _python_version_check()\n",
-    "    mp = multiprocessing.get_context(start_method)\n",
-    "    error_queues = []\n",
-    "    processes = []\n",
-    "    for i in range(nprocs):\n",
-    "        error_queue = mp.SimpleQueue()\n",
-    "        process = mp.Process(\n",
-    "            target=_wrap,\n",
-    "            args=(fn, i, args, error_queue),\n",
-    "            daemon=daemon,\n",
-    "        )\n",
-    "        process.start()\n",
-    "        error_queues.append(error_queue)\n",
-    "        processes.append(process)\n",
-    "\n",
-    "    context = ProcessContext(processes, error_queues)\n",
-    "    if not join:\n",
-    "        return context\n",
-    "\n",
-    "    # Loop on join until it returns True or raises an exception.\n",
-    "    while not context.join():\n",
-    "        pass"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "\n",
-    "### 2) PyTorch 런처가 부모 프로세스가 되어 사용자 코드 전체를 서브프로세스로 분기한다.\n",
-    "\n",
-    "이 방식은 torch에 내장된 멀티프로세싱 런처가 사용자 코드 전체를 서브프로세스로 실행시켜주는 매우 편리한 방식입니다.\n",
-    "\n",
-    "![](../images/multi_process_2.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "`python -m torch.distributed.launch --nproc_per_node=n OOO.py`와 같은 명령어를 사용합니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/multi_process_3.py\n",
-    "\"\"\"\n",
-    "\n",
-    "# 코드 전체가 서브프로세스가 됩니다.\n",
-    "import os\n",
-    "\n",
-    "# RANK, LOCAL_RANK, WORLD_SIZE 등의 변수가 자동으로 설정됩니다.\n",
-    "print(f\"hello world, {os.environ['RANK']}\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 4,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "hello world, 0\n",
-      "hello world, 1\n",
-      "hello world, 2\n",
-      "hello world, 3\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=4 ../src/multi_process_3.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "## 2. Distributed Programming with PyTorch\n",
-    "### Concept of Message Passing\n",
-    "\n",
-    "메시지 패싱이란 동일한 주소공간을 공유하지 않는 여러 프로세스들이 데이터를 주고 받을 수 있도록 메시지라는 간접 정보를 주고 받는 것입니다. 예를 들면 Process-1이 특정 태그가 달린 데이터를 메시지 큐에 send하도록, Process-2가 해당 데이터를 receive하도록 코딩해놓으면 두 프로세스가 공유하는 메모리 공간 없이도 데이터를 주고 받을 수 있죠. Large-scale 모델 개발시에 사용되는 분산 통신에는 대부분 이러한 message passing 기법이 사용됩니다.\n",
-    "\n",
-    "![](../images/message_passing.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### MPI (Massage Passing Interface)\n",
-    "MPI는 Message Passing에 대한 표준 인터페이스를 의미합니다. MPI에는 Process간의 Message Passing에 사용되는 여러 연산(e.g. broadcast, reduce, scatter, gather, ...)이 정의되어 있으며 대표적으로 OpenMPI라는 오픈소스가 존재합니다.\n",
-    "\n",
-    "![](../images/open_mpi.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### NCCL & GLOO\n",
-    "실제로는 openmpi 보다는 nccl이나 gloo 같은 라이브러리를 사용하게 됩니다.\n",
-    "\n",
-    "- NCCL (NVIDIA Collective Communication Library)\n",
-    "  - NVIDIA에서 개발한 GPU 특화 Message Passing 라이브러리 ('nickel'이라고 읽음)\n",
-    "  - NVIDIA GPU에서 사용시, 다른 도구에 비해 월등히 높은 성능을 보여주는 것으로 알려져있습니다.\n",
-    "- GLOO (Facebook's Collective Communication Library)\n",
-    "  - Facebook에서 개발된 Message Passing 라이브러리. \n",
-    "  - `torch`에서는 주로 CPU 분산처리에 사용하라고 추천하고 있습니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### 백엔드 라이브러리 선택 가이드\n",
-    "openmpi를 써야할 특별한 이유가 있는 것이 아니라면 nccl이나 gloo를 사용하는데, GPU에서 사용시 nccl, CPU에서 사용시 gloo를 사용하시면 됩니다. 더 자세한 정보는  https://pytorch.org/docs/stable/distributed.html 여기를 참고하세요.\n",
-    "\n",
-    "각 백엔드별로 수행 가능한 연산은 다음과 같습니다.\n",
-    "\n",
-    "![](../images/backends.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### `torch.distributed` 패키지\n",
-    "`gloo`, `nccl`, `openmpi` 등을 직접 사용해보는 것은 분명 좋은 경험이 될 것입니다. 그러나 시간 관계상 이들을 모두 다룰 수는 없고, 이들을 wrapping 하고 있는 `torch.distributed` 패키지를  사용하여 진행하겠습니다. 실제로 활용 단으로 가면 `nccl` 등을 직접 사용하지 않고 대부분의 경우 `torch.distributed` 등의 하이레벨 패키지를 사용하여 프로그래밍 하게 됩니다.\n"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "### Process Group\n",
-    "\n",
-    "많은 프로세스를 관리하는 것은 어려운 일입니다. 따라서 프로세스 그룹을 만들어서 관리를 용이하게 합니다. `init_process_group`를 호출하면 전체 프로세스가 속한 default_pg(process group)가 만들어집니다. 프로세스 그룹을 초기화하는 `init_process_group` 함수는 **반드시 서브프로세스에서 실행**되어야 하며, 만약 추가로 사용자가 원하는 프로세스들만 모아서 그룹을 생성하려면 `new_group`을 호출하면 됩니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/process_group_1.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch.distributed as dist\n",
-    "# 일반적으로 dist와 같은 이름을 사용합니다.\n",
-    "\n",
-    "dist.init_process_group(backend=\"nccl\", rank=0, world_size=1)\n",
-    "# 프로세스 그룹 초기화\n",
-    "# 본 예제에서는 가장 자주 사용하는 nccl을 기반으로 진행하겠습니다.\n",
-    "# backend에 'nccl' 대신 'mpi'나 'gloo'를 넣어도 됩니다.\n",
-    "\n",
-    "process_group = dist.new_group([0])\n",
-    "# 0번 프로세스가 속한 프로세스 그룹 생성\n",
-    "\n",
-    "print(process_group)"
-   ]
-  },
+```
+"""
+src/multi_process_2.py
+"""
+
+import torch.multiprocessing as mp
+
+
+# 서브프로세스에서 동시에 실행되는 영역
+def fn(rank, param1, param2):
+    # rank는 기본적으로 들어옴. param1, param2는 spawn시에 입력됨.
+    print(f"{param1} {param2} - rank: {rank}")
+
+
+# 메인 프로세스
+if __name__ == "__main__":
+    mp.spawn(
+        fn=fn,
+        args=("A0", "B1"),
+        nprocs=4,  # 만들 프로세스 개수
+        join=True,  # 프로세스 join 여부
+        daemon=False,  # 데몬 여부
+        start_method="spawn",  # 시작 방법 설정
+    )
+```
+
+```
+[glogin01]$ python ../src/multi_process_2.py
+A0 B1 - rank: 1
+A0 B1 - rank: 0
+A0 B1 - rank: 3
+A0 B1 - rank: 2
+```
+
+```
+"""
+참고: torch/multiprocessing/spawn.py
+
+mp.spawn 함수는 아래와 같이 동작합니다.
+"""
+
+def start_processes(fn, args=(), nprocs=1, join=True, daemon=False, start_method='spawn'):
+    _python_version_check()
+    mp = multiprocessing.get_context(start_method)
+    error_queues = []
+    processes = []
+    for i in range(nprocs):
+        error_queue = mp.SimpleQueue()
+        process = mp.Process(
+            target=_wrap,
+            args=(fn, i, args, error_queue),
+            daemon=daemon,
+        )
+        process.start()
+        error_queues.append(error_queue)
+        processes.append(process)
+
+    context = ProcessContext(processes, error_queues)
+    if not join:
+        return context
+
+    # Loop on join until it returns True or raises an exception.
+    while not context.join():
+        pass
+```
+
+### 2) PyTorch 런처가 부모 프로세스가 되어 사용자 코드 전체를 서브프로세스로 분기한다.
+이 방식은 torch에 내장된 멀티프로세싱 런처가 사용자 코드 전체를 서브프로세스로 실행시켜주는 매우 편리한 방식입니다.
+
+`python -m torch.distributed.launch --nproc_per_node=n OOO.py`와 같은 명령어를 사용합니다.
+```
+"""
+src/multi_process_3.py
+"""
+
+# 코드 전체가 서브프로세스가 됩니다.
+import os
+
+# RANK, LOCAL_RANK, WORLD_SIZE 등의 변수가 자동으로 설정됩니다.
+print(f"hello world, {os.environ['RANK']}")
+```
+
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/multi_process_3.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+hello world, 0
+hello world, 1
+hello world, 2
+hello world, 3
+```
+ 
+
+## 2. Distributed Programming with PyTorch
+### Concept of Message Passing
+메시지 패싱이란 동일한 주소공간을 공유하지 않는 여러 프로세스들이 데이터를 주고 받을 수 있도록 메시지라는 간접 정보를 주고 받는 것입니다. 예를 들면 Process-1이 특정 태그가 달린 데이터를 메시지 큐에 send하도록, Process-2가 해당 데이터를 receive하도록 코딩해놓으면 두 프로세스가 공유하는 메모리 공간 없이도 데이터를 주고 받을 수 있죠. Large-scale 모델 개발시에 사용되는 분산 통신에는 대부분 이러한 message passing 기법이 사용됩니다.
+  
+![](../images/message_passing.png)
+   
+### MPI (Massage Passing Interface)
+MPI는 Message Passing에 대한 표준 인터페이스를 의미합니다. MPI에는 Process간의 Message Passing에 사용되는 여러 연산(e.g. broadcast, reduce, scatter, gather, ...)이 정의되어 있으며 대표적으로 OpenMPI라는 오픈소스가 존재합니다.
+
+![](../images/open_mpi.png)
+   
+### NCCL & GLOO\n",
+실제로는 openmpi 보다는 nccl이나 gloo 같은 라이브러리를 사용하게 됩니다.
+- NCCL (NVIDIA Collective Communication Library)
+  - NVIDIA에서 개발한 GPU 특화 Message Passing 라이브러리 ('nickel'이라고 읽음)\n",
+  - NVIDIA GPU에서 사용시, 다른 도구에 비해 월등히 높은 성능을 보여주는 것으로 알려져있습니다.\n",
+- GLOO (Facebook's Collective Communication Library)\n",
+  - Facebook에서 개발된 Message Passing 라이브러리. \n",
+  - `torch`에서는 주로 CPU 분산처리에 사용하라고 추천하고 있습니다.\n",
+  
+### 백엔드 라이브러리 선택 가이드
+openmpi를 써야할 특별한 이유가 있는 것이 아니라면 nccl이나 gloo를 사용하는데, GPU에서 사용시 nccl, CPU에서 사용시 gloo를 사용하시면 됩니다. 더 자세한 정보는  https://pytorch.org/docs/stable/distributed.html 여기를 참고하세요.
+  
+각 백엔드별로 수행 가능한 연산은 다음과 같습니다.
+
+![](../images/backends.png)
+    
+### `torch.distributed` 패키지
+`gloo`, `nccl`, `openmpi` 등을 직접 사용해보는 것은 분명 좋은 경험이 될 것입니다. 그러나 시간 관계상 이들을 모두 다룰 수는 없고, 이들을 wrapping 하고 있는 `torch.distributed` 패키지를  사용하여 진행하겠습니다. 실제로 활용 단으로 가면 `nccl` 등을 직접 사용하지 않고 대부분의 경우 `torch.distributed` 등의 하이레벨 패키지를 사용하여 프로그래밍 하게 됩니다.
+  
+### Process Group
+많은 프로세스를 관리하는 것은 어려운 일입니다. 따라서 프로세스 그룹을 만들어서 관리를 용이하게 합니다. `init_process_group`를 호출하면 전체 프로세스가 속한 default_pg(process group)가 만들어집니다. 프로세스 그룹을 초기화하는 `init_process_group` 함수는 **반드시 서브프로세스에서 실행**되어야 하며, 만약 추가로 사용자가 원하는 프로세스들만 모아서 그룹을 생성하려면 `new_group`을 호출하면 됩니다.
+```
+"""
+src/process_group_1.py
+"""
+
+import torch.distributed as dist
+# 일반적으로 dist와 같은 이름을 사용합니다.
+
+dist.init_process_group(backend="nccl", rank=0, world_size=1)
+# 프로세스 그룹 초기화
+# 본 예제에서는 가장 자주 사용하는 nccl을 기반으로 진행하겠습니다.
+# backend에 'nccl' 대신 'mpi'나 'gloo'를 넣어도 됩니다.
+
+process_group = dist.new_group([0])
+# 0번 프로세스가 속한 프로세스 그룹 생성
+
+print(process_group)
+```   
   {
    "cell_type": "code",
    "execution_count": 5,
