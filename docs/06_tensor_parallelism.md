@@ -683,7 +683,7 @@ def forward(ctx, vocab_parallel_logits, target):
     return loss
 ```
 
-### Megatron-LM으로 모델 학습해보기\n",
+### Megatron-LM으로 모델 학습해보기
 Megatron-LM을 사용해서 모델을 학습해보도록 하겠습니다. Megaton-LM은 Hugging Face `transformers`와 같이 코드레벨로 사용하는 프레임워크가 아니라 이미 잘 짜여진 코드를 활용하여 모델을 만드는 데에 쓰입니다. 따라서 레포를 클론한 뒤에 진행하도록 하겠습니다.
 ```
 # git과 wget이 설치되어있지 않다면 아래 명령어를 통해 설치합니다.
@@ -2476,7 +2476,7 @@ INFO:torch.distributed.elastic.agent.server.api:Done waiting for other agents. E
 지금까지 Megatron-LM으로 모델을 학습해봤습니다. Megatron-LM은 훌륭한 Tensor Parallelism 기능을 보유하고 있지만, 기존에 우리가 자주 쓰던 Hugging Face `transformers`로 학습된 모델을 병렬화 할 수는 없었습니다. 이러한 문제를 해결하기 위해 TUNiB은 2021년 `parallelformers`라는 오픈소스를 공개했습니다. `parallelformers`는 코드 한 두줄로 Hugging Face `transformers`로 학습된 거의 대부분의 모델에 Tensor Parallelism을 적용하여 인퍼런스 할 수 있는 도구 입니다.
 `parallelformers`를 설치해봅시다.
 ```
-!pip install parallelformers
+[glogin01]$ pip install parallelformers
 Collecting parallelformers
   Downloading parallelformers-1.0.1-py3-none-any.whl (110 kB)
      |████████████████████████████████| 110 kB 24.0 MB/s eta 0:00:01
