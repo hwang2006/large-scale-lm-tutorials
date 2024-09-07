@@ -1,251 +1,202 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "# Pipeline Parallelism\n",
-    "이번 세션에서는 파이프라인 병렬화에 대해 알아보겠습니다.\n",
-    "\n",
-    "## 1. Inter-layer model parallelism\n",
-    "파이프라인 병렬화는 Inter-layer 모델 병렬화를 개선한 것입니다. Inter-layer 모델 병렬화는 아래와 같이 특정 GPU에 특정 레이어들을 할당하는 모델 병렬화 방법이였죠. 아래 그림에서는 GPU1번에 1,2,3번 레이어가 할당되었고, GPU2번에 4,5번 레이어가 할당 되었는데, 이 때 쪼개진 하나의 조각을 `stage(스테이지)`라고 합니다. 아래 예시의 경우 2개의 스테이지로 분할되었습니다.\n",
-    "\n",
-    "![](../images/inter_layer.png)\n",
-    "\n",
-    "그러나 이전 레이어의 출력을 다음 레이어의 입력으로 하는 신경망의 특성상 특정 GPU의 연산이 끝나야 다른 GPU가 연산을 시작할 수 있습니다. 즉, 아래의 그림처럼 Inter-layer 모델 병렬화는 동시에 하나의 GPU만 사용할 수 있다는 치명적인 한계를 가지고 있습니다.\n",
-    "\n",
-    "![](../images/inter_layer_2.png)\n",
-    "![](../images/inter_layer_3.gif)\n"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "## 2. GPipe\n",
-    "GPipe는 Google에서 개발된 파이프라인 병렬화 기법으로 Inter Layer 모델 병렬화 시 GPU가 쉬는 시간 (idle time)을 줄이기 위해 등장했으며, mini-batch를 micro-batch로 한번 더 쪼개서 학습 과정을 파이프라이닝 하는 방식으로 동작합니다.\n",
-    "\n",
-    "![](../images/gpipe_1.png)\n",
-    "\n",
-    "<br>\n",
-    "<br>\n",
-    "\n",
-    "![](../images/pipeline_parallelism2.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### Micro-batch\n",
-    "- Mini-batch는 전체 데이터셋을 n개로 분할한 서브샘플 집합입니다.\n",
-    "- Micro-batch는 Mini-batch를 m개로 한번 더 분할한 서브샘플 집합입니다.\n",
-    "\n",
-    "![](../images/gpipe_2.png)\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "### Pipelining\n",
-    "GPipe는 미니배치를 마이크로 배치로 쪼개고 연산을 파이프라이닝 합니다. 붉은색 (GPU가 쉬는 부분)을 Bubble time이라고 하는데, Micro batch 사이즈가 커질 수록 Bubble time이 줄어드는 것을 알 수 있습니다.\n",
-    "\n",
-    "![](../images/gpipe_3.gif)\n"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "### GPipe with PyTorch\n",
-    "kakaobrain에서 공개한 `torchgpipe`를 사용하면 손쉽게 GPipe를 사용할 수 있습니다. 단, `nn.Sequential`로 래핑된 모델만 사용 가능하며 모든 모듈의 입력과 출력 타입은 `torch.Tensor` 혹은 `Tuple[torch.Tensor]`로 제한됩니다. 따라서 코딩하기가 상당히 까다롭습니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/gpipe.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.nn as nn\n",
-    "from datasets import load_dataset\n",
-    "from torch.optim import Adam\n",
-    "from torch.utils.data import DataLoader\n",
-    "from torchgpipe import GPipe\n",
-    "from transformers import GPT2Tokenizer, GPT2LMHeadModel\n",
-    "from transformers.models.gpt2.modeling_gpt2 import GPT2Block as GPT2BlockBase\n",
-    "\n",
-    "\n",
-    "class GPT2Preprocessing(nn.Module):\n",
-    "    def __init__(self, config):\n",
-    "        super().__init__()\n",
-    "        self.embed_dim = config.hidden_size\n",
-    "        self.wte = nn.Embedding(config.vocab_size, self.embed_dim)\n",
-    "        self.wpe = nn.Embedding(config.max_position_embeddings, self.embed_dim)\n",
-    "        self.drop = nn.Dropout(config.embd_pdrop)\n",
-    "\n",
-    "    def forward(self, input_ids):\n",
-    "        input_shape = input_ids.size()\n",
-    "        input_ids = input_ids.view(-1, input_shape[-1])\n",
-    "        position_ids = torch.arange(\n",
-    "            0, input_shape[-1], dtype=torch.long, device=input_ids.device\n",
-    "        )\n",
-    "        position_ids = position_ids.unsqueeze(0).view(-1, input_shape[-1])\n",
-    "        inputs_embeds = self.wte(input_ids)\n",
-    "        position_embeds = self.wpe(position_ids)\n",
-    "        hidden_states = inputs_embeds + position_embeds\n",
-    "        hidden_states = self.drop(hidden_states)\n",
-    "        return hidden_states\n",
-    "\n",
-    "\n",
-    "class GPT2Block(GPT2BlockBase):\n",
-    "    def forward(self, hidden_states):\n",
-    "        hidden_states = super(GPT2Block, self).forward(\n",
-    "            hidden_states=hidden_states,\n",
-    "        )\n",
-    "        return hidden_states[0]\n",
-    "\n",
-    "\n",
-    "class GPT2Postprocessing(nn.Module):\n",
-    "    def __init__(self, config):\n",
-    "        super().__init__()\n",
-    "        self.ln_f = nn.LayerNorm(\n",
-    "            config.hidden_size,\n",
-    "            eps=config.layer_norm_epsilon,\n",
-    "        )\n",
-    "        self.lm_head = nn.Linear(\n",
-    "            config.hidden_size,\n",
-    "            config.vocab_size,\n",
-    "            bias=False,\n",
-    "        )\n",
-    "\n",
-    "    def forward(self, hidden_states):\n",
-    "        hidden_states = self.ln_f(hidden_states)\n",
-    "        lm_logits = self.lm_head(hidden_states)\n",
-    "        return lm_logits\n",
-    "\n",
-    "\n",
-    "def create_model_from_pretrained(model_name):\n",
-    "    pretrained = GPT2LMHeadModel.from_pretrained(model_name)\n",
-    "    preprocess = GPT2Preprocessing(pretrained.config)\n",
-    "    preprocess.wte.weight = pretrained.transformer.wte.weight\n",
-    "    preprocess.wpe.weight = pretrained.transformer.wpe.weight\n",
-    "\n",
-    "    blocks = pretrained.transformer.h\n",
-    "    for i, block in enumerate(blocks):\n",
-    "        block.__class__ = GPT2Block\n",
-    "\n",
-    "    postprocess = GPT2Postprocessing(pretrained.config)\n",
-    "    postprocess.ln_f.weight = pretrained.transformer.ln_f.weight\n",
-    "    postprocess.ln_f.bias = pretrained.transformer.ln_f.bias\n",
-    "    postprocess.lm_head.weight.data = pretrained.lm_head.weight.data.clone()\n",
-    "\n",
-    "    return nn.Sequential(preprocess, *blocks, postprocess)\n",
-    "\n",
-    "\n",
-    "if __name__ == \"__main__\":\n",
-    "    world_size = 4\n",
-    "\n",
-    "    tokenizer = GPT2Tokenizer.from_pretrained(\"gpt2\")\n",
-    "    tokenizer.pad_token = tokenizer.eos_token\n",
-    "\n",
-    "    model = create_model_from_pretrained(model_name=\"gpt2\")\n",
-    "    model = GPipe(\n",
-    "        model,\n",
-    "        balance=[4, 3, 3, 4],\n",
-    "        devices=[0, 1, 2, 3],\n",
-    "        chunks=world_size,\n",
-    "    )\n",
-    "\n",
-    "    datasets = load_dataset(\"squad\").data[\"train\"][\"context\"]\n",
-    "    datasets = [str(sample) for sample in datasets]\n",
-    "    data_loader = DataLoader(datasets, batch_size=8, num_workers=8)\n",
-    "\n",
-    "    optimizer = Adam(model.parameters(), lr=3e-5)\n",
-    "    loss_fn = nn.CrossEntropyLoss()\n",
-    "\n",
-    "    for i, data in enumerate(data_loader):\n",
-    "        optimizer.zero_grad()\n",
-    "        tokens = tokenizer(data, return_tensors=\"pt\", truncation=True, padding=True)\n",
-    "        input_ids = tokens.input_ids.to(0)\n",
-    "        labels = tokens.input_ids.to(world_size - 1)\n",
-    "\n",
-    "        lm_logits = model(input_ids)\n",
-    "        shift_logits = lm_logits[..., :-1, :].contiguous()\n",
-    "        shift_labels = labels[..., 1:].contiguous()\n",
-    "        loss = nn.CrossEntropyLoss()(\n",
-    "            shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)\n",
-    "        )\n",
-    "        loss.backward()\n",
-    "        optimizer.step()\n",
-    "\n",
-    "        if i % 10 == 0:\n",
-    "            print(f\"step: {i}, loss: {loss}\")\n",
-    "        if i == 300:\n",
-    "            break\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 47,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Reusing dataset squad (/home/ubuntu/.cache/huggingface/datasets/squad/plain_text/1.0.0/d6ec3ceb99ca480ce37cdd35555d6cb2511d223b9150cce08a837ef62ffea453)\n",
-      "100%|█████████████████████████████████████████████| 2/2 [00:00<00:00, 55.94it/s]\n",
-      "step: 0, loss: 6.084661483764648\n",
-      "step: 10, loss: 3.2574026584625244\n",
-      "step: 20, loss: 2.796205759048462\n",
-      "step: 30, loss: 2.5538008213043213\n",
-      "step: 40, loss: 2.8463237285614014\n",
-      "step: 50, loss: 2.3466761112213135\n",
-      "step: 60, loss: 2.5407633781433105\n",
-      "step: 70, loss: 2.2434418201446533\n",
-      "step: 80, loss: 2.4792842864990234\n",
-      "step: 90, loss: 2.9400510787963867\n",
-      "step: 100, loss: 2.8163280487060547\n",
-      "step: 110, loss: 2.4787795543670654\n",
-      "step: 120, loss: 2.9588236808776855\n",
-      "step: 130, loss: 2.3893203735351562\n",
-      "step: 140, loss: 2.9571073055267334\n",
-      "step: 150, loss: 3.9219329357147217\n",
-      "step: 160, loss: 3.023880958557129\n",
-      "step: 170, loss: 3.018484592437744\n",
-      "step: 180, loss: 1.6825034618377686\n",
-      "step: 190, loss: 3.5461761951446533\n",
-      "step: 200, loss: 3.6606838703155518\n",
-      "step: 210, loss: 3.527740001678467\n",
-      "step: 220, loss: 2.988645315170288\n",
-      "step: 230, loss: 3.1758480072021484\n",
-      "step: 240, loss: 2.5451812744140625\n",
-      "step: 250, loss: 3.1476473808288574\n",
-      "step: 260, loss: 3.4633867740631104\n",
-      "step: 270, loss: 3.199225902557373\n",
-      "step: 280, loss: 2.612720489501953\n",
-      "step: 290, loss: 2.139256238937378\n",
-      "step: 300, loss: 3.437178373336792\n"
-     ]
-    }
-   ],
-   "source": [
-    "# !python -m torch.distributed.launch --nproc_per_node=4 ../src/gpipe.py\n",
-    "!python ../src/gpipe.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "\n",
-    "## 3. 1F1B Pipelining (PipeDream)\n",
-    "\n",
-    "Microsoft에서 공개한 `PipeDream`은 `GPipe`와는 약간 다른 방식의 파이프라이닝을 수행합니다. 흔히 이 방법을 1F1B라고 부르는데, 모든 Forward가 끝나고 나서 Backward를 수행하는 GPipe와 달리 `PipeDream`은 Forward와 Backward를 번갈아가면서 수행합니다.\n",
-    "\n",
-    "<img src=\"../images/1f1b.png\" width=600>\n",
-    "\n",
+# Pipeline Parallelism\n",
+이번 세션에서는 파이프라인 병렬화에 대해 알아보겠습니다.
+   
+## 1. Inter-layer model parallelism
+파이프라인 병렬화는 Inter-layer 모델 병렬화를 개선한 것입니다. Inter-layer 모델 병렬화는 아래와 같이 특정 GPU에 특정 레이어들을 할당하는 모델 병렬화 방법이였죠. 아래 그림에서는 GPU1번에 1,2,3번 레이어가 할당되었고, GPU2번에 4,5번 레이어가 할당 되었는데, 이 때 쪼개진 하나의 조각을 `stage(스테이지)`라고 합니다. 아래 예시의 경우 2개의 스테이지로 분할되었습니다.
+  
+![](../images/inter_layer.png)
+   
+그러나 이전 레이어의 출력을 다음 레이어의 입력으로 하는 신경망의 특성상 특정 GPU의 연산이 끝나야 다른 GPU가 연산을 시작할 수 있습니다. 즉, 아래의 그림처럼 Inter-layer 모델 병렬화는 동시에 하나의 GPU만 사용할 수 있다는 치명적인 한계를 가지고 있습니다.
+    
+![](../images/inter_layer_2.png)
+![](../images/inter_layer_3.gif)
+
+## 2. GPipe\n",
+GPipe는 Google에서 개발된 파이프라인 병렬화 기법으로 Inter Layer 모델 병렬화 시 GPU가 쉬는 시간 (idle time)을 줄이기 위해 등장했으며, mini-batch를 micro-batch로 한번 더 쪼개서 학습 과정을 파이프라이닝 하는 방식으로 동작합니다.
+    
+![](../images/gpipe_1.png)
+
+![](../images/pipeline_parallelism2.png)
+ 
+### Micro-batch\n",
+- Mini-batch는 전체 데이터셋을 n개로 분할한 서브샘플 집합입니다.
+- Micro-batch는 Mini-batch를 m개로 한번 더 분할한 서브샘플 집합입니다.
+    
+![](../images/gpipe_2.png)
+ 
+### Pipelining
+GPipe는 미니배치를 마이크로 배치로 쪼개고 연산을 파이프라이닝 합니다. 붉은색 (GPU가 쉬는 부분)을 Bubble time이라고 하는데, Micro batch 사이즈가 커질 수록 Bubble time이 줄어드는 것을 알 수 있습니다.
+   
+![](../images/gpipe_3.gif)
+ 
+### GPipe with PyTorch
+kakaobrain에서 공개한 `torchgpipe`를 사용하면 손쉽게 GPipe를 사용할 수 있습니다. 단, `nn.Sequential`로 래핑된 모델만 사용 가능하며 모든 모듈의 입력과 출력 타입은 `torch.Tensor` 혹은 `Tuple[torch.Tensor]`로 제한됩니다. 따라서 코딩하기가 상당히 까다롭습니다.
+```
+"""
+src/gpipe.py
+"""
+
+import torch
+import torch.nn as nn
+from datasets import load_dataset
+from torch.optim import Adam
+from torch.utils.data import DataLoader
+from torchgpipe import GPipe
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers.models.gpt2.modeling_gpt2 import GPT2Block as GPT2BlockBase
+
+
+class GPT2Preprocessing(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.embed_dim = config.hidden_size
+        self.wte = nn.Embedding(config.vocab_size, self.embed_dim)
+        self.wpe = nn.Embedding(config.max_position_embeddings, self.embed_dim)
+        self.drop = nn.Dropout(config.embd_pdrop)
+
+    def forward(self, input_ids):
+        input_shape = input_ids.size()
+        input_ids = input_ids.view(-1, input_shape[-1])
+        position_ids = torch.arange(
+            0, input_shape[-1], dtype=torch.long, device=input_ids.device
+        )
+        position_ids = position_ids.unsqueeze(0).view(-1, input_shape[-1])
+        inputs_embeds = self.wte(input_ids)
+        position_embeds = self.wpe(position_ids)
+        hidden_states = inputs_embeds + position_embeds
+        hidden_states = self.drop(hidden_states)
+        return hidden_states
+
+
+class GPT2Block(GPT2BlockBase):
+    def forward(self, hidden_states):
+        hidden_states = super(GPT2Block, self).forward(
+            hidden_states=hidden_states,
+        )
+        return hidden_states[0]
+
+
+class GPT2Postprocessing(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.ln_f = nn.LayerNorm(
+            config.hidden_size,
+            eps=config.layer_norm_epsilon,
+        )
+        self.lm_head = nn.Linear(
+            config.hidden_size,
+            config.vocab_size,
+            bias=False,
+        )
+
+    def forward(self, hidden_states):
+        hidden_states = self.ln_f(hidden_states)
+        lm_logits = self.lm_head(hidden_states)
+        return lm_logits
+
+
+def create_model_from_pretrained(model_name):
+    pretrained = GPT2LMHeadModel.from_pretrained(model_name)
+    preprocess = GPT2Preprocessing(pretrained.config)
+    preprocess.wte.weight = pretrained.transformer.wte.weight
+    preprocess.wpe.weight = pretrained.transformer.wpe.weight
+
+    blocks = pretrained.transformer.h
+    for i, block in enumerate(blocks):
+        block.__class__ = GPT2Block
+
+    postprocess = GPT2Postprocessing(pretrained.config)
+    postprocess.ln_f.weight = pretrained.transformer.ln_f.weight
+    postprocess.ln_f.bias = pretrained.transformer.ln_f.bias
+    postprocess.lm_head.weight.data = pretrained.lm_head.weight.data.clone()
+
+    return nn.Sequential(preprocess, *blocks, postprocess)
+
+
+if __name__ == "__main__":
+    world_size = 4
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    tokenizer.pad_token = tokenizer.eos_token
+
+    model = create_model_from_pretrained(model_name="gpt2")
+    model = GPipe(
+        model,
+        balance=[4, 3, 3, 4],
+        devices=[0, 1, 2, 3],
+        chunks=world_size,
+    )
+
+    datasets = load_dataset("squad").data["train"]["context"]
+    datasets = [str(sample) for sample in datasets]
+    data_loader = DataLoader(datasets, batch_size=8, num_workers=8)
+
+    optimizer = Adam(model.parameters(), lr=3e-5)
+    loss_fn = nn.CrossEntropyLoss()
+
+    for i, data in enumerate(data_loader):
+        optimizer.zero_grad()
+        tokens = tokenizer(data, return_tensors="pt", truncation=True, padding=True)
+        input_ids = tokens.input_ids.to(0)
+        labels = tokens.input_ids.to(world_size - 1)
+
+        lm_logits = model(input_ids)
+        shift_logits = lm_logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+        loss = nn.CrossEntropyLoss()(
+            shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+        )
+        loss.backward()
+        optimizer.step()
+
+        if i % 10 == 0:
+            print(f"step: {i}, loss: {loss}")
+        if i == 300:
+            break
+```
+```
+# !python -m torch.distributed.launch --nproc_per_node=4 ../src/gpipe.py
+!python ../src/gpipe.py
+Reusing dataset squad (/home/ubuntu/.cache/huggingface/datasets/squad/plain_text/1.0.0/d6ec3ceb99ca480ce37cdd35555d6cb2511d223b9150cce08a837ef62ffea453)
+100%|█████████████████████████████████████████████| 2/2 [00:00<00:00, 55.94it/s]
+step: 0, loss: 6.084661483764648
+step: 10, loss: 3.2574026584625244
+step: 20, loss: 2.796205759048462
+step: 30, loss: 2.5538008213043213
+step: 40, loss: 2.8463237285614014
+step: 50, loss: 2.3466761112213135
+step: 60, loss: 2.5407633781433105
+step: 70, loss: 2.2434418201446533
+step: 80, loss: 2.4792842864990234
+step: 90, loss: 2.9400510787963867
+step: 100, loss: 2.8163280487060547
+step: 110, loss: 2.4787795543670654
+step: 120, loss: 2.9588236808776855
+step: 130, loss: 2.3893203735351562
+step: 140, loss: 2.9571073055267334
+step: 150, loss: 3.9219329357147217
+step: 160, loss: 3.023880958557129
+step: 170, loss: 3.018484592437744
+step: 180, loss: 1.6825034618377686
+step: 190, loss: 3.5461761951446533
+step: 200, loss: 3.6606838703155518
+step: 210, loss: 3.527740001678467
+step: 220, loss: 2.988645315170288
+step: 230, loss: 3.1758480072021484
+step: 240, loss: 2.5451812744140625
+step: 250, loss: 3.1476473808288574
+step: 260, loss: 3.4633867740631104
+step: 270, loss: 3.199225902557373
+step: 280, loss: 2.612720489501953
+step: 290, loss: 2.139256238937378
+step: 300, loss: 3.437178373336792
+```
+
+## 3. 1F1B Pipelining (PipeDream)
+Microsoft에서 공개한 `PipeDream`은 `GPipe`와는 약간 다른 방식의 파이프라이닝을 수행합니다. 흔히 이 방법을 1F1B라고 부르는데, 모든 Forward가 끝나고 나서 Backward를 수행하는 GPipe와 달리 `PipeDream`은 Forward와 Backward를 번갈아가면서 수행합니다.
+   
+<img src=\"../images/1f1b.png\" width=600>
+
     "1F1B Pipelining에는 다음과 같은 두가지 챌린지가 존재합니다.\n",
     "1. Weight version managing\n",
     "2. Work partitioning\n",
