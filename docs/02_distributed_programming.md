@@ -316,138 +316,175 @@ if __name__ == "__main__":
 python -m torch.distributed.launch --nproc_per_node=n OOO.py를 사용할때는 아래와 같이 처리합니다. dist.get_rank(), dist_get_world_size()와 같은 함수를 이용하여 rank와 world_size를 알 수 있습니다.
 
 ```
+"""
+src/process_group_4.py
+"""
+
+import torch.distributed as dist
+
+dist.init_process_group(backend="nccl")
+# 프로세스 그룹 초기화
+
+group = dist.new_group([_ for _ in range(dist.get_world_size())])
+# 프로세스 그룹 생성
+
+print(f"{group} - rank: {dist.get_rank()}\n")
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/process_group_4.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+<torch.distributed.ProcessGroupNCCL object at 0x7fd3059bc4f0> - rank: 1
+<torch.distributed.ProcessGroupNCCL object at 0x7f051d38e470> - rank: 3
+<torch.distributed.ProcessGroupNCCL object at 0x7fd233c31430> - rank: 2
+<torch.distributed.ProcessGroupNCCL object at 0x7f0f34a853f0> - rank: 0
+```
+
+### P2P Communication (Point to point)
+![](../images/p2p.png)
+P2P (Point to point, 점 대 점) 통신은 특정 프로세스에서 다른 프로세스 데이터를 전송하는 통신이며 `torch.distributed` 패키지의 `send`, `recv` 함수를 활용하여 통신할 수 있습니다.
+
+```
+"""
+src/p2p_communication.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("gloo")
+# 현재 nccl은 send, recv를 지원하지 않습니다. (2021/10/21)
+
+if dist.get_rank() == 0:
+    tensor = torch.randn(2, 2)
+    dist.send(tensor, dst=1)
+
+elif dist.get_rank() == 1:
+    tensor = torch.zeros(2, 2)
+    print(f"rank 1 before: {tensor}\n")
+    dist.recv(tensor, src=0)
+    print(f"rank 1 after: {tensor}\n")
+
+else:
+    raise RuntimeError("wrong rank")
+```
+
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=2 ../src/p2p_communication.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+rank 1 before: tensor([[0., 0.],
+        [0., 0.]])
+
+rank 1 after: tensor([[-0.6160, -0.0912],
+        [ 1.0645,  2.5397]])
+```
+주의할 것은 이들이 동기적으로 통신한다는 것입니다. 비동기 통신(non-blocking)에는 `isend`, `irecv`를 이용합니다. 이들은 비동기적으로 작동하기 때문에 `wait()` 메서드를 통해 다른 프로세스의 통신이 끝날때 까지 기다리고 난 뒤에 접근해야합니다.
 
 
+```
+"""
+src/p2p_communication_non_blocking.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("gloo")
+# 현재 nccl은 send, recv를 지원하지 않습니다. (2021/10/21)
+
+if dist.get_rank() == 0:
+    tensor = torch.randn(2, 2)
+    request = dist.isend(tensor, dst=1)
+elif dist.get_rank() == 1:
+    tensor = torch.zeros(2, 2)
+    request = dist.irecv(tensor, src=0)
+else:
+    raise RuntimeError("wrong rank")
+
+request.wait()
+
+print(f"rank {dist.get_rank()}: {tensor}")
+```
+
+```
+[globin01]$ python -m torch.distributed.launch --nproc_per_node=2 ../src/p2p_communication_non_blocking.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+rank 1: tensor([[-0.7049,  0.8836],
+        [-0.4996,  0.4550]])
+rank 0: tensor([[-0.7049,  0.8836],
+        [-0.4996,  0.4550]])
+
+```
+
+### Collective Communication
+Collective Communication은 집합통신이라는 뜻으로 여러 프로세스가 참여하여 통신하는 것을 의미합니다. 다양한 연산들이 있지만 기본적으로 아래와 같은 4개의 연산(`broadcast`, `scatter`, `gather`, `reduce`)이 기본 세트입니다.
+   
+![](../images/collective.png)
   
-    "\"\"\"\n",rch.randn(2, 2)\n",
-    "    dist.send(tensor, dst=1)\n",
-    "\n",
-    "elif dist.get_rank() == 1:\n",
-    "    tensor = torch.zeros(2, 2)\n",
-    "    print(f\"rank 1 before: {tensor}\\n\")\n",
-    "    dist.recv(tensor, src=0)\n",
-    "    print(f\"rank 1 after: {tensor}\\n\")\n",
-    "\n",
-    "else:\n",
-    "    raise RuntimeError(\"wrong rank\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 10,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "rank 1 before: tensor([[0., 0.],\n",
-      "        [0., 0.]])\n",
-      "\n",
-      "rank 1 after: tensor([[-0.6160, -0.0912],\n",
-      "        [ 1.0645,  2.5397]])\n",
-      "\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=2 ../src/p2p_communication.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "주의할 것은 이들이 동기적으로 통신한다는 것입니다. 비동기 통신(non-blocking)에는 `isend`, `irecv`를 이용합니다. 이들은 비동기적으로 작동하기 때문에 `wait()` 메서드를 통해 다른 프로세스의 통신이 끝날때 까지 기다리고 난 뒤에 접근해야합니다."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/p2p_communication_non_blocking.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(\"gloo\")\n",
-    "# 현재 nccl은 send, recv를 지원하지 않습니다. (2021/10/21)\n",
-    "\n",
-    "if dist.get_rank() == 0:\n",
-    "    tensor = torch.randn(2, 2)\n",
-    "    request = dist.isend(tensor, dst=1)\n",
-    "elif dist.get_rank() == 1:\n",
-    "    tensor = torch.zeros(2, 2)\n",
-    "    request = dist.irecv(tensor, src=0)\n",
-    "else:\n",
-    "    raise RuntimeError(\"wrong rank\")\n",
-    "\n",
-    "request.wait()\n",
-    "\n",
-    "print(f\"rank {dist.get_rank()}: {tensor}\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 12,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "rank 1: tensor([[-0.7049,  0.8836],\n",
-      "        [-0.4996,  0.4550]])\n",
-      "rank 0: tensor([[-0.7049,  0.8836],\n",
-      "        [-0.4996,  0.4550]])\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=2 ../src/p2p_communication_non_blocking.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "### Collective Communication\n",
-    "\n",
-    "Collective Communication은 집합통신이라는 뜻으로 여러 프로세스가 참여하여 통신하는 것을 의미합니다. 다양한 연산들이 있지만 기본적으로 아래와 같은 4개의 연산(`broadcast`, `scatter`, `gather`, `reduce`)이 기본 세트입니다.\n",
-    "\n",
-    "![](../images/collective.png)\n",
-    "\n",
-    "여기에 추가로 `all-reduce`, `all-gather`, `reduce-scatter` 등의 복합 연산과 동기화 연산인 `barrier`까지 총 8개 연산에 대해 알아보겠습니다. 추가로 만약 이러한 연산들을 비동기 모드로 실행하려면 각 연산 수행시 `async_op` 파라미터를 `True`로 설정하면 됩니다.\n",
-    "\n",
-    "<br>\n",
-    "\n",
-    "#### 1) Broadcast\n",
-    "\n",
-    "Broadcast는 특정 프로세스에 있는 데이터를 그룹내의 모든 프로세스에 복사하는 연산입니다.\n",
-    "\n",
-    "![](../images/broadcast.png)\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
+여기에 추가로 `all-reduce`, `all-gather`, `reduce-scatter` 등의 복합 연산과 동기화 연산인 `barrier`까지 총 8개 연산에 대해 알아보겠습니다. 추가로 만약 이러한 연산들을 비동기 모드로 실행하려면 각 연산 수행시 `async_op` 파라미터를 `True`로 설정하면 됩니다.
+   
+#### 1) Broadcast
+Broadcast는 특정 프로세스에 있는 데이터를 그룹내의 모든 프로세스에 복사하는 연산입니다.
+ 
+![](../images/broadcast.png)
+
+```
+"""
+src/broadcast.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("nccl")
+rank = dist.get_rank()
+torch.cuda.set_device(rank)
+# device를 setting하면 이후에 rank에 맞는 디바이스에 접근 가능합니다.
+
+if rank == 0:
+    tensor = torch.randn(2, 2).to(torch.cuda.current_device())
+else:
+    tensor = torch.zeros(2, 2).to(torch.cuda.current_device())
+
+print(f"before rank {rank}: {tensor}\n")
+dist.broadcast(tensor, src=0)
+print(f"after rank {rank}: {tensor}\n")
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/broadcast.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+before rank 3: tensor([[0., 0.],
+        [0., 0.]], device='cuda:3')
+before rank 1: tensor([[0., 0.],
+        [0., 0.]], device='cuda:1')
+
+
+before rank 2: tensor([[0., 0.],
+        [0., 0.]], device='cuda:2')
+
+before rank 0: tensor([[-0.7522, -0.2532],
+        [ 0.9788,  1.0834]], device='cuda:0')
+
+after rank 0: tensor([[-0.7522, -0.2532],
+        [ 0.9788,  1.0834]], device='cuda:0')
+
+after rank 1: tensor([[-0.7522, -0.2532],
+        [ 0.9788,  1.0834]], device='cuda:1')
+
+after rank 3: tensor([[-0.7522, -0.2532],
+        [ 0.9788,  1.0834]], device='cuda:3')
+
+after rank 2: tensor([[-0.7522, -0.2532],
+        [ 0.9788,  1.0834]], device='cuda:2')
+```
+
     "\"\"\"\n",
     "src/broadcast.py\n",
     "\"\"\"\n",
