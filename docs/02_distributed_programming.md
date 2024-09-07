@@ -513,7 +513,7 @@ def send(tensor, dest_stage, async_op=False):
 ```
 #### 2) Reduce
 Reduce는 각 프로세스가 가진 데이터로 특정 연산을 수행해서 출력을 하나의 디바이스로 모아주는 연산입니다. 연산은 주로 sum, max, min 등이 가능합니다.
-![](../images/reduce.png)"
+![](../images/reduce.png)
 ```
 """
 src/reduce_sum.py
@@ -576,156 +576,244 @@ Setting OMP_NUM_THREADS environment variable for each process to be 1 in default
 *****************************************
 tensor([[3., 3.],
         [3., 3.]], device='cuda:0')
-3) Scatter
 ```
- 
-  
-    "#### 3) Scatter\n",e",
-   "execution_count": 40,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "after rank 2: tensor([30.], device='cuda:2')\n",
-      "\n",
-      "after rank 3: tensor([40.], device='cuda:3')\n",
-      "\n",
-      "after rank 0: tensor([10.], device='cuda:0')\n",
-      "\n",
-      "after rank 1: tensor([20.], device='cuda:1')\n",
-      "\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=4 ../src/scatter_nccl.py"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "참고: megatron-lm/megatron/mpu/mappings.py\n",
-    "\"\"\"\n",
-    "\n",
-    "def _split(input_):\n",
-    "    \"\"\"Split the tensor along its last dimension and keep the\n",
-    "    corresponding slice.\"\"\"\n",
-    "\n",
-    "    world_size = get_tensor_model_parallel_world_size()\n",
-    "    # Bypass the function if we are using only 1 GPU.\n",
-    "    if world_size==1:\n",
-    "        return input_\n",
-    "\n",
-    "    # Split along last dimension.\n",
-    "    input_list = split_tensor_along_last_dim(input_, world_size)\n",
-    "\n",
-    "    # Note: torch.split does not create contiguous tensors by default.\n",
-    "    rank = get_tensor_model_parallel_rank()\n",
-    "    output = input_list[rank].contiguous()\n",
-    "\n",
-    "    return output\n",
-    "\n",
-    "class _ScatterToModelParallelRegion(torch.autograd.Function):\n",
-    "    \"\"\"Split the input and keep only the corresponding chuck to the rank.\"\"\"\n",
-    "\n",
-    "    @staticmethod\n",
-    "    def symbolic(graph, input_):\n",
-    "        return _split(input_)\n",
-    "\n",
-    "    @staticmethod\n",
-    "    def forward(ctx, input_):\n",
-    "        return _split(input_)\n",
-    "\n",
-    "    @staticmethod\n",
-    "    def backward(ctx, grad_output):\n",
-    "        return _gather(grad_output)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "#### 4) Gather\n",
-    "Gather는 여러 디바이스에 존재하는 텐서를 하나로 모아주는 연산입니다.\n",
-    "![](../images/gather.png)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "\"\"\"\n",
-    "src/gather.py\n",
-    "\"\"\"\n",
-    "\n",
-    "import torch\n",
-    "import torch.distributed as dist\n",
-    "\n",
-    "dist.init_process_group(\"gloo\")\n",
-    "# nccl은 gather를 지원하지 않습니다.\n",
-    "rank = dist.get_rank()\n",
-    "torch.cuda.set_device(rank)\n",
-    "\n",
-    "input = torch.ones(1) * rank\n",
-    "# rank==0 => [0]\n",
-    "# rank==1 => [1]\n",
-    "# rank==2 => [2]\n",
-    "# rank==3 => [3]\n",
-    "\n",
-    "if rank == 0:\n",
-    "    outputs_list = [torch.zeros(1), torch.zeros(1), torch.zeros(1), torch.zeros(1)]\n",
-    "    dist.gather(input, gather_list=outputs_list, dst=0)\n",
-    "    print(outputs_list)\n",
-    "else:\n",
-    "    dist.gather(input, dst=0)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 46,
-   "metadata": {
-    "scrolled": true
-   },
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "*****************************************\n",
-      "Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. \n",
-      "*****************************************\n",
-      "[tensor([0.]), tensor([1.]), tensor([2.]), tensor([3.])]\n"
-     ]
-    }
-   ],
-   "source": [
-    "!python -m torch.distributed.launch --nproc_per_node=4 ../src/gather.py"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "<br>\n",
-    "\n",
-    "#### 5) All-reduce\n",
-    "이름 앞에 All- 이 붙은 연산들은 해당 연산을 수행 한뒤, 결과를 모든 디바이스로 broadcast하는 연산입니다. 아래 그림처럼 All-reduce는 reduce를 수행한 뒤, 계산된 결과를 모든 디바이스로 복사합니다.\n",
-    "![](../images/allreduce.png)"
+#### 3) Scatter
+Scatter는 여러개의 element를 쪼개서 각 device에 뿌려주는 연산입니다.
+![](../images/scatter.png)
+```
+"""
+src/scatter.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("gloo")
+# nccl은 scatter를 지원하지 않습니다.
+rank = dist.get_rank()
+torch.cuda.set_device(rank)
+
+
+output = torch.zeros(1)
+print(f"before rank {rank}: {output}\n")
+
+if rank == 0:
+    inputs = torch.tensor([10.0, 20.0, 30.0, 40.0])
+    inputs = torch.split(inputs, dim=0, split_size_or_sections=1)
+    # (tensor([10]), tensor([20]), tensor([30]), tensor([40]))
+    dist.scatter(output, scatter_list=list(inputs), src=0)
+else:
+    dist.scatter(output, src=0)
+
+print(f"after rank {rank}: {output}\n")
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/scatter.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+before rank 0: tensor([0.])
+
+before rank 3: tensor([0.])
+
+after rank 3: tensor([40.])
+
+before rank 1: tensor([0.])
+
+before rank 2: tensor([0.])
+
+after rank 0: tensor([10.])
+after rank 1: tensor([20.])
+
+
+after rank 2: tensor([30.])
+```
+nccl에서는 scatter가 지원되지 않기 때문에 아래와 같은 방법으로 scatter 연산을 수행합니다.
+```
+"""
+src/scatter_nccl.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("nccl")
+rank = dist.get_rank()
+torch.cuda.set_device(rank)
+
+inputs = torch.tensor([10.0, 20.0, 30.0, 40.0])
+inputs = torch.split(tensor=inputs, dim=-1, split_size_or_sections=1)
+output = inputs[rank].contiguous().to(torch.cuda.current_device())
+print(f"after rank {rank}: {output}\n")
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/scatter_nccl.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+after rank 2: tensor([30.], device='cuda:2')
+
+after rank 3: tensor([40.], device='cuda:3')
+
+after rank 0: tensor([10.], device='cuda:0')
+
+after rank 1: tensor([20.], device='cuda:1')
+```
+```
+"""
+참고: megatron-lm/megatron/mpu/mappings.py
+"""
+
+def _split(input_):
+    """Split the tensor along its last dimension and keep the
+    corresponding slice."""
+
+    world_size = get_tensor_model_parallel_world_size()
+    # Bypass the function if we are using only 1 GPU.
+    if world_size==1:
+        return input_
+
+    # Split along last dimension.
+    input_list = split_tensor_along_last_dim(input_, world_size)
+
+    # Note: torch.split does not create contiguous tensors by default.
+    rank = get_tensor_model_parallel_rank()
+    output = input_list[rank].contiguous()
+
+    return output
+
+class _ScatterToModelParallelRegion(torch.autograd.Function):
+    """Split the input and keep only the corresponding chuck to the rank."""
+
+    @staticmethod
+    def symbolic(graph, input_):
+        return _split(input_)
+
+    @staticmethod
+    def forward(ctx, input_):
+        return _split(input_)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        return _gather(grad_output)
+```
+#### 4) Gather
+Gather는 여러 디바이스에 존재하는 텐서를 하나로 모아주는 연산입니다.
+![](../images/gather.png)
+```
+"""
+src/gather.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("gloo")
+# nccl은 gather를 지원하지 않습니다.
+rank = dist.get_rank()
+torch.cuda.set_device(rank)
+
+input = torch.ones(1) * rank
+# rank==0 => [0]
+# rank==1 => [1]
+# rank==2 => [2]
+# rank==3 => [3]
+
+if rank == 0:
+    outputs_list = [torch.zeros(1), torch.zeros(1), torch.zeros(1), torch.zeros(1)]
+    dist.gather(input, gather_list=outputs_list, dst=0)
+    print(outputs_list)
+else:
+    dist.gather(input, dst=0)
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/gather.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+[tensor([0.]), tensor([1.]), tensor([2.]), tensor([3.])]
+```
+#### 5) All-reduce
+이름 앞에 All- 이 붙은 연산들은 해당 연산을 수행 한뒤, 결과를 모든 디바이스로 broadcast하는 연산입니다. 아래 그림처럼 All-reduce는 reduce를 수행한 뒤, 계산된 결과를 모든 디바이스로 복사합니다.\n",
+![](../images/allreduce.png)
+```
+"""
+src/allreduce_sum.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("nccl")
+rank = dist.get_rank()
+torch.cuda.set_device(rank)
+
+tensor = torch.ones(2, 2).to(torch.cuda.current_device()) * rank
+# rank==0 => [[0, 0], [0, 0]]
+# rank==1 => [[1, 1], [1, 1]]
+# rank==2 => [[2, 2], [2, 2]]
+# rank==3 => [[3, 3], [3, 3]]
+
+dist.all_reduce(tensor, op=torch.distributed.ReduceOp.SUM)
+
+print(f"rank {rank}: {tensor}\n")
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/allreduce_sum.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+rank 1: tensor([[6., 6.],
+        [6., 6.]], device='cuda:1')
+
+rank 2: tensor([[6., 6.],
+        [6., 6.]], device='cuda:2')
+rank 0: tensor([[6., 6.],
+        [6., 6.]], device='cuda:0')
+
+
+rank 3: tensor([[6., 6.],
+        [6., 6.]], device='cuda:3')
+
+```
+"""
+src/allreduce_max.py
+"""
+
+import torch
+import torch.distributed as dist
+
+dist.init_process_group("nccl")
+rank = dist.get_rank()
+torch.cuda.set_device(rank)
+
+tensor = torch.ones(2, 2).to(torch.cuda.current_device()) * rank
+# rank==0 => [[0, 0], [0, 0]]
+# rank==1 => [[1, 1], [1, 1]]
+# rank==2 => [[2, 2], [2, 2]]
+# rank==3 => [[3, 3], [3, 3]]
+
+dist.all_reduce(tensor, op=torch.distributed.ReduceOp.MAX)
+
+print(f"rank {rank}: {tensor}\n")
+```
+```
+[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/allreduce_max.py
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+rank 3: tensor([[3., 3.],
+        [3., 3.]], device='cuda:3')
+
+rank 1: tensor([[3., 3.],
+        [3., 3.]], device='cuda:1')
+
+rank 2: tensor([[3., 3.],
+        [3., 3.]], device='cuda:2')
+
+rank 0: tensor([[3., 3.],
+        [3., 3.]], device='cuda:0')
+```
    ]
   },
   {
