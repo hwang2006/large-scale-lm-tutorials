@@ -1,4 +1,4 @@
-# Data Parallelism\n",
+# Data Parallelism
 이번 세션에는 데이터 병렬화 기법에 대해 알아보겠습니다.
     
 ## 1. `torch.nn.DataParallel`
@@ -418,7 +418,11 @@ Some weights of the model checkpoint at bert-base-cased were not used when initi
 - This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
 Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
-Some weights of the model checkpoint at bert-base-cased were not used when initializing BertForSequenceClassification: ['cls.predictions.transform.dense.weight', 'cls.predictions.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.seq_relationship.weight', 'cls.predictions.decoder.weight']
+Some weights of the model checkpoint at bert-base-cased were not used when initializing
+BertForSequenceClassification: ['cls.predictions.transform.dense.weight', 'cls.predictions.bias',
+'cls.seq_relationship.bias',
+'cls.predictions.transform.LayerNorm.bias','cls.predictions.transform.LayerNorm.weight',
+'cls.predictions.transform.dense.bias', 'cls.seq_relationship.weight', 'cls.predictions.decoder.weight']
 - This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
 - This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
 Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.weight', 'classifier.bias']
