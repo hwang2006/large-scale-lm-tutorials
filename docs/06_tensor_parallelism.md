@@ -198,7 +198,7 @@ def forward(self, input_):
 
 
 Row Parallelism은 **입력텐서(X)를 분할**하고, 모델의 파라미터(A)를 **수평방향으로 분할(A1, A2)하여 내적** 후 더하는 연산입니다.
-![](../images/row_parallelism.png)\n",
+![](../images/row_parallelism.png)
 마찬가지로 Row Parallelism을 여러 GPU에서 실행하기 위해서는 분산 프로그래밍이 필요합니다. Row Parallelism을 위해서는 Scatter와 All-reduce을 사용합니다.
 - 서로 다른 GPU에 입력을 분할하여 전송하기 위해 **Scatter** 연산를 사용합니다.
 - 행렬 곱 연산 결과를 더하기 위해서 **All-reduce** 연산을 사용합니다.
@@ -471,7 +471,7 @@ class GPTNeoSelfAttention(nn.Module):
         return outputs
 ```
 
-![](../images/megatron_attention.jpeg)\n",
+![](../images/megatron_attention.jpeg)
    
 Megatron-LM은 Attention 레이어의 Q, K, V Linear projection과 Output projection 부분을 병렬화 합니다. 마찬가지로 Q, K, V Linear projection 부분은 Column parallelism, Output projection 부분은 Row parallelism으로 처리하여 **Column-Row의 패턴을 만듭니다.** 이를 통해 Attention 레이어에서도 MLP 레이어와 마찬가지로 `Scatter`, `All-gather` 연산을 생략 할 수 있습니다.
 
@@ -2471,7 +2471,7 @@ INFO:torch.distributed.elastic.agent.server.api:Done waiting for other agents. E
 /home/ubuntu/kevin/jupyter/notebooks
 ```
 
-## 3. Parallelformers\n",
+## 3. Parallelformers
 ![](../images/parallelformers.png)
 지금까지 Megatron-LM으로 모델을 학습해봤습니다. Megatron-LM은 훌륭한 Tensor Parallelism 기능을 보유하고 있지만, 기존에 우리가 자주 쓰던 Hugging Face `transformers`로 학습된 모델을 병렬화 할 수는 없었습니다. 이러한 문제를 해결하기 위해 TUNiB은 2021년 `parallelformers`라는 오픈소스를 공개했습니다. `parallelformers`는 코드 한 두줄로 Hugging Face `transformers`로 학습된 거의 대부분의 모델에 Tensor Parallelism을 적용하여 인퍼런스 할 수 있는 도구 입니다.
 `parallelformers`를 설치해봅시다.
