@@ -1,4 +1,4 @@
-# Overview of Parallelism\n",
+# Overview of Parallelism
 이번 세션에서는 병렬처리에 들어가기 앞서 다양한 병렬처리 기법을 전반적으로 살펴보겠습니다.
 
 ## 1. Parallelism
@@ -15,7 +15,7 @@
 Inter-layer 모델 병렬화는 레이어를 기준으로 모델을 쪼개는 병렬화 방식입니다. 아래처럼 1,2,3번 레이어는 GPU 1번에, 4,5번 레이어는 GPU 2번에 할당 할 수 있으며, 대표적으로 Google의 GPipe가 이에 해당합니다.
 ![](../images/inter_layer.png)
 
-### Intra-layer Model Parallelism\n",
+### Intra-layer Model Parallelism
 인트라 레이어 모델 병렬화는 레이어와 상관 없이 텐서 자체를 쪼개는 병렬화 방식입니다. 예를 들면 [256, 256] 사이즈의 파라미터가 있다면 이를 [128, 256] 혹은 [256, 128]와 같이 쪼갤 수 있으며, 대표적으로 NVIDIA의 Megatron-LM이 이에 해당합니다.
 ![](../images/intra_layer.png)
   
@@ -25,7 +25,7 @@ Inter-layer 모델 병렬화는 레이어를 기준으로 모델을 쪼개는 �
 ![](../images/pipeline_parallelism.png)
 이는 매우 비효율적입니다. GPU가 여러대 있지만 실제로는 동시에 하나의 GPU만 활용할 수 있기 때문이죠. 이러한 문제를 해결하기 위해 아래처럼 연산과정을 병렬적으로 파이프라이닝하는 것이 파이프라인 병렬화입니다. (말이 어렵죠? 뒤에서 자세히 알려드릴게요.)
 
-![](../images/pipeline_parallelism2.png)\n",
+![](../images/pipeline_parallelism2.png)
 
 ## 4. Multi-dimensional Parallelism\n",
 위에서 언급한 다양한 병렬화 기법들은 동시에 여러개를 적용할 수도 있으며 적용되는 병렬화의 개수에 따라 차원이 늘어납니다. 아래와 같이 다양한 방법으로 n-차원 병렬화를 수행 할 수 있죠.
