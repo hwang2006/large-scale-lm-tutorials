@@ -1,4 +1,4 @@
-# Multi-dimensional Parallelism\n"
+# Multi-dimensional Parallelism
 이번 세션에서는 Multi-dimensional Parallelism을 위해 사용되는 몇가지 개념과 실습을 진행해보도록 하겠습니다.
 
 ## 1. Multi-dimensional Parallelism
@@ -23,8 +23,8 @@ MPU는 Megatron-LM에서 제안된 개념으로 모델 병렬처리와 관련된
   - `[0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13], [14, 15]`
   - 즉, 0번 gpu는 1번 gpu와 tensor parallel 통신을 수행할 수 있으며 2번 gpu는 3번 gpu와 통신 가능합니다.
    
-- Data parallelism group은 다음과 같이 생성 될 수 있습니다.\n",
-  - `[0, 2], [1, 3], [4, 6], [5, 7], [8, 10], [9, 11], [12, 14], [13, 15]`\n",
+- Data parallelism group은 다음과 같이 생성 될 수 있습니다.
+  - `[0, 2], [1, 3], [4, 6], [5, 7], [8, 10], [9, 11], [12, 14], [13, 15]`
   - 즉, 0번 gpu는 2번 gpu와 data parallel  통신을 수행할 수 있으며 1번 gpu는 3번 gpu와 통신 가능합니다.
    
 - Pipeline parallelism group은 다음과 같이 생성 될 수 있습니다.
@@ -36,14 +36,14 @@ MPU는 Megatron-LM에서 제안된 개념으로 모델 병렬처리와 관련된
  ```
                +---------+  +---------+  +---------+  +---------+
        tensor  |   g00   |  |   g04   |  |   g08   |  |   g12   |
- data          +---------+  +---------+  +---------+  +---------+ ===> forward\n",
+ data          +---------+  +---------+  +---------+  +---------+ ===> forward
        tensor  |   g01   |  |   g05   |  |   g09   |  |   g13   |
                +---------+  +---------+  +---------+  +---------+
                 pipeline     pipeline     pipeline     pipeline
     
                +---------+  +---------+  +---------+  +---------+
        tensor  |   g02   |  |   g06   |  |   g10   |  |   g14   |
- data          +---------+  +---------+  +---------+  +---------+ ===> forward\n",
+ data          +---------+  +---------+  +---------+  +---------+ ===> forward
        tensor  |   g03   |  |   g07   |  |   g11   |  |   g15   |
                +---------+  +---------+  +---------+  +---------+
                  pipeline     pipeline     pipeline     pipeline
@@ -919,7 +919,7 @@ print(a)
 2: all-reduce => tensor([10, 15, 20, 25], device='cuda:2')
 ```
 
-## 3. Large-scale 프로젝트 소개\n",
+## 3. Large-scale 프로젝트 소개
  
 현재 거의 모든 빅모델 관련 프로젝트는 Megatron-LM을 기반으로 하고 있습니다. Tensor parallelism 세션에서 이미 Megatron-LM의 실습을 진행했기 때문에 이번 세션에서는 따로 실습을 진행하지는 않겠습니다. 지금부터 소개 드릴 3개의 프로젝트 모두 Megatron-LM의 Fork 레포지토리이기 때문에 사용법이 거의 동일하고 Argument 등만 변경된 것이 대부분입니다. 각각 프로젝트 소개를 읽어보시고 적합하다 싶은 프로젝트의 레포를 클론하셔서 사용하시길 바랍니다.
 
@@ -950,7 +950,7 @@ GPT-NeoX는 GPT-Neo로 유명한 EleutherAI 팀이 만들고 있는 GPU 버전 �
 
 한가지 눈 여겨 볼 것은 현재 Megatron-LM과의 업스트림이 유지되지 않고 있으며 서로 꽤나 많이 달라졌습니다. Megatron-LM도 지속적으로 업데이트가 되고 있기 때문에 **업스트림이 유지되는지 유지되지 않는지도 참고할 사항**입니다. 또한 GPT-NeoX는 DeeperSpeed라는 DeepSpeed 포크 레포지토리를 개발해서 사용하고 있는데, 역시 업스트림 유지가 되고있지 않습니다. 
  
-### 3) Big-Science\n",
+### 3) Big-Science
     
 ![](../images/big_science.png)
 - Maintainer: Stas, Wang, ... Hugging Face Team
