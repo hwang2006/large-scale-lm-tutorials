@@ -6,7 +6,8 @@
 
 - 목차의 대분류는 '세션', 소분류는 '챕터'라고 명명하였습니다.
 - 모든 소스코드 및 노트북 파일은 [Github](https://github.com/tunib-ai/large-scale-lm-tutorials) 에 공개되어 있습니다. <br>
-- Github에서 열람하시는 것보다 [NBViewer](https://nbviewer.org/github/tunib-ai/large-scale-lm-tutorials/tree/main/notebooks/) 로 열람하시는 것을 추천드립니다.
+<!--- - Github에서 열람하시는 것보다 [NBViewer](https://nbviewer.org/github/tunib-ai/large-scale-lm-tutorials/tree/main/notebooks/) 로 열람하시는 것을 추천드립니다.
+-->
 
 ## Contents
 
@@ -22,6 +23,12 @@
 10. [Additional Techniques](https://nbviewer.org/github/tunib-ai/large-scale-lm-tutorials/blob/main/notebooks/10_additional_techiques.ipynb)
 
 ## Environments
+### KISTI Neuron GPU Cluster
+Neuron is a [KISTI GPU cluster system](https://docs-ksc.gitbook.io/neuron-user-guide) consisting of 65 nodes with 260 GPUs (120 of NVIDIA A100 GPUs and 140 of NVIDIA V100 GPUs). [Slurm](https://slurm.schedmd.com/) is adopted for cluster/resource management and job scheduling.
+
+<p align="center"><img src="https://user-images.githubusercontent.com/84169368/205237254-b916eccc-e4b7-46a8-b7ba-c156e7609314.png"/></p>
+
+<!---
 ### Local Environments
 - Linux Ubuntu 18.04 LTS
 - 4 * A100 GPU
@@ -31,13 +38,11 @@
 ### Docker Environments
 - `docker pull pytorch/pytorch:1.9.0-cuda11.1-cudnn8-devel`
 - 원활한 실습을 위해 `--shm-size`를 키우거나 `--ipc=host` 옵션을 설정해주세요.
-
+-->
 
 ## LICENSE
 
 ```
-Copyright 2021 TUNiB Inc
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
