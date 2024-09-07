@@ -149,6 +149,47 @@ Thank you for installing Miniconda3!
 [glogin01]$ conda --version
 conda 24.3.0
 ```
+## Creating a Conda Virtual Environment
+You need to create a virtual envrionment for a large-scale language model tutorial.
+
+1. Load modules and create a conda virtual environment with a python version 3.10
+```
+[glogin01]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
+[glogin01]$ conda create -n large-scale-lm python=3.10 -y
+Channels:
+ - defaults
+Platform: linux-64
+Collecting package metadata (repodata.json): done
+Solving environment: done
+
+## Package Plan ##
+
+  environment location: /scratch/qualis/miniconda3/envs/large-scale-lm
+
+  added / updated specs:
+    - python=3.10
+.
+.
+.
+Preparing transaction: done
+Verifying transaction: done
+Executing transaction: done
+#
+# To activate this environment, use
+#
+#     $ conda activate large-scale-lm
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
+```
+
+2. Install PyTorch
+```
+[glogin01]$ conda activate large-scale-lm
+(large-scale-lm) [glogin01]$ conda install pytorch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 pytorch-cuda=12.1 -c pytorch -c nvidia -y
+
+```
 
 ## LICENSE
 
@@ -165,3 +206,5 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
+
+
