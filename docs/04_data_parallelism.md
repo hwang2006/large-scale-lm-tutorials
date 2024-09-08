@@ -49,7 +49,7 @@ def data_parallel(module, inputs, labels, device_ids, output_device):
 ![](../images/backward_step.png)
 ```
 """
-src/data_parallel.py
+src/ch4/data_parallel.org.py
 """
 
 from torch import nn
@@ -112,57 +112,206 @@ for i, data in enumerate(data_loader):
         break
 ```
 
+Data Parallel 코드를 실행하기 위해서 뉴론 시스템에서 노드 1개와 GPU 4개를 할당받는다. `src/ch4` 디렉토리로 이동하고 모듈을 로드한다.
 ```
-[glogin01]$ python ../src/data_parallel.py
-Using custom data configuration default
-Reusing dataset multi_nli
-(/home/ubuntu/.cache/huggingface/datasets/multi_nli/default/0.0.0/591f72eb6263d1ab527561777936b199b714cda156d35716881158a2bd144f39)
-100%|█████████████████████████████████████████████| 3/3 [00:00<00:00, 58.31it/s]
-Some weights of the model checkpoint at bert-base-cased were not used when initializing
-BertForSequenceClassification: ['cls.predictions.bias', 'cls.predictions.transform.dense.bias',
-'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.weight',
-'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.weight',
-'cls.seq_relationship.weight']
-- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on
-another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a
-BertForPreTraining model).
-- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that
-you expect to be exactly identical (initializing a BertForSequenceClassification model frm
-BertForSequenceClassification model).
-Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased
-and are newly initialized: ['classifier.bias', 'classifier.weight']
+[glogin01]$ salloc --partition=cas_v100nv_8 -J debug --nodes=1 --time=8:00:00 --gres=gpu:4 --comment pytorch
+...
+salloc: Nodes gpu[05] are ready for job
+[gpu05] $ pwd
+/scratch/qualis/git-projects/large-scale-lm-tutorials/src/ch4
+[gpu05]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
+```
+```
+[gup05]$ conda activate large-scale-lm
+(large-scale-lm) [gpu05]$ pip install transformers datasets evaluate scikit-learn
+(large-scale-lm) [gpu05]$ python data_parallel.org.py
+Downloading readme: 100%|████████████████████████████████████████| 8.89k/8.89k [00:00<00:00, 21.9kB/s]
+Downloading data: 100%|████████████████████████████████████████████| 214M/214M [00:22<00:00, 9.63MB/s]
+Downloading data: 100%|███████████████████████████████████████████| 4.94M/4.94M [00:09<00:00, 522kB/s]
+Downloading data: 100%|██████████████████████████████████████████| 5.10M/5.10M [00:02<00:00, 1.95MB/s]
+Generating train split: 100%|███████████████████████| 392702/392702 [00:04<00:00, 94180.67 examples/s]
+Generating validation_matched split: 100%|█████████████| 9815/9815 [00:00<00:00, 113395.79 examples/s]
+Generating validation_mismatched split: 100%|███████████| 9832/9832 [00:00<00:00, 11346.93 examples/s]
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+model.safetensors: 100%|███████████████████████████████████████████| 436M/436M [00:07<00:00, 62.1MB/s]
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
-step:0, loss:1.1612184047698975
-step:10, loss:1.1026676893234253
-step:20, loss:1.0577733516693115
-step:30, loss:0.9685771465301514
-step:40, loss:0.8478926420211792
-step:50, loss:0.8693557977676392
-step:60, loss:0.7827763557434082
-step:70, loss:0.7895966172218323
-step:80, loss:0.7631332278251648
-step:90, loss:0.6766361594200134
-step:100, loss:0.6931278109550476
-step:110, loss:0.7477961778640747
-step:120, loss:0.7386300563812256
-step:130, loss:0.7414667010307312
-step:140, loss:0.7170238494873047
-step:150, loss:0.7286601066589355
-step:160, loss:0.7063153982162476
-step:170, loss:0.6415464282035828
-step:180, loss:0.7068504095077515
-step:190, loss:0.593433678150177
-step:200, loss:0.6224725246429443
-step:210, loss:0.7025654315948486
-step:220, loss:0.5605336427688599
-step:230, loss:0.578403890132904
-step:240, loss:0.7344318628311157
-step:250, loss:0.5977576971054077
-step:260, loss:0.6717301607131958
-step:270, loss:0.7103744745254517
-step:280, loss:0.6679482460021973
-step:290, loss:0.635512113571167
-step:300, loss:0.45178914070129395
+step:0, loss:1.1370294094085693
+step:10, loss:1.1108639240264893
+step:20, loss:1.0596747398376465
+step:30, loss:0.9757345914840698
+step:40, loss:0.8766409158706665
+step:50, loss:0.8808916211128235
+step:60, loss:0.8087615966796875
+step:70, loss:0.8037520051002502
+step:80, loss:0.7576047778129578
+step:90, loss:0.6615070104598999
+step:100, loss:0.7510014176368713
+step:110, loss:0.7559493780136108
+step:120, loss:0.7757337689399719
+step:130, loss:0.7405450940132141
+step:140, loss:0.7066846489906311
+step:150, loss:0.716975212097168
+step:160, loss:0.6581017971038818
+step:170, loss:0.649760901927948
+step:180, loss:0.7065140008926392
+step:190, loss:0.5565707683563232
+step:200, loss:0.6459232568740845
+step:210, loss:0.689096212387085
+step:220, loss:0.5366467833518982
+step:230, loss:0.6110734939575195
+step:240, loss:0.7274714112281799
+step:250, loss:0.5718880891799927
+step:260, loss:0.7024426460266113
+step:270, loss:0.6618905663490295
+step:280, loss:0.6490603685379028
+step:290, loss:0.6166819334030151
+step:300, loss:0.44881874322891235
+```
+
+```
+"""
+src/ch4/data_parallel.py
+"""
+import torch
+from torch import nn
+from datasets import load_dataset
+from transformers import AutoTokenizer, DataCollatorWithPadding
+
+from torch.utils.data import DataLoader
+
+from transformers import AutoModelForSequenceClassification
+from transformers import AdamW
+
+
+from transformers import get_scheduler
+
+from tqdm.auto import tqdm
+
+import evaluate
+
+batch_size = 32
+device_count = torch.cuda.device_count() if torch.cuda.is_available() else 1
+
+raw_datasets = load_dataset("multi_nli", split="train")
+
+train_test_datasets = raw_datasets.train_test_split(test_size=0.1, seed=42)
+
+checkpoint = "bert-base-cased"
+tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+
+def tokenize_function(example):
+    return tokenizer(example["premise"], example["hypothesis"], truncation=True)
+
+tokenized_datasets = train_test_datasets.map(tokenize_function, batched=True)
+tokenized_datasets = tokenized_datasets.remove_columns(['promptID', 'pairID', 'premise', 'premise_binary_parse', 'premise_parse', 'hypothesis', 'hypothesis_binary_parse', 'hypothesis_parse', 'genre'])
+
+data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
+
+#train_datasets = tokenized_datasets["train"].shuffle(seed=12).select(range(20000))
+train_datasets = tokenized_datasets["train"].shuffle(seed=12).select(range(353431))
+#valid_datasets = tokenized_datasets["test"].shuffle(seed=12).select(range(2000))
+valid_datasets = tokenized_datasets["test"].shuffle(seed=12).select(range(39271))
+
+
+
+train_dataloader = DataLoader(
+    #tokenized_datasets["train"], shuffle=True, batch_size=32, =data_collator
+    train_datasets, shuffle=True, batch_size=batch_size*device_count, collate_fn=data_collator
+)
+eval_dataloader = DataLoader(
+    #tokenized_datasets["test"], batch_size=64, collate_fn=data_collator
+    valid_datasets, batch_size=batch_size*device_count, collate_fn=data_collator
+)
+
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=3)
+
+optimizer = AdamW(model.parameters(), lr=5e-5)
+
+num_epochs = 3
+#num_epochs = 1
+num_training_steps = num_epochs * len(train_dataloader)
+lr_scheduler = get_scheduler(
+    "linear",
+    optimizer=optimizer,
+    num_warmup_steps=0,
+    num_training_steps=num_training_steps,
+)
+
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+model.to(device)
+
+# data parallel
+#model = nn.DataParallel(model, device_ids=[0, 1, 2, 3], output_device=0)
+model = nn.DataParallel(model)
+
+progress_bar = tqdm(range(num_training_steps))
+
+loss_fn = nn.CrossEntropyLoss(reduction="mean")
+
+model.train()
+for epoch in range(num_epochs):
+    for i, batch in enumerate(train_dataloader):
+        batch = batch.to(device)
+        outputs = model(**batch)
+        #loss = outputs.loss
+        # print(f"loss: {loss}") #loss: tensor([1.1256, 1.0732, 1.2382, 1.2967], device='cuda:0',grad_fn=<GatherBackward>)
+        #loss = torch.mean(loss)
+        #print(f"after torch mean loss: {loss}") # loss: 1.1834330558776855
+        logits = outputs.logits
+        loss = loss_fn(logits, batch["labels"])
+
+
+        loss.backward()
+
+        optimizer.step()
+        lr_scheduler.step()
+        optimizer.zero_grad()
+        progress_bar.update(1)
+
+        #steps = (epoch+1)*i
+        #if steps % 100 == 0:
+        #   print(f"step:{steps}, loss:{loss}")
+
+
+
+metric = evaluate.load("accuracy")
+
+num_eval_steps = len(eval_dataloader)
+progress_bar = tqdm(range(num_eval_steps))
+
+model.eval()
+
+for batch in eval_dataloader:
+    batch = {k: v.to(device) for k, v in batch.items()}
+    with torch.no_grad():
+        outputs = model(**batch)
+
+    logits = outputs.logits
+    predictions = torch.argmax(logits, dim=-1)
+    metric.add_batch(predictions=predictions, references=batch["labels"])
+    progress_bar.update(1)
+
+evaluation = metric.compute()
+print(f"\nMetric: {evaluation}")
+
+```
+```
+(large-scale-lm) [gpu05]$ python data_parallel.py
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/optimization.py:591: FutureWarning: This implementation of AdamW is deprecated and will be removed in a future version. Use the PyTorch implementation torch.optim.AdamW instead, or set `no_deprecation_warning=True` to disable this warning
+  warnings.warn(
+  0%|                                                                        | 0/2762 [00:00<?, ?it/s]/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/nn/parallel/_functions.py:68: UserWarning: Was asked to gather along dimension 0, but all input tensors were scalars; will instead unsqueeze and return a vector.
+  warnings.warn('Was asked to gather along dimension 0, but all '
+100%|█████████████████████████████████████████████████████████████| 2762/2762 [11:50<00:00,  3.89it/s]
+  0%|                                                                         | 0/307 [00:00<?, ?it/s]
+Metric: {'accuracy': 0.8307657049731354}████████████████████████████| 307/307 [00:37<00:00,  9.14it/s]
+100%|███████████████████████████████████████████████████████████████| 307/307 [00:37<00:00,  8.15it/s]
 ```
 ![](../images/dp_training.png)
 Multi-GPU에서 학습이 잘 되는군요. 그런데 문제는 0번 GPU에 Logits이 쏠리다보니 GPU 메모리 불균형 문제가 일어납니다. 이러한 문제는 0번 device로 Logits이 아닌 Loss를 Gather하는 방식으로 변경하면 어느정도 완화시킬 수 있습니다. Logits에 비해 Loss는 Scalar이기 때문에 크기가 훨씬 작기 때문이죠. 이 작업은 [당근마켓 블로그](https://medium.com/daangn/pytorch-multi-gpu-%ED%95%99%EC%8A%B5-%EC%A0%9C%EB%8C%80%EB%A1%9C-%ED%95%98%EA%B8%B0-27270617936b)에 소개되었던 [PyTorch-Encoding](https://github.com/zhanghang1989/PyTorch-Encoding)의 `DataParallelCriterion`과 동일합니다. 블로그에 꽤나 복잡하게 설명되어 있는데, 복잡한 방법 대신 간단하게 **forward 함수를 오버라이드 하는 것** 만으로 동일 기능을 쉽게 구현 할 수 있습니다.
