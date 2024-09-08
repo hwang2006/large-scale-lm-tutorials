@@ -36,7 +36,7 @@ p.s. 실제로는 `Forkserver` 방식도 있지만 자주 사용되지 않는 �
 
 ```
 """
-src/multi_process_1.py
+src/ch2/multi_process_1.py
 
 참고:
 Jupyter notebook은 멀티프로세싱 애플리케이션을 구동하는데에 많은 제약이 있습니다.
@@ -94,7 +94,7 @@ Main Process is done
 
 ```
 """
-src/multi_process_2.py
+src/ch2/multi_process_2.py
 """
 
 import torch.multiprocessing as mp
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 ```
 
 ```
-[glogin01]$ python ../src/multi_process_2.py
+(large-scale-lm) [glogin01]$ python multi_process_2.py
 A0 B1 - rank: 1
 A0 B1 - rank: 0
 A0 B1 - rank: 3
@@ -164,7 +164,7 @@ def start_processes(fn, args=(), nprocs=1, join=True, daemon=False, start_method
 `python -m torch.distributed.launch --nproc_per_node=n OOO.py`와 같은 명령어를 사용합니다.
 ```
 """
-src/multi_process_3.py
+src/ch2/multi_process_3.py
 """
 
 # 코드 전체가 서브프로세스가 됩니다.
@@ -175,15 +175,16 @@ print(f"hello world, {os.environ['RANK']}")
 ```
 
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/multi_process_3.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
+# (large-scale-lm) [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 multi_process_3.py
+(large-scale-lm) [glogin01]$ torchrun --nproc_per_node=4 multi_process_3.py
+W0908 14:12:43.550000 140009840834368 torch/distributed/run.py:757]
+W0908 14:12:43.550000 140009840834368 torch/distributed/run.py:757] *****************************************
+W0908 14:12:43.550000 140009840834368 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 14:12:43.550000 140009840834368 torch/distributed/run.py:757] *****************************************
 hello world, 0
+hello world, 3
 hello world, 1
 hello world, 2
-hello world, 3
 ```
  
 
