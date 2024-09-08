@@ -495,13 +495,13 @@ salloc: job 340482 has been allocated resources
 salloc: Granted job allocation 340482
 salloc: Waiting for resource configuration
 salloc: Nodes gpu[10,17] are ready for job
+[gpu10]$ pwd
+/scratch/qualis/git-projects/large-scale-lm-tutorials/src/ch2
+[gpu10]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 ```
 
 ```
-[gpu10]$ pwd
-/scratch/qualis/git-projects/large-scale-lm-tutorials/src/ch2
 [gpu10]$ conda activate large-scale-lm
-(large-scale-lm) [gpu10]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 broadcast.py
 W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757]
 W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] *****************************************
