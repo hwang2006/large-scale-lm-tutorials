@@ -161,7 +161,7 @@ def start_processes(fn, args=(), nprocs=1, join=True, daemon=False, start_method
 ### 2) PyTorch 런처가 부모 프로세스가 되어 사용자 코드 전체를 서브프로세스로 분기한다.
 이 방식은 torch에 내장된 멀티프로세싱 런처가 사용자 코드 전체를 서브프로세스로 실행시켜주는 매우 편리한 방식입니다.
 
-`python -m torch.distributed.launch --nproc_per_node=n OOO.py` 또는 `torchrun --nproc_per_node=4 multi_process_3.py`와 같은 명령어를 사용합니다.
+`python -m torch.distributed.launch --nproc_per_node=n OOO.py` 또는 `torchrun --nproc_per_node=4 000.py`와 같은 명령어를 사용합니다.
 ```
 """
 src/ch2/multi_process_3.py
@@ -222,7 +222,7 @@ openmpi를 써야할 특별한 이유가 있는 것이 아니라면 nccl이나 g
 많은 프로세스를 관리하는 것은 어려운 일입니다. 따라서 프로세스 그룹을 만들어서 관리를 용이하게 합니다. `init_process_group`를 호출하면 전체 프로세스가 속한 default_pg(process group)가 만들어집니다. 프로세스 그룹을 초기화하는 `init_process_group` 함수는 **반드시 서브프로세스에서 실행**되어야 하며, 만약 추가로 사용자가 원하는 프로세스들만 모아서 그룹을 생성하려면 `new_group`을 호출하면 됩니다.
 ```
 """
-src/process_group_1.py
+src/ch2/process_group_1.py
 """
 
 import torch.distributed as dist
@@ -240,20 +240,27 @@ print(process_group)
 ```
 
 ```
-[glogin01]$ python ../src/process_group_1.py
+(large-scale-lm) [glogin01]$ python process_group_1.py
 Traceback (most recent call last):
-  File "../src/process_group_1.py", line 8, in <module>
+  File "/scratch/qualis/git-projects/large-scale-lm-tutorials/src/ch2/process_group_1.py", line 8, in <module>
     dist.init_process_group(backend="nccl", rank=0, world_size=1)
-  File "/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/distributed/distributed_c10d.py", line 436, in init_process_group
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/c10d_logger.py", line 75, in wrapper
+    return func(*args, **kwargs)
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/c10d_logger.py", line 89, in wrapper
+    func_return = func(*args, **kwargs)
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py", line 1305, in init_process_group
     store, rank, world_size = next(rendezvous_iterator)
-  File "/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/distributed/rendezvous.py", line 166, in _env_rendezvous_handler
-    raise _env_error("MASTER_ADDR")
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/rendezvous.py", line 242, in _env_rendezvous_handler
+    master_addr = _get_env_or_raise("MASTER_ADDR")
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/rendezvous.py", line 219, in _get_env_or_raise
+    raise _env_error(env_var)
 ValueError: Error initializing torch.distributed using env:// rendezvous: environment variable MASTER_ADDR expected, but not set
 ```
+
 위 코드를 실행하면 에러가 발생합니다. 그 이유는 `MASTER_ADDR`, `MASTER_PORT` 등 필요한 변수가 설정되지 않았기 때문입니다. 이 값들을 설정하고 다시 실행시키겠습니다.
 ```
 """
-src/process_group_2.py
+src/ch2/process_group_2.py
 """
 
 import torch.distributed as dist
@@ -279,8 +286,8 @@ print(process_group)
 ```
 
 ```
-[globin01]$ python ../src/process_group_2.py
-<torch.distributed.ProcessGroupNCCL object at 0x7fb7524254b0>
+(large-scale-lm) [globin01]$ python process_group_2.py
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f1ca3ed60f0>
 ```
 
 위 예제는 프로세스 그룹의 API를 보여주기 위해서 메인프로세스에서 실행하였습니다. (프로세스가 1개 뿐이라 상관없었음) 실제로는 멀티프로세스 작업시 프로세스 그룹 생성 등의 작업은 반드시 서브프로세스에서 실행되어야 합니다.
@@ -320,18 +327,18 @@ if __name__ == "__main__":
 ```
 
 ```
-[glogin01]$ python ../src/process_group_3.py
-<torch.distributed.ProcessGroupNCCL object at 0x7f409fffd270> - rank: 2
-<torch.distributed.ProcessGroupNCCL object at 0x7fe7db7d5230> - rank: 3
-<torch.distributed.ProcessGroupNCCL object at 0x7fe6f02d6130> - rank: 1
-<torch.distributed.ProcessGroupNCCL object at 0x7f7f67c77b70> - rank: 0
+(large-scale-lm) [glogin01]$ python process_group_3.py
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f883a7f5870> - rank: 1
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f1515d05a30> - rank: 2
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f311f6fb5f0> - rank: 3
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f1c00707d30> - rank: 0
 ```
 
 `python -m torch.distributed.launch --nproc_per_node=n OOO.py`를 사용할때는 아래와 같이 처리합니다. `dist.get_rank()`, `dist_get_world_size()`와 같은 함수를 이용하여 `rank`와 `world_size`를 알 수 있습니다.
 
 ```
 """
-src/process_group_4.py
+src/ch2/process_group_4.py
 """
 
 import torch.distributed as dist
@@ -345,15 +352,19 @@ group = dist.new_group([_ for _ in range(dist.get_world_size())])
 print(f"{group} - rank: {dist.get_rank()}\n")
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/process_group_4.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
-<torch.distributed.ProcessGroupNCCL object at 0x7fd3059bc4f0> - rank: 1
-<torch.distributed.ProcessGroupNCCL object at 0x7f051d38e470> - rank: 3
-<torch.distributed.ProcessGroupNCCL object at 0x7fd233c31430> - rank: 2
-<torch.distributed.ProcessGroupNCCL object at 0x7f0f34a853f0> - rank: 0
+# (large-scale-lm) [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 process_group_4.py
+(large-scale-lm) [glogin01]$ torchrun --nproc_per_node=4 process_group_4.py
+W0908 14:33:37.263000 140621451208512 torch/distributed/run.py:757]
+W0908 14:33:37.263000 140621451208512 torch/distributed/run.py:757] *****************************************
+W0908 14:33:37.263000 140621451208512 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 14:33:37.263000 140621451208512 torch/distributed/run.py:757] *****************************************
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fee69a086f0> - rank: 3
+
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7faeaaa9b8f0> - rank: 1
+
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7efd8c4e1930> - rank: 0
+
+<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fde9bf62d30> - rank: 2
 ```
 
 ### P2P Communication (Point to point)
@@ -362,7 +373,7 @@ P2P (Point to point, 점 대 점) 통신은 특정 프로세스에서 다른 프
 
 ```
 """
-src/p2p_communication.py
+src/ch2/p2p_communication.py
 """
 
 import torch
