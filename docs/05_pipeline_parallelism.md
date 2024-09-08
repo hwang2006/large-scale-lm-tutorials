@@ -33,7 +33,7 @@ GPipe는 미니배치를 마이크로 배치로 쪼개고 연산을 파이프라
 kakaobrain에서 공개한 `torchgpipe`를 사용하면 손쉽게 GPipe를 사용할 수 있습니다. 단, `nn.Sequential`로 래핑된 모델만 사용 가능하며 모든 모듈의 입력과 출력 타입은 `torch.Tensor` 혹은 `Tuple[torch.Tensor]`로 제한됩니다. 따라서 코딩하기가 상당히 까다롭습니다.
 ```
 """
-src/gpipe.py
+src/ch5/gpipe.org.py
 """
 
 import torch
@@ -155,41 +155,212 @@ if __name__ == "__main__":
             break
 ```
 ```
-# !python -m torch.distributed.launch --nproc_per_node=4 ../src/gpipe.py
-[glogin01]$ python ../src/gpipe.py
-Reusing dataset squad (/home/ubuntu/.cache/huggingface/datasets/squad/plain_text/1.0.0/d6ec3ceb99ca480ce37cdd35555d6cb2511d223b9150cce08a837ef62ffea453)
-100%|█████████████████████████████████████████████| 2/2 [00:00<00:00, 55.94it/s]
-step: 0, loss: 6.084661483764648
-step: 10, loss: 3.2574026584625244
-step: 20, loss: 2.796205759048462
-step: 30, loss: 2.5538008213043213
-step: 40, loss: 2.8463237285614014
-step: 50, loss: 2.3466761112213135
-step: 60, loss: 2.5407633781433105
-step: 70, loss: 2.2434418201446533
-step: 80, loss: 2.4792842864990234
-step: 90, loss: 2.9400510787963867
-step: 100, loss: 2.8163280487060547
-step: 110, loss: 2.4787795543670654
-step: 120, loss: 2.9588236808776855
-step: 130, loss: 2.3893203735351562
-step: 140, loss: 2.9571073055267334
-step: 150, loss: 3.9219329357147217
-step: 160, loss: 3.023880958557129
-step: 170, loss: 3.018484592437744
-step: 180, loss: 1.6825034618377686
-step: 190, loss: 3.5461761951446533
-step: 200, loss: 3.6606838703155518
-step: 210, loss: 3.527740001678467
-step: 220, loss: 2.988645315170288
-step: 230, loss: 3.1758480072021484
-step: 240, loss: 2.5451812744140625
-step: 250, loss: 3.1476473808288574
-step: 260, loss: 3.4633867740631104
-step: 270, loss: 3.199225902557373
-step: 280, loss: 2.612720489501953
-step: 290, loss: 2.139256238937378
-step: 300, loss: 3.437178373336792
+(large-scale-lm) [gpu05]$ pip install torchgpipe
+```
+```
+# (large-scale-lm) [gpu05]$ python -m torch.distributed.launch --nproc_per_node=4 gpipe.org.py
+# (large-scale-lm) [gpu05]$ torchrun --nproc_per_node=4 gpipe.org.py
+# (large-scale-lm) [gpu05]$ srun torchrun --nproc_per_node=4 gpipe.org.py
+(large-scale-lm) [gpu05]$ python gpipe.org.py
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torchgpipe/stream.py:99: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  tensor = tensor.new_empty([0]).set_(tensor.storage())
+step: 0, loss: 6.082091331481934
+step: 10, loss: 3.249594211578369
+step: 20, loss: 2.804326295852661
+step: 30, loss: 2.5457987785339355
+step: 40, loss: 2.852287530899048
+step: 50, loss: 2.3473057746887207
+step: 60, loss: 2.5315937995910645
+step: 70, loss: 2.2457172870635986
+step: 80, loss: 2.4787349700927734
+step: 90, loss: 2.935778856277466
+step: 100, loss: 2.8190064430236816
+step: 110, loss: 2.4800403118133545
+step: 120, loss: 2.951277494430542
+step: 130, loss: 2.404855728149414
+step: 140, loss: 2.9455151557922363
+step: 150, loss: 3.9279768466949463
+step: 160, loss: 3.024629592895508
+step: 170, loss: 3.0173544883728027
+step: 180, loss: 1.6787645816802979
+step: 190, loss: 3.5459213256835938
+step: 200, loss: 3.663504123687744
+step: 210, loss: 3.522679328918457
+step: 220, loss: 2.9959702491760254
+step: 230, loss: 3.183525562286377
+step: 240, loss: 2.5458672046661377
+step: 250, loss: 3.148806571960449
+step: 260, loss: 3.4613168239593506
+step: 270, loss: 3.1852593421936035
+step: 280, loss: 2.616974115371704
+step: 290, loss: 2.1446080207824707
+step: 300, loss: 3.436387300491333
+```
+
+```
+"""
+src/ch5/gpipe.py
+"""
+
+import torch
+import torch.nn as nn
+from datasets import load_dataset
+from torch.optim import Adam
+from torch.utils.data import DataLoader
+from torchgpipe import GPipe
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers.models.gpt2.modeling_gpt2 import GPT2Block as GPT2BlockBase
+
+
+class GPT2Preprocessing(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.embed_dim = config.hidden_size
+        self.wte = nn.Embedding(config.vocab_size, self.embed_dim)
+        self.wpe = nn.Embedding(config.max_position_embeddings, self.embed_dim)
+        self.drop = nn.Dropout(config.embd_pdrop)
+
+    def forward(self, input_ids):
+        input_shape = input_ids.size()
+        input_ids = input_ids.view(-1, input_shape[-1])
+        position_ids = torch.arange(
+            0, input_shape[-1], dtype=torch.long, device=input_ids.device
+        )
+        position_ids = position_ids.unsqueeze(0).view(-1, input_shape[-1])
+        inputs_embeds = self.wte(input_ids)
+        position_embeds = self.wpe(position_ids)
+        hidden_states = inputs_embeds + position_embeds
+        hidden_states = self.drop(hidden_states)
+        return hidden_states
+
+
+class GPT2Block(GPT2BlockBase):
+    def forward(self, hidden_states):
+        hidden_states = super(GPT2Block, self).forward(
+            hidden_states=hidden_states,
+        )
+        return hidden_states[0]
+
+
+class GPT2Postprocessing(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.ln_f = nn.LayerNorm(
+            config.hidden_size,
+            eps=config.layer_norm_epsilon,
+        )
+        self.lm_head = nn.Linear(
+            config.hidden_size,
+            config.vocab_size,
+            bias=False,
+        )
+
+    def forward(self, hidden_states):
+        hidden_states = self.ln_f(hidden_states)
+        lm_logits = self.lm_head(hidden_states)
+        return lm_logits
+
+
+def create_model_from_pretrained(model_name):
+    pretrained = GPT2LMHeadModel.from_pretrained(model_name)
+    preprocess = GPT2Preprocessing(pretrained.config)
+    preprocess.wte.weight = pretrained.transformer.wte.weight
+    preprocess.wpe.weight = pretrained.transformer.wpe.weight
+
+    blocks = pretrained.transformer.h
+    for i, block in enumerate(blocks):
+        block.__class__ = GPT2Block
+
+    postprocess = GPT2Postprocessing(pretrained.config)
+    postprocess.ln_f.weight = pretrained.transformer.ln_f.weight
+    postprocess.ln_f.bias = pretrained.transformer.ln_f.bias
+    postprocess.lm_head.weight.data = pretrained.lm_head.weight.data.clone()
+
+    return nn.Sequential(preprocess, *blocks, postprocess)
+
+
+if __name__ == "__main__":
+    world_size = 4
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    tokenizer.pad_token = tokenizer.eos_token
+
+    model = create_model_from_pretrained(model_name="gpt2")
+    model = GPipe(
+        model,
+        #balance=[4,3,3,4],
+        balance=[3,5,5,1],
+        devices=[0, 1, 2, 3],
+        chunks=world_size,
+    )
+
+    datasets = load_dataset("squad").data["train"]["context"]
+    datasets = [str(sample) for sample in datasets]
+    #data_loader = DataLoader(datasets, batch_size=8, num_workers=8)
+    data_loader = DataLoader(datasets, batch_size=24, num_workers=8)
+
+    optimizer = Adam(model.parameters(), lr=3e-5)
+    loss_fn = nn.CrossEntropyLoss()
+
+    for i, data in enumerate(data_loader):
+        optimizer.zero_grad()
+        tokens = tokenizer(data, return_tensors="pt", truncation=True, padding=True)
+        input_ids = tokens.input_ids.to(0)
+        labels = tokens.input_ids.to(world_size - 1)
+
+        lm_logits = model(input_ids)
+        shift_logits = lm_logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+        loss = nn.CrossEntropyLoss()(
+            shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+        )
+        loss.backward()
+        optimizer.step()
+
+        if i % 10 == 0:
+            print(f"step: {i}, loss: {loss}")
+        if i == 300:
+             break
+```
+```
+(large-scale-lm) [gpu05]$ python gpipe.py
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torchgpipe/stream.py:99: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  tensor = tensor.new_empty([0]).set_(tensor.storage())
+step: 0, loss: 7.221696376800537
+step: 10, loss: 2.02380633354187
+step: 20, loss: 2.257195472717285
+step: 30, loss: 2.9732449054718018
+step: 40, loss: 3.133763551712036
+step: 50, loss: 3.2365360260009766
+step: 60, loss: 1.7914276123046875
+step: 70, loss: 3.4165256023406982
+step: 80, loss: 2.8382716178894043
+step: 90, loss: 2.248094081878662
+step: 100, loss: 2.6100006103515625
+step: 110, loss: 1.4518338441848755
+step: 120, loss: 2.2637827396392822
+step: 130, loss: 2.457871913909912
+step: 140, loss: 2.3267903327941895
+step: 150, loss: 2.572256326675415
+step: 160, loss: 2.491018056869507
+step: 170, loss: 1.8535436391830444
+step: 180, loss: 0.9895756244659424
+step: 190, loss: 1.5809266567230225
+step: 200, loss: 2.164494276046753
+step: 210, loss: 2.1609110832214355
+step: 220, loss: 2.5104143619537354
+step: 230, loss: 2.2100632190704346
+step: 240, loss: 2.479640483856201
+step: 250, loss: 2.0741147994995117
+step: 260, loss: 2.7896156311035156
+step: 270, loss: 3.0486862659454346
+step: 280, loss: 1.6412955522537231
+step: 290, loss: 2.4288651943206787
+step: 300, loss: 2.189744234085083
 ```
 
 ## 3. 1F1B Pipelining (PipeDream)
