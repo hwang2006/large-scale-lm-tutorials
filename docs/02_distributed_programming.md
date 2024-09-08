@@ -505,11 +505,15 @@ salloc: Nodes gpu[10,17] are ready for job
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 broadcast.py
 W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757]
 W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] *****************************************
-W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable
+for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for
+optimal performance in your application as needed.
 W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] *****************************************
 W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757]
 W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757] *****************************************
-W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable
+for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for
+optimal performance in your application as needed.
 W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757] *****************************************
 before rank 1: tensor([[0., 0., 0.,  ..., 0., 0., 0.],
         [0., 0., 0.,  ..., 0., 0., 0.],
