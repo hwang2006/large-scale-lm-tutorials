@@ -35,49 +35,60 @@ PyTorch로 구현된 Multi-process 애플리케이션을 실행시키는 방법�
 p.s. 실제로는 `Forkserver` 방식도 있지만 자주 사용되지 않는 생소한 방식이기에 생략합니다.
 
 ```
-    """
-    src/multi_process_1.py\n
+"""
+src/multi_process_1.py
 
-    참고:
-    Jupyter notebook은 멀티프로세싱 애플리케이션을 구동하는데에 많은 제약이 있습니다.
-    따라서 대부분의 경우 이곳에는 코드만 동봉하고 실행은 `src` 폴더에 있는 코드를 동작시키겠습니다.
-    실제 코드 동작은 `src` 폴더에 있는 코드를 실행시켜주세요.
-    """
+참고:
+Jupyter notebook은 멀티프로세싱 애플리케이션을 구동하는데에 많은 제약이 있습니다.
+따라서 대부분의 경우 이곳에는 코드만 동봉하고 실행은 `src` 폴더에 있는 코드를 동작시키겠습니다.
+실제 코드 동작은 `src` 폴더에 있는 코드를 실행시켜주세요.
+"""
 
-    import torch.multiprocessing as mp
-    # 일반적으로 mp와 같은 이름을 사용합니다.
-    
+import torch.multiprocessing as mp
+# 일반적으로 mp와 같은 이름을 사용합니다.
 
-    # 서브프로세스에서 동시에 실행되는 영역
-    def fn(rank, param1, param2)
-        print(f\"{param1} {param2} - rank: {rank}\")
-  
-    # 메인 프로세스
-    if __name__ == "__main__":
-        processes = []
-        # 시작 방법 설정
-        mp.set_start_method(\"spawn\")
 
-        for rank in range(4):
-            process = mp.Process(target=fn, args=(rank, \"A0\", \"B1\"))
-            # 서브프로세스 생성
-            process.daemon = False
-            # 데몬 여부 (메인프로세스 종료시 함께 종료)
-            process.start()
-            # 서브프로세스 시작
-            processes.append(process)
-    
-        for process in processes:
-            process.join()
-            # 서브 프로세스 join (=완료되면 종료)
+# 서브프로세스에서 동시에 실행되는 영역
+def fn(rank, param1, param2):
+    print(f"{param1} {param2} - rank: {rank}")
+
+
+# 메인 프로세스
+if __name__ == "__main__":
+    processes = []
+    # 시작 방법 설정
+    mp.set_start_method("spawn")
+
+    for rank in range(4):
+        process = mp.Process(target=fn, args=(rank, "A0", "B1"))
+        # 서브프로세스 생성
+        #process.daemon = False
+        process.daemon = True
+        # False means that child processes will run independently of the main process
+        # and will not be terminated when the main process exits.
+        # 데몬 여부 (메인프로세스 종료시 함께 종료)
+        process.start()
+        # 서브프로세스 시작
+        processes.append(process)
+
+    for process in processes:
+        process.join()  # main process is waitiing for the subprocesses exit.
+        # 서브 프로세스 join (=완료되면 종료)
+
+    print("Main Process is done")
 ```
 
+코드를 실행하기 위해서 모듀을 로드하고 `src/ch2` 디렉토리로 이동하고 콘다 환경을 활성화 시킨다.
 ```
-[glogin01]$ python ../src/multi_process_1.py
+[glogin01]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
+[glogin01]$ cd large-scale-lm-tutorials/src/ch2
+[glogin01]$ conda activate largc-scale-lm   
+(large-scale-lm) [glogin01]$ python multi_process_1.py
 A0 B1 - rank: 0
 A0 B1 - rank: 2
 A0 B1 - rank: 3
 A0 B1 - rank: 1
+Main Process is done
 ```
 `torch.multiprocessing.spawn` 함수를 이용하면 이 과정을 매우 쉽게 진행 할 수 있습니다.
 
