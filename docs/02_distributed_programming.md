@@ -161,7 +161,7 @@ def start_processes(fn, args=(), nprocs=1, join=True, daemon=False, start_method
 ### 2) PyTorch 런처가 부모 프로세스가 되어 사용자 코드 전체를 서브프로세스로 분기한다.
 이 방식은 torch에 내장된 멀티프로세싱 런처가 사용자 코드 전체를 서브프로세스로 실행시켜주는 매우 편리한 방식입니다.
 
-`python -m torch.distributed.launch --nproc_per_node=n OOO.py`와 같은 명령어를 사용합니다.
+`python -m torch.distributed.launch --nproc_per_node=n OOO.py` 또는 `torchrun --nproc_per_node=4 multi_process_3.py`와 같은 명령어를 사용합니다.
 ```
 """
 src/ch2/multi_process_3.py
