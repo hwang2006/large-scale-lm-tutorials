@@ -880,9 +880,11 @@ W0908 19:36:05.147000 47447864847424 torch/distributed/run.py:757] Setting OMP_N
 W0908 19:36:05.147000 47447864847424 torch/distributed/run.py:757] *****************************************
 [tensor([0.]), tensor([1.]), tensor([2.]), tensor([3.])]
 ```
+
 #### 5) All-reduce
 이름 앞에 All- 이 붙은 연산들은 해당 연산을 수행 한뒤, 결과를 모든 디바이스로 broadcast하는 연산입니다. 아래 그림처럼 All-reduce는 reduce를 수행한 뒤, 계산된 결과를 모든 디바이스로 복사합니다.\n",
 ![](../images/allreduce.png)
+
 ```
 """
 src/ch2/allreduce_sum.py
@@ -950,6 +952,7 @@ dist.all_reduce(tensor, op=torch.distributed.ReduceOp.MAX)
 
 print(f"rank {rank}: {tensor}\n")
 ```
+
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 allreduce_max.py
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allreduce_max.py
@@ -977,6 +980,7 @@ rank 3: tensor([[3., 3.],
 #### 6) All-gather
 All-gather는 gather를 수행한 뒤, 모아진 결과를 모든 디바이스로 복사합니다.
 ![](../images/allgather.png)
+
 ```
 """
 src/ch2/allgather.py
@@ -1024,6 +1028,7 @@ W0908 19:41:52.504000 47411399556160 torch/distributed/run.py:757] *************
 #### 7) Reduce-scatter
 Reduce scatter는 Reduce를 수행한 뒤, 결과를 쪼개서 디바이스에 반환합니다.
 ![](../images/reduce_scatter.png)
+
 ```
 """
 src/ch2/reduce_scatter.py
@@ -1053,6 +1058,7 @@ dist.reduce_scatter(
 
 print(f"rank {rank}: {output}\n")
 ```
+
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 reduce_scatter.py
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 reduce_scatter.py
@@ -1139,6 +1145,7 @@ rank 0: barrier
 
 rank 2: barrier
 ```
+
 ### 너무 많죠...? 😅
 아래 4개의 기본 연산만 잘 기억해둬도 대부분 유추해서 사용할 수 있습니다.
 ![](../images/collective.png)
