@@ -397,22 +397,24 @@ else:
 ```
 
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=2 ../src/p2p_communication.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
+#(large-scale-lm) [glogin01]$ python -m torch.distributed.launch --nproc_per_node=2 p2p_communication.py
+(large-scale-lm) [glogin01]$ torchrun --nproc_per_node=2 p2p_communication.py
+W0908 15:33:07.475000 139958444984128 torch/distributed/run.py:757]
+W0908 15:33:07.475000 139958444984128 torch/distributed/run.py:757] *****************************************
+W0908 15:33:07.475000 139958444984128 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 15:33:07.475000 139958444984128 torch/distributed/run.py:757] *****************************************
 rank 1 before: tensor([[0., 0.],
         [0., 0.]])
 
-rank 1 after: tensor([[-0.6160, -0.0912],
-        [ 1.0645,  2.5397]])
+rank 1 after: tensor([[ 3.4373,  1.1562],
+        [ 0.1356, -1.2088]])
 ```
 주의할 것은 이들이 동기적으로 통신한다는 것입니다. 비동기 통신(non-blocking)에는 `isend`, `irecv`를 이용합니다. 이들은 비동기적으로 작동하기 때문에 `wait()` 메서드를 통해 다른 프로세스의 통신이 끝날때 까지 기다리고 난 뒤에 접근해야합니다.
 
 
 ```
 """
-src/p2p_communication_non_blocking.py
+src/ch2/p2p_communication_non_blocking.py
 """
 
 import torch
@@ -436,16 +438,16 @@ print(f"rank {dist.get_rank()}: {tensor}")
 ```
 
 ```
-[globin01]$ python -m torch.distributed.launch --nproc_per_node=2 ../src/p2p_communication_non_blocking.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
-rank 1: tensor([[-0.7049,  0.8836],
-        [-0.4996,  0.4550]])
-rank 0: tensor([[-0.7049,  0.8836],
-        [-0.4996,  0.4550]])
-
+#(large-scale-lm) [globin01]$ python -m torch.distributed.launch --nproc_per_node=2 p2p_communication_non_blocking.py
+(large-scale-lm) [glogin01]$ torchrun --nproc_per_node=2 p2p_communication_non_blocking.py
+W0908 15:36:30.701000 139730208278336 torch/distributed/run.py:757]
+W0908 15:36:30.701000 139730208278336 torch/distributed/run.py:757] *****************************************
+W0908 15:36:30.701000 139730208278336 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 15:36:30.701000 139730208278336 torch/distributed/run.py:757] *****************************************
+rank 0: tensor([[-1.2224,  0.7753],
+        [ 0.9491, -1.0411]])
+rank 1: tensor([[-1.2224,  0.7753],
+        [ 0.9491, -1.0411]])
 ```
 
 ### Collective Communication
