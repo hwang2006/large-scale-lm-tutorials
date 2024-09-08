@@ -484,34 +484,101 @@ print(f"before rank {rank}: {tensor}\n")
 dist.broadcast(tensor, src=0)
 print(f"after rank {rank}: {tensor}\n")
 ```
+
+Collective Communication 코드를 실행하기 위해서 뉴론 시스템에서 GPU 4개를 할당받는다
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/broadcast.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
-before rank 3: tensor([[0., 0.],
-        [0., 0.]], device='cuda:3')
-before rank 1: tensor([[0., 0.],
-        [0., 0.]], device='cuda:1')
+# [glogin01]$ salloc --partition=amd_a100nv_8 -J debug --nodes=1 --time=8:00:00 --gres=gpu:4 --comment pytorch
+[glogin01]$ salloc --partition=cas_v100_4 -J debug --nodes=2 --time=12:00:00 --gres=gpu:2 --comment pytorch
+salloc: Pending job allocation 340482
+salloc: job 340482 queued and waiting for resources
+salloc: job 340482 has been allocated resources
+salloc: Granted job allocation 340482
+salloc: Waiting for resource configuration
+salloc: Nodes gpu[10,17] are ready for job
+```
 
+```
+[gpu10]$ pwd
+/scratch/qualis/git-projects/large-scale-lm-tutorials/src/ch2
+[gpu10]$ conda activate large-scale-lm
+(large-scale-lm) [gpu10]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
+(large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 broadcast.py
+W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757]
+W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] *****************************************
+W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] *****************************************
+W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757]
+W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757] *****************************************
+W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 15:57:11.077000 47206882413632 torch/distributed/run.py:757] *****************************************
+before rank 1: tensor([[0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.]], device='cuda:1')
 
-before rank 2: tensor([[0., 0.],
-        [0., 0.]], device='cuda:2')
+before rank 0: tensor([[-1.1589, -1.0418, -0.2843,  ...,  0.1931, -2.5755, -0.0232],
+        [ 1.5140, -0.9782, -0.3955,  ...,  0.2272,  1.4831,  0.7004],
+        [ 0.6604,  0.0533, -2.1374,  ..., -0.7254,  0.1704, -2.5956],
+        ...,
+        [ 0.9011,  1.0888,  0.0632,  ...,  0.8425, -0.6508,  0.4218],
+        [ 0.5068, -0.3434, -0.2022,  ..., -0.0231, -0.1183, -1.1983],
+        [ 0.3403, -1.5891,  0.4225,  ..., -0.1733,  1.2176,  1.0935]],
+       device='cuda:0')
 
-before rank 0: tensor([[-0.7522, -0.2532],
-        [ 0.9788,  1.0834]], device='cuda:0')
+before rank 3: tensor([[0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.]], device='cuda:1')
 
-after rank 0: tensor([[-0.7522, -0.2532],
-        [ 0.9788,  1.0834]], device='cuda:0')
+before rank 2: tensor([[0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        ...,
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.]], device='cuda:0')
 
-after rank 1: tensor([[-0.7522, -0.2532],
-        [ 0.9788,  1.0834]], device='cuda:1')
+after rank 0: tensor([[-1.1589, -1.0418, -0.2843,  ...,  0.1931, -2.5755, -0.0232],
+        [ 1.5140, -0.9782, -0.3955,  ...,  0.2272,  1.4831,  0.7004],
+        [ 0.6604,  0.0533, -2.1374,  ..., -0.7254,  0.1704, -2.5956],
+        ...,
+        [ 0.9011,  1.0888,  0.0632,  ...,  0.8425, -0.6508,  0.4218],
+        [ 0.5068, -0.3434, -0.2022,  ..., -0.0231, -0.1183, -1.1983],
+        [ 0.3403, -1.5891,  0.4225,  ..., -0.1733,  1.2176,  1.0935]],
+       device='cuda:0')
 
-after rank 3: tensor([[-0.7522, -0.2532],
-        [ 0.9788,  1.0834]], device='cuda:3')
+after rank 1: tensor([[-1.1589, -1.0418, -0.2843,  ...,  0.1931, -2.5755, -0.0232],
+        [ 1.5140, -0.9782, -0.3955,  ...,  0.2272,  1.4831,  0.7004],
+        [ 0.6604,  0.0533, -2.1374,  ..., -0.7254,  0.1704, -2.5956],
+        ...,
+        [ 0.9011,  1.0888,  0.0632,  ...,  0.8425, -0.6508,  0.4218],
+        [ 0.5068, -0.3434, -0.2022,  ..., -0.0231, -0.1183, -1.1983],
+        [ 0.3403, -1.5891,  0.4225,  ..., -0.1733,  1.2176,  1.0935]],
+       device='cuda:1')
 
-after rank 2: tensor([[-0.7522, -0.2532],
-        [ 0.9788,  1.0834]], device='cuda:2')
+after rank 2: tensor([[-1.1589, -1.0418, -0.2843,  ...,  0.1931, -2.5755, -0.0232],
+        [ 1.5140, -0.9782, -0.3955,  ...,  0.2272,  1.4831,  0.7004],
+        [ 0.6604,  0.0533, -2.1374,  ..., -0.7254,  0.1704, -2.5956],
+        ...,
+        [ 0.9011,  1.0888,  0.0632,  ...,  0.8425, -0.6508,  0.4218],
+        [ 0.5068, -0.3434, -0.2022,  ..., -0.0231, -0.1183, -1.1983],
+        [ 0.3403, -1.5891,  0.4225,  ..., -0.1733,  1.2176,  1.0935]],
+       device='cuda:0')
+
+after rank 3: tensor([[-1.1589, -1.0418, -0.2843,  ...,  0.1931, -2.5755, -0.0232],
+        [ 1.5140, -0.9782, -0.3955,  ...,  0.2272,  1.4831,  0.7004],
+        [ 0.6604,  0.0533, -2.1374,  ..., -0.7254,  0.1704, -2.5956],
+        ...,
+        [ 0.9011,  1.0888,  0.0632,  ...,  0.8425, -0.6508,  0.4218],
+        [ 0.5068, -0.3434, -0.2022,  ..., -0.0231, -0.1183, -1.1983],
+        [ 0.3403, -1.5891,  0.4225,  ..., -0.1733,  1.2176,  1.0935]],
+       device='cuda:1')
 ```
 `send`, `recv` 등의 P2P 연산이 지원되지 않을때 않아서 `broadcast`를 P2P 통신 용도로 사용하기도 합니다. src=0, dst=1 일때, `new_group([0, 1])` 그룹을 만들고 `broadcast`를 수행하면 0 -> 1 P2P와 동일합니다.
 
