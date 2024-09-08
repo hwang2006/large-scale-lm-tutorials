@@ -294,7 +294,7 @@ print(process_group)
 
 ```
 """
-src/process_group_3.py
+src/ch2/process_group_3.py
 """
 
 import torch.multiprocessing as mp
@@ -485,7 +485,7 @@ dist.broadcast(tensor, src=0)
 print(f"after rank {rank}: {tensor}\n")
 ```
 
-Collective Communication 코드를 실행하기 위해서 뉴론 시스템에서 GPU 4개를 할당받는다
+Collective Communication 코드를 실행하기 위해서 뉴론 시스템에서 GPU 4개를 할당받는다. `src/ch2` 디렉토리로 이동하고 모듈을 로드한다.
 ```
 # [glogin01]$ salloc --partition=amd_a100nv_8 -J debug --nodes=1 --time=8:00:00 --gres=gpu:4 --comment pytorch
 [glogin01]$ salloc --partition=cas_v100_4 -J debug --nodes=2 --time=12:00:00 --gres=gpu:2 --comment pytorch
