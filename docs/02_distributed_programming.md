@@ -616,7 +616,7 @@ Reduce는 각 프로세스가 가진 데이터로 특정 연산을 수행해서 
 ![](../images/reduce.png)
 ```
 """
-src/reduce_sum.py
+src/ch2/reduce_sum.py
 """
 
 import torch
@@ -638,18 +638,27 @@ if rank == 0:
     print(tensor)
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_sum.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 reduce_sum.py
+(large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 
+W0908 19:22:40.917000 47001334897728 torch/distributed/run.py:757]
+W0908 19:22:40.917000 47001334897728 torch/distributed/run.py:757] *****************************************
+W0908 19:22:40.917000 47001334897728 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable
+for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for
+optimal performance in your application as needed.
+W0908 19:22:40.917000 47001334897728 torch/distributed/run.py:757] *****************************************
+W0908 19:22:40.917000 47404831812672 torch/distributed/run.py:757]
+W0908 19:22:40.917000 47404831812672 torch/distributed/run.py:757] *****************************************
+W0908 19:22:40.917000 47404831812672 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable
+for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for
+optimal performance in your application as needed.
+W0908 19:22:40.917000 47404831812672 torch/distributed/run.py:757] *****************************************
 tensor([[6., 6.],
         [6., 6.]], device='cuda:0')
 ```
 
 ```
 """
-src/reduce_max.py
+src/ch2/reduce_max.py
 """
 
 import torch
@@ -671,11 +680,20 @@ if rank == 0:
     print(tensor)
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_max.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 reduce_max.py
+(large-scale-lm) [gpu10]$  srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 reduce_max.py
+W0908 19:27:12.994000 47977569922112 torch/distributed/run.py:757]
+W0908 19:27:12.994000 47977569922112 torch/distributed/run.py:757] *****************************************
+W0908 19:27:12.994000 47977569922112 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable
+for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for
+optimal performance in your application as needed.
+W0908 19:27:12.994000 47977569922112 torch/distributed/run.py:757] *****************************************
+W0908 19:27:13.060000 47705921977408 torch/distributed/run.py:757]
+W0908 19:27:13.060000 47705921977408 torch/distributed/run.py:757] *****************************************
+W0908 19:27:13.060000 47705921977408 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable
+for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for
+optimal performance in your application as needed.
+W0908 19:27:13.060000 47705921977408 torch/distributed/run.py:757] *****************************************
 tensor([[3., 3.],
         [3., 3.]], device='cuda:0')
 ```
@@ -684,7 +702,7 @@ Scatter는 여러개의 element를 쪼개서 각 device에 뿌려주는 연산�
 ![](../images/scatter.png)
 ```
 """
-src/scatter.py
+src/ch2/scatter.py
 """
 
 import torch
@@ -710,31 +728,41 @@ else:
 print(f"after rank {rank}: {output}\n")
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/scatter.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 scatter.py
+(large-scale-lm) [gpu10]$  srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 scatter.py
+W0908 19:29:22.166000 47327257168960 torch/distributed/run.py:757]
+W0908 19:29:22.166000 47327257168960 torch/distributed/run.py:757] *****************************************
+W0908 19:29:22.166000 47327257168960 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable
+for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for
+optimal performance in your application as needed.
+W0908 19:29:22.166000 47327257168960 torch/distributed/run.py:757] *****************************************
+W0908 19:29:22.346000 47403497024576 torch/distributed/run.py:757]
+W0908 19:29:22.346000 47403497024576 torch/distributed/run.py:757] *****************************************
+W0908 19:29:22.346000 47403497024576 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable
+for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for
+optimal performance in your application as needed.
+W0908 19:29:22.346000 47403497024576 torch/distributed/run.py:757] *****************************************
+before rank 1: tensor([0.])
+
 before rank 0: tensor([0.])
 
+after rank 1: tensor([20.])
+
 before rank 3: tensor([0.])
-
-after rank 3: tensor([40.])
-
-before rank 1: tensor([0.])
 
 before rank 2: tensor([0.])
 
 after rank 0: tensor([10.])
-after rank 1: tensor([20.])
-
 
 after rank 2: tensor([30.])
+
+after rank 3: tensor([40.])
 ```
+
 nccl에서는 scatter가 지원되지 않기 때문에 아래와 같은 방법으로 scatter 연산을 수행합니다.
 ```
 """
-src/scatter_nccl.py
+src/ch2/scatter_nccl.py
 """
 
 import torch
@@ -750,18 +778,28 @@ output = inputs[rank].contiguous().to(torch.cuda.current_device())
 print(f"after rank {rank}: {output}\n")
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/scatter_nccl.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system beingoverloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
-after rank 2: tensor([30.], device='cuda:2')
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 scatter_nccl.py
+# (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 scatter_nccl.py
+W0908 19:32:01.899000 47271064988736 torch/distributed/run.py:757]
+W0908 19:32:01.899000 47271064988736 torch/distributed/run.py:757] *****************************************
+W0908 19:32:01.899000 47271064988736 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:32:01.899000 47271064988736 torch/distributed/run.py:757] *****************************************
+W0908 19:32:02.126000 47347575663680 torch/distributed/run.py:757]
+W0908 19:32:02.126000 47347575663680 torch/distributed/run.py:757] *****************************************
+W0908 19:32:02.126000 47347575663680 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:32:02.126000 47347575663680 torch/distributed/run.py:757] *****************************************
+rank: 1, splited inputs : (tensor([10., 20., 30.]), tensor([40., 50., 60.]), tensor([70., 80., 90.]), tensor([100.]))
+after rank 1: tensor([40., 50., 60.], device='cuda:1')
 
-after rank 3: tensor([40.], device='cuda:3')
+rank: 0, splited inputs : (tensor([10., 20., 30.]), tensor([40., 50., 60.]), tensor([70., 80., 90.]), tensor([100.]))
+rank: 3, splited inputs : (tensor([10., 20.]), tensor([30., 40.]), tensor([50., 60.]), tensor([70., 80.]), tensor([ 90., 100.]))
+rank: 2, splited inputs : (tensor([10., 20.]), tensor([30., 40.]), tensor([50., 60.]), tensor([70., 80.]), tensor([ 90., 100.]))
+after rank 0: tensor([10., 20., 30.], device='cuda:0')
 
-after rank 0: tensor([10.], device='cuda:0')
-
-after rank 1: tensor([20.], device='cuda:1')
+after rank 3: tensor([70., 80.], device='cuda:1')
+after rank 2: tensor([50., 60.], device='cuda:0')
 ```
+
 ```
 """
 참고: megatron-lm/megatron/mpu/mappings.py
@@ -805,7 +843,7 @@ Gather는 여러 디바이스에 존재하는 텐서를 하나로 모아주는 �
 ![](../images/gather.png)
 ```
 """
-src/gather.py
+src/ch2/gather.py
 """
 
 import torch
@@ -830,11 +868,16 @@ else:
     dist.gather(input, dst=0)
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/gather.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 gather.py
+(large-scale-lm) [gpu10]$  srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 gather.py
+W0908 19:36:04.870000 47971703446592 torch/distributed/run.py:757]
+W0908 19:36:04.870000 47971703446592 torch/distributed/run.py:757] *****************************************
+W0908 19:36:04.870000 47971703446592 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:36:04.870000 47971703446592 torch/distributed/run.py:757] *****************************************
+W0908 19:36:05.147000 47447864847424 torch/distributed/run.py:757]
+W0908 19:36:05.147000 47447864847424 torch/distributed/run.py:757] *****************************************
+W0908 19:36:05.147000 47447864847424 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:36:05.147000 47447864847424 torch/distributed/run.py:757] *****************************************
 [tensor([0.]), tensor([1.]), tensor([2.]), tensor([3.])]
 ```
 #### 5) All-reduce
@@ -842,7 +885,7 @@ overloaded, please further tune the variable for optimal performance in your app
 ![](../images/allreduce.png)
 ```
 """
-src/allreduce_sum.py
+src/ch2/allreduce_sum.py
 """
 
 import torch
@@ -863,27 +906,31 @@ dist.all_reduce(tensor, op=torch.distributed.ReduceOp.SUM)
 print(f"rank {rank}: {tensor}\n")
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/allreduce_sum.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 allreduce_sum.py
+(large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allreduce_sum.py
+W0908 19:38:53.667000 47797158214720 torch/distributed/run.py:757]
+W0908 19:38:53.667000 47797158214720 torch/distributed/run.py:757] *****************************************
+W0908 19:38:53.667000 47797158214720 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:38:53.667000 47797158214720 torch/distributed/run.py:757] *****************************************
+W0908 19:38:53.943000 47661912366144 torch/distributed/run.py:757]
+W0908 19:38:53.943000 47661912366144 torch/distributed/run.py:757] *****************************************
+W0908 19:38:53.943000 47661912366144 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:38:53.943000 47661912366144 torch/distributed/run.py:757] *****************************************
 rank 1: tensor([[6., 6.],
         [6., 6.]], device='cuda:1')
 
 rank 2: tensor([[6., 6.],
-        [6., 6.]], device='cuda:2')
-rank 0: tensor([[6., 6.],
         [6., 6.]], device='cuda:0')
 
-
 rank 3: tensor([[6., 6.],
-        [6., 6.]], device='cuda:3')
+        [6., 6.]], device='cuda:1')
 
+rank 0: tensor([[6., 6.],
+        [6., 6.]], device='cuda:0')
 ```
 ```
 """
-src/allreduce_max.py
+src/ch2/allreduce_max.py
 """
 
 import torch
@@ -904,22 +951,27 @@ dist.all_reduce(tensor, op=torch.distributed.ReduceOp.MAX)
 print(f"rank {rank}: {tensor}\n")
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/allreduce_max.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
-rank 3: tensor([[3., 3.],
-        [3., 3.]], device='cuda:3')
-
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 allreduce_max.py
+(large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allreduce_max.py
+W0908 19:40:27.219000 47670963731520 torch/distributed/run.py:757]
+W0908 19:40:27.219000 47670963731520 torch/distributed/run.py:757] *****************************************
+W0908 19:40:27.219000 47670963731520 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:40:27.219000 47670963731520 torch/distributed/run.py:757] *****************************************
+W0908 19:40:27.438000 47831102270528 torch/distributed/run.py:757]
+W0908 19:40:27.438000 47831102270528 torch/distributed/run.py:757] *****************************************
+W0908 19:40:27.438000 47831102270528 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:40:27.438000 47831102270528 torch/distributed/run.py:757] *****************************************
 rank 1: tensor([[3., 3.],
         [3., 3.]], device='cuda:1')
 
 rank 2: tensor([[3., 3.],
-        [3., 3.]], device='cuda:2')
+        [3., 3.]], device='cuda:0')
 
 rank 0: tensor([[3., 3.],
         [3., 3.]], device='cuda:0')
+
+rank 3: tensor([[3., 3.],
+        [3., 3.]], device='cuda:1')
 ```
 
 #### 6) All-gather
@@ -927,7 +979,7 @@ All-gather는 gather를 수행한 뒤, 모아진 결과를 모든 디바이스�
 ![](../images/allgather.png)
 ```
 """
-src/allgather.py
+src/ch2/allgather.py
 """
 
 import torch
@@ -954,22 +1006,27 @@ dist.all_gather(tensor_list=outputs_list, tensor=input)
 print(outputs_list)
 ```
 ```
-[globin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/allgather.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 allgather.py
+srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allgather.py
+W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757]
+W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757] *****************************************
+W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757] *****************************************
+W0908 19:41:52.504000 47411399556160 torch/distributed/run.py:757]
+W0908 19:41:52.504000 47411399556160 torch/distributed/run.py:757] *****************************************
+W0908 19:41:52.504000 47411399556160 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:41:52.504000 47411399556160 torch/distributed/run.py:757] *****************************************
+[tensor([0.], device='cuda:0'), tensor([1.], device='cuda:0'), tensor([2.], device='cuda:0'), tensor([3.], device='cuda:0')]
 [tensor([0.], device='cuda:1'), tensor([1.], device='cuda:1'), tensor([2.], device='cuda:1'), tensor([3.], device='cuda:1')]
 [tensor([0.], device='cuda:0'), tensor([1.], device='cuda:0'), tensor([2.], device='cuda:0'), tensor([3.], device='cuda:0')]
-[tensor([0.], device='cuda:2'), tensor([1.], device='cuda:2'), tensor([2.], device='cuda:2'), tensor([3.], device='cuda:2')]
-[tensor([0.], device='cuda:3'), tensor([1.], device='cuda:3'), tensor([2.], device='cuda:3'), tensor([3.], device='cuda:3')]
-```
+[tensor([0.], device='cuda:1'), tensor([1.], device='cuda:1'), tensor([2.], device='cuda:1'), tensor([3.], device='cuda:1')]
+
 #### 7) Reduce-scatter
 Reduce scatter는 Reduce를 수행한 뒤, 결과를 쪼개서 디바이스에 반환합니다.
 ![](../images/reduce_scatter.png)
 ```
 """
-src/reduce_scatter.py
+src/ch2/reduce_scatter.py
 """
 
 import torch
@@ -997,25 +1054,38 @@ dist.reduce_scatter(
 print(f"rank {rank}: {output}\n")
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/reduce_scatter.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
-rank 0: tensor([6], device='cuda:0')
-rank 2: tensor([600], device='cuda:2')
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 reduce_scatter.py
+(large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 reduce_scatter.py
+W0908 19:43:26.981000 47070802037824 torch/distributed/run.py:757]
+W0908 19:43:26.981000 47070802037824 torch/distributed/run.py:757] *****************************************
+W0908 19:43:26.981000 47070802037824 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:43:26.981000 47070802037824 torch/distributed/run.py:757] *****************************************
+W0908 19:43:27.130000 47316656434240 torch/distributed/run.py:757]
+W0908 19:43:27.130000 47316656434240 torch/distributed/run.py:757] *****************************************
+W0908 19:43:27.130000 47316656434240 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:43:27.130000 47316656434240 torch/distributed/run.py:757] *****************************************
+Before: rank 1 output: tensor([0], device='cuda:1')
 
+Before: rank 0 output: tensor([0], device='cuda:0')
 
-rank 1: tensor([60], device='cuda:1')
+Before: rank 3 output: tensor([0], device='cuda:1')
 
-rank 3: tensor([6000], device='cuda:3')
+Before: rank 2 output: tensor([0], device='cuda:0')
+
+After: rank 3 output: tensor([6000], device='cuda:1')
+
+After: rank 1 output: tensor([60], device='cuda:1')
+
+After: rank 0 output: tensor([6], device='cuda:0')
+
+After: rank 2 output: tensor([600], device='cuda:0')
 ```
 
 #### 8) Barrier
 Barrier는 프로세스를 동기화 하기 위해 사용됩니다. 먼저 barrier에 도착한 프로세스는 모든 프로세스가 해당 지점까지 실행되는 것을 기다립니다.
 ```
 """
-src/barrier.py
+src/ch2/barrier.py
 """
 import time
 import torch.distributed as dist
@@ -1035,16 +1105,21 @@ dist.barrier()
 print(f"rank {rank}: barrier\n")
 ```
 ```
-[glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 ../src/barrier.py
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
-overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
-rank 2: no-barrier
+# (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 barrier.py
+(large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 barrier.py
+W0908 19:46:13.884000 47163567365184 torch/distributed/run.py:757]
+W0908 19:46:13.884000 47163567365184 torch/distributed/run.py:757] *****************************************
+W0908 19:46:13.884000 47163567365184 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:46:13.884000 47163567365184 torch/distributed/run.py:757] *****************************************
+W0908 19:46:13.981000 47642354682944 torch/distributed/run.py:757]
+W0908 19:46:13.981000 47642354682944 torch/distributed/run.py:757] *****************************************
+W0908 19:46:13.981000 47642354682944 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 19:46:13.981000 47642354682944 torch/distributed/run.py:757] *****************************************
 rank 1: no-barrier
+
 rank 3: no-barrier
 
-
+rank 2: no-barrier
 
 rank 0 - seconds: 1
 
@@ -1056,14 +1131,13 @@ rank 0 - seconds: 4
 
 rank 0: no-barrier
 
-rank 0: barrier
+rank 3: barrier
 
 rank 1: barrier
 
-rank 3: barrier
+rank 0: barrier
 
 rank 2: barrier
-
 ```
 ### 너무 많죠...? 😅
 아래 4개의 기본 연산만 잘 기억해둬도 대부분 유추해서 사용할 수 있습니다.
