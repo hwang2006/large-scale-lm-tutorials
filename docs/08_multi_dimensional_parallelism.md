@@ -803,7 +803,7 @@ class MPU(object):
 
 ```
 """
-src/test_mpu.py
+src/ch8/test_mpu.org.py
 """
 import torch
 import torch.distributed as dist
@@ -845,26 +845,37 @@ print(a)
 ```
 
 ```
-[glogin01]$ deepspeed --num_gpus=4 ../src/test_mpu.py
-[2021-10-28 00:29:04,099] [WARNING] [runner.py:122:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
-[2021-10-28 00:29:04,275] [INFO] [runner.py:360:main] cmd = /usr/bin/python3 -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMCwgMSwgMiwgM119 --master_addr=127.0.0.1 --master_port=29500 ../src/test_mpu.py
-[2021-10-28 00:29:05,352] [INFO] [launch.py:80:main] WORLD INFO DICT: {'localhost': [0, 1, 2, 3]}
-[2021-10-28 00:29:05,352] [INFO] [launch.py:89:main] nnodes=1, num_local_procs=4, node_rank=0
-[2021-10-28 00:29:05,352] [INFO] [launch.py:101:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0, 1, 2, 3]})
-[2021-10-28 00:29:05,352] [INFO] [launch.py:102:main] dist_world_size=4
-[2021-10-28 00:29:05,352] [INFO] [launch.py:105:main] Setting CUDA_VISIBLE_DEVICES=0,1,2,3
-0: TP group: <torch.distributed.ProcessGroupNCCL object at 0x7f29d30bed50>
-3: TP group: <torch.distributed.ProcessGroupNCCL object at 0x7fe4dcd0fd50>
-2: TP group: <torch.distributed.ProcessGroupNCCL object at 0x7fafec84ed50>
-1: TP group: <torch.distributed.ProcessGroupNCCL object at 0x7fa4dbbeed50>
-0: TP wsz: 2
-3: TP wsz: 2
-2: TP wsz: 2
-1: TP wsz: 2
-0: TP rank: 0
-3: TP rank: 1
-2: TP rank: 0
+(large-scale-lm) [gpu05]$ deepspeed --num_gpus=4 test_mpu.org.py
+[2024-09-09 08:17:39,843] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-09 08:17:54,308] [WARNING] [runner.py:212:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
+Detected VISIBLE_DEVICES=0,1,2,3 but ignoring it because one or several of --include/--exclude/--num_gpus/--num_nodes cl args were used. If you want to use CUDA_VISIBLE_DEVICES don't pass any of these arguments to deepspeed.
+[2024-09-09 08:17:54,309] [INFO] [runner.py:585:main] cmd = /scratch/qualis/miniconda3/envs/large-scale-lm/bin/python -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMCwgMSwgMiwgM119 --master_addr=127.0.0.1 --master_port=29500 --enable_each_rank_log=None test_mpu.org.py
+[2024-09-09 08:17:55,960] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-09 08:17:58,446] [INFO] [launch.py:139:main] 0 NCCL_HOME=/scratch/qualis/nccl_2.11.4-1+cuda11.4_x86_64
+[2024-09-09 08:17:58,446] [INFO] [launch.py:146:main] WORLD INFO DICT: {'localhost': [0, 1, 2, 3]}
+[2024-09-09 08:17:58,446] [INFO] [launch.py:152:main] nnodes=1, num_local_procs=4, node_rank=0
+[2024-09-09 08:17:58,447] [INFO] [launch.py:163:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0, 1, 2, 3]})
+[2024-09-09 08:17:58,447] [INFO] [launch.py:164:main] dist_world_size=4
+[2024-09-09 08:17:58,447] [INFO] [launch.py:168:main] Setting CUDA_VISIBLE_DEVICES=0,1,2,3
+[2024-09-09 08:17:58,448] [INFO] [launch.py:256:main] process 193070 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'test_mpu.org.py', '--local_rank=0']
+[2024-09-09 08:17:58,448] [INFO] [launch.py:256:main] process 193071 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'test_mpu.org.py', '--local_rank=1']
+[2024-09-09 08:17:58,449] [INFO] [launch.py:256:main] process 193072 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'test_mpu.org.py', '--local_rank=2']
+[2024-09-09 08:17:58,450] [INFO] [launch.py:256:main] process 193073 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'test_mpu.org.py', '--local_rank=3']
+{'broadcast': <class 'mpu.MPU._initialize_functions.<locals>.Broadcast'>, 'reduce': <class 'mpu.MPU._initialize_functions.<locals>.Reduce'>, 'scatter': <class 'mpu.MPU._initialize_functions.<locals>.Scatter'>, 'gather': <class 'mpu.MPU._initialize_functions.<locals>.Gather'>}
+{'broadcast': <class 'mpu.MPU._initialize_functions.<locals>.Broadcast'>, 'reduce': <class 'mpu.MPU._initialize_functions.<locals>.Reduce'>, 'scatter': <class 'mpu.MPU._initialize_functions.<locals>.Scatter'>, 'gather': <class 'mpu.MPU._initialize_functions.<locals>.Gather'>}{'broadcast': <class 'mpu.MPU._initialize_functions.<locals>.Broadcast'>, 'reduce': <class 'mpu.MPU._initialize_functions.<locals>.Reduce'>, 'scatter': <class 'mpu.MPU._initialize_functions.<locals>.Scatter'>, 'gather': <class 'mpu.MPU._initialize_functions.<locals>.Gather'>}{'broadcast': <class 'mpu.MPU._initialize_functions.<locals>.Broadcast'>, 'reduce': <class 'mpu.MPU._initialize_functions.<locals>.Reduce'>, 'scatter': <class 'mpu.MPU._initialize_functions.<locals>.Scatter'>, 'gather': <class 'mpu.MPU._initialize_functions.<locals>.Gather'>}
+1: TP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b54111757b0>
+
+
+1: TP wsz: 20: TP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2ae91082e9f0>
+3: TP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b39abd7a4f0>
+0: TP wsz: 22: TP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b1df8c0eb30>
+
 1: TP rank: 1
+3: TP wsz: 2
+
+2: TP wsz: 2
+0: TP rank: 03: TP rank: 1
+2: TP rank: 0
 
 
 
@@ -873,19 +884,19 @@ print(a)
 
 
 
-0: PP group: <torch.distributed.ProcessGroupNCCL object at 0x7f29d30bedc0>
-3: PP group: <torch.distributed.ProcessGroupNCCL object at 0x7fe4dcd0fdc0>
-2: PP group: <torch.distributed.ProcessGroupNCCL object at 0x7fafec84edc0>
-1: PP group: <torch.distributed.ProcessGroupNCCL object at 0x7fa4dbbeedc0>
+1: PP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b54111769b0>0: PP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2ae91083bfb0>
+2: PP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b1df8c0d830>
+
+3: PP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b39abd7a470>
 0: PP wsz: 2
-3: PP wsz: 2
 2: PP wsz: 2
-1: PP wsz: 2
-3: PP rank: 1
-0: PP rank: 0
-2: PP rank: 1
+
+1: PP wsz: 20: PP rank: 0
+3: PP wsz: 22: PP rank: 1
+
 1: PP rank: 0
 
+3: PP rank: 1
 
 
 
@@ -893,19 +904,19 @@ print(a)
 
 
 
-0: DP group: <torch.distributed.ProcessGroupNCCL object at 0x7f29d30bece0>
-1: DP group: <torch.distributed.ProcessGroupNCCL object at 0x7fa4dbbeece0>
-2: DP group: <torch.distributed.ProcessGroupNCCL object at 0x7fafec84ece0>
-3: DP group: <torch.distributed.ProcessGroupNCCL object at 0x7fe4dcd0fce0>
-0: DP wsz: 1
-1: DP wsz: 1
-2: DP wsz: 1
-3: DP wsz: 1
+
+1: DP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b54c57f9bb0>0: DP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2ae9c4a3ba70>
+3: DP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b3a5e54b5f0>2: DP group: <torch.distributed.distributed_c10d.ProcessGroup object at 0x2b1ead2f8f70>
+
+
+0: DP wsz: 12: DP wsz: 1
+1: DP wsz: 13: DP wsz: 1
+
 0: DP rank: 0
-1: DP rank: 0
-2: DP rank: 0
 3: DP rank: 0
 
+2: DP rank: 0
+1: DP rank: 0
 
 
 
@@ -913,10 +924,27 @@ print(a)
 
 
 
-1: all-reduce => tensor([2, 3, 4, 5], device='cuda:1')
-0: all-reduce => tensor([2, 3, 4, 5], device='cuda:0')
-3: all-reduce => tensor([10, 15, 20, 25], device='cuda:3')
-2: all-reduce => tensor([10, 15, 20, 25], device='cuda:2')
+
+not enable_grad, before inputs: tensor([0, 0, 0, 0], device='cuda:0')not enable_grad, before inputs: tensor([ 6,  9, 12, 15], device='cuda:3')not enable_grad, before inputs: tensor([ 4,  6,  8, 10], device='cuda:2')not enable_grad, before inputs: tensor([2, 3, 4, 5], device='cuda:1')
+
+
+
+inputs: tensor([0, 0, 0, 0], device='cuda:0')
+inputs: tensor([2, 3, 4, 5], device='cuda:1')
+inputs: tensor([ 4,  6,  8, 10], device='cuda:2')
+inputs: tensor([ 6,  9, 12, 15], device='cuda:3')
+
+
+
+
+2: all-reduce => tensor([10, 15, 20, 25], device='cuda:2')3: all-reduce => tensor([10, 15, 20, 25], device='cuda:3')
+
+1: all-reduce => tensor([2, 3, 4, 5], device='cuda:1')0: all-reduce => tensor([2, 3, 4, 5], device='cuda:0')
+
+[2024-09-09 08:18:14,467] [INFO] [launch.py:351:main] Process 193070 exits successfully.
+[2024-09-09 08:18:14,467] [INFO] [launch.py:351:main] Process 193071 exits successfully.
+[2024-09-09 08:18:14,467] [INFO] [launch.py:351:main] Process 193072 exits successfully.
+[2024-09-09 08:18:14,467] [INFO] [launch.py:351:main] Process 193073 exits successfully.
 ```
 
 ## 3. Large-scale 프로젝트 소개
