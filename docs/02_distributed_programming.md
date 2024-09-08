@@ -1009,9 +1009,10 @@ outputs_list = [
 dist.all_gather(tensor_list=outputs_list, tensor=input)
 print(outputs_list)
 ```
+
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 allgather.py
-srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allgather.py
+(large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allgather.py
 W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757]
 W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757] *****************************************
 W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
@@ -1024,6 +1025,7 @@ W0908 19:41:52.504000 47411399556160 torch/distributed/run.py:757] *************
 [tensor([0.], device='cuda:1'), tensor([1.], device='cuda:1'), tensor([2.], device='cuda:1'), tensor([3.], device='cuda:1')]
 [tensor([0.], device='cuda:0'), tensor([1.], device='cuda:0'), tensor([2.], device='cuda:0'), tensor([3.], device='cuda:0')]
 [tensor([0.], device='cuda:1'), tensor([1.], device='cuda:1'), tensor([2.], device='cuda:1'), tensor([3.], device='cuda:1')]
+```
 
 #### 7) Reduce-scatter
 Reduce scatter는 Reduce를 수행한 뒤, 결과를 쪼개서 디바이스에 반환합니다.
