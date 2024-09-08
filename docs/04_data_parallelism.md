@@ -323,7 +323,7 @@ Multi-GPU에서 학습이 잘 되는군요. 그런데 문제는 0번 GPU에 Logi
 한가지 특이한 점은 이렇게 구현하면 Loss의 reduction이 2번 일어나게 되는데요. multi-thread에서 batch_size//4개에서 4개로 reduction 되는 과정(그림에서 4번)이 한번 일어나고, 각 디바이스에서 출력된 4개의 Loss를 1개로 Reduction 하는 과정(그림에서 5번)이 다시 일어나게 됩니다. 그렇다고 하더라도 Loss computation 부분을 병렬화 시킬 수 있고, 0번 GPU에 가해지는 메모리 부담이 적기 때문에 훨씬 효율적이죠.
 ```
 """
-src/custom_data_parallel.py
+src/ch4/custom_data_parallel.py
 """
 
 from torch import nn
@@ -353,7 +353,7 @@ class ParallelLossModel(Model):
 운이 좋게도 우리가 자주 사용하는 Huggingface Transformers 모델들은 forward pass에서 곧 바로 Loss를 구하는 기능을 내장하고 있습니다. 따라서 이러한 과정 없이 transformers의 기능을 이용하여 진행하겠습니다. 아래의 코드는 Transformers 모델의 `labels`인자에 라벨을 입력하여 Loss를 바로 출력합니다.
 ```
 """
-src/efficient_data_parallel.py
+src/efficient_data_parallel.org.py
 """
 
 # 1 ~ 4까지 생략...
@@ -389,58 +389,44 @@ for i, data in enumerate(data_loader):
 ```
 
 ```
-[glogin01]$ python ../src/efficient_data_parallel.py
-Using custom data configuration default
-Reusing dataset multi_nli
-(/home/ubuntu/.cache/huggingface/datasets/multi_nli/default/0.0.0/591f72eb6263d1ab527561777936b199b714cda156d35716881158a2bd144f39)
-100%|████████████████████████████████████████████| 3/3 [00:00<00:00, 199.34it/s]
-Some weights of the model checkpoint at bert-base-cased were not used when initializing
-BertForSequenceClassification: ['cls.predictions.transform.LayerNorm.weight', 'cls.seq_relationship.weight',
-'cls.predictions.decoder.weight', 'cls.predictions.bias', 'cls.predictions.transform.dense.bias',
-'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.weight']
-- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on
-another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a
-BertForPreTraining model).
-- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that
-you expect to be exactly identical (initializing a BertForSequenceClassification model from a
-BertForSequenceClassification model).
-Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased
-and are newly initialized: ['classifier.bias', 'classifier.weight']
+(large-scale-lm) [gpu05]$ python efficient_data_parallel.org.py
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
 You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
-/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/torch/nn/parallel/_functions.py:64: UserWarning: Was
-asked to gather along dimension 0, but all input tensors were scalars; will instead unsqueeze and return a vector.
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/nn/parallel/_functions.py:68: UserWarning: Was asked to gather along dimension 0, but all input tensors were scalars; will instead unsqueeze and return a vector.
   warnings.warn('Was asked to gather along dimension 0, but all '
-step:0, loss:1.186471700668335
-step:10, loss:1.1163532733917236
-step:20, loss:1.091385841369629
-step:30, loss:1.0980195999145508
-step:40, loss:1.0779412984848022
-step:50, loss:1.053116798400879
-step:60, loss:0.9878815412521362
-step:70, loss:0.9763977527618408
-step:80, loss:0.8458528518676758
-step:90, loss:0.8098542094230652
-step:100, loss:0.7924742698669434
-step:110, loss:0.8259536027908325
-step:120, loss:0.8083906173706055
-step:130, loss:0.7789419889450073
-step:140, loss:0.7848180532455444
-step:150, loss:0.7716841697692871
-step:160, loss:0.7316021919250488
-step:170, loss:0.6465802192687988
-step:180, loss:0.7471408843994141
-step:190, loss:0.5954912900924683
-step:200, loss:0.6941753029823303
-step:210, loss:0.7786209583282471
-step:220, loss:0.6332131028175354
-step:230, loss:0.6579948663711548
-step:240, loss:0.7271711230278015
-step:250, loss:0.5837332010269165
-step:260, loss:0.6737046241760254
-step:270, loss:0.6502429246902466
-step:280, loss:0.6647026538848877
-step:290, loss:0.6707975268363953
-step:300, loss:0.47382402420043945
+step:0, loss:1.1640931367874146
+step:10, loss:1.1262718439102173
+step:20, loss:1.105604887008667
+step:30, loss:1.0968422889709473
+step:40, loss:1.0840587615966797
+step:50, loss:1.0564978122711182
+step:60, loss:1.0217713117599487
+step:70, loss:0.9702370166778564
+step:80, loss:0.8745643496513367
+step:90, loss:0.7839782238006592
+step:100, loss:0.7462543845176697
+step:110, loss:0.9073987007141113
+step:120, loss:0.8226974010467529
+step:130, loss:0.8410908579826355
+step:140, loss:0.8973464965820312
+step:150, loss:0.7872884273529053
+step:160, loss:0.8032517433166504
+step:170, loss:0.7142447233200073
+step:180, loss:0.8116591572761536
+step:190, loss:0.6684067249298096
+step:200, loss:0.7727738618850708
+step:210, loss:0.866787314414978
+step:220, loss:0.6384953856468201
+step:230, loss:0.7246848344802856
+step:240, loss:0.8128511309623718
+step:250, loss:0.5956273078918457
+step:260, loss:0.7926182746887207
+step:270, loss:0.7693862318992615
+step:280, loss:0.7714772820472717
+step:290, loss:0.7309739589691162
+step:300, loss:0.5764233469963074
 ```
 
 ## 2. `torch.nn.DataParallel`의 문제점
@@ -479,7 +465,7 @@ DDP는 기존 DataParallel의 문제를 개선하기 위해 등장한 데이터 
 
 ```
 """
-src/ddp.py
+src/ch4/ddp.org.py
 """
 
 import torch
@@ -566,7 +552,9 @@ for i, data in enumerate(data_loader):
 
 멀티프로세스 애플리케이션이기 때문에 `torch.distributed.launch`를 사용합니다.
 ```
-[glogin01]$ python -m  torch.distributed.launch --nproc_per_node=4 ../src/ddp.py
+(large-scale-lm) [gpu05]$ python -m  torch.distributed.launch --nproc_per_node=4 ddp.org.py
+(large-scale-lm) [gpu05]$ torchrun --nproc_per_node=4 ddp.org.py
+(large-scale-lm) [gpu05]$ srun torchrun --nproc_per_node=4 ddp.org.py
 *****************************************
 Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being
 overloaded, please further tune the variable for optimal performance in your application as needed. 
@@ -668,6 +656,386 @@ step:270, loss:0.4605785310268402
 step:280, loss:0.7553415298461914
 step:290, loss:0.8398311138153076
 step:300, loss:0.45668572187423706
+```
+
+```
+"""
+src/ch4/ddp.py
+"""
+
+import torch
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel
+
+from torch import nn
+from datasets import load_dataset
+from transformers import AutoTokenizer, DataCollatorWithPadding
+
+from torch.utils.data import DataLoader, DistributedSampler
+
+from transformers import AutoModelForSequenceClassification
+from transformers import AdamW
+
+
+from transformers import get_scheduler
+
+from tqdm.auto import tqdm
+
+import evaluate
+
+
+# initialize process group
+dist.init_process_group("nccl")
+rank = dist.get_rank()
+world_size = dist.get_world_size()
+torch.cuda.set_device(rank)
+device = torch.cuda.current_device()
+
+
+batch_size = 32
+device_count = torch.cuda.device_count() if torch.cuda.is_available() else 1
+
+raw_datasets = load_dataset("multi_nli", split="train")
+
+train_test_datasets = raw_datasets.train_test_split(test_size=0.1, seed=42)
+
+checkpoint = "bert-base-cased"
+tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+
+def tokenize_function(example):
+    return tokenizer(example["premise"], example["hypothesis"], truncation=True)
+
+tokenized_datasets = train_test_datasets.map(tokenize_function, batched=True)
+tokenized_datasets = tokenized_datasets.remove_columns(['promptID', 'pairID', 'premise', 'premise_binary_parse', 'premise_parse', 'hypothesis', 'hypothesis_binary_parse', 'hypothesis_parse', 'genre'])
+
+data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
+
+#train_datasets = tokenized_datasets["train"].shuffle(seed=12).select(range(20000))
+train_datasets = tokenized_datasets["train"].shuffle(seed=12).select(range(353431))
+#valid_datasets = tokenized_datasets["test"].shuffle(seed=12).select(range(2000))
+valid_datasets = tokenized_datasets["test"].shuffle(seed=12).select(range(39271))
+
+train_dataloader = DataLoader(
+    #tokenized_datasets["train"], shuffle=True, batch_size=32, =data_collator
+    train_datasets, shuffle=True, batch_size=batch_size*device_count, collate_fn=data_collator
+)
+eval_dataloader = DataLoader(
+    #tokenized_datasets["test"], batch_size=64, collate_fn=data_collator
+    valid_datasets, batch_size=batch_size*device_count, collate_fn=data_collator
+)
+
+# create DistributedSampler
+train_sampler = DistributedSampler(
+    #datasets,
+    train_datasets,
+    num_replicas=world_size,
+    rank=rank,
+    shuffle=True,
+)
+train_dataloader = DataLoader(
+    #datasets,
+        train_datasets,
+    batch_size=32,
+    num_workers=8,
+    sampler=train_sampler,
+    shuffle=False,
+    pin_memory=True,
+    collate_fn=data_collator,
+)
+
+eval_sampler = DistributedSampler(
+    #datasets,
+    valid_datasets,
+    num_replicas=world_size,
+    rank=rank,
+    shuffle=False,
+)
+eval_dataloader = DataLoader(
+    #datasets,
+    valid_datasets,
+    batch_size=32,
+    num_workers=8,
+    sampler=eval_sampler,
+    shuffle=False,
+    pin_memory=True,
+    collate_fn=data_collator,
+)
+
+
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=3)
+
+optimizer = AdamW(model.parameters(), lr=5e-5)
+
+#num_epochs = 5
+num_epochs = 1
+num_training_steps = num_epochs * len(train_dataloader)
+lr_scheduler = get_scheduler(
+    "linear",
+    optimizer=optimizer,
+    num_warmup_steps=0,
+    num_training_steps=num_training_steps,
+)
+
+# distributed data parallel
+model = model.to(device)
+#model = DistributedDataParallel(model, device_ids=[device])
+model = DistributedDataParallel(model)
+
+progress_bar = tqdm(range(num_training_steps))
+
+loss_fn = nn.CrossEntropyLoss(reduction="mean")
+
+model.train()
+for epoch in range(num_epochs):
+    for i, batch in enumerate(train_dataloader):
+        batch = batch.to(device)
+        outputs = model(**batch)
+        loss = outputs.loss
+        # print(f"loss: {loss}") #loss: tensor([1.1256, 1.0732, 1.2382, 1.2967], device='cuda:0',grad_fn=<GatherBackward>)
+        #loss = torch.mean(loss)
+        #print(f"after torch mean loss: {loss}") # loss: 1.1834330558776855
+        #logits = outputs.logits
+        #loss = loss_fn(logits, batch["labels"])
+
+
+        loss.backward()
+
+        optimizer.step()
+        #lr_scheduler.step()
+        optimizer.zero_grad()
+        progress_bar.update(1)
+
+        #steps = (epoch+1)*i
+        #if steps % 100 == 0:
+        #   print(f"step:{steps}, loss:{loss}")
+
+
+
+metric = evaluate.load("accuracy")
+
+num_eval_steps = len(eval_dataloader)
+progress_bar = tqdm(range(num_eval_steps))
+
+model.eval()
+
+for batch in eval_dataloader:
+    #batch = {k: v.to(device) for k, v in batch.items()}
+    batch = batch.to(device)
+    with torch.no_grad():
+        outputs = model(**batch)
+
+    logits = outputs.logits
+    predictions = torch.argmax(logits, dim=-1)
+    metric.add_batch(predictions=predictions, references=batch["labels"])
+    progress_bar.update(1)
+
+evaluation = metric.compute()
+#print(type(evaluation)) # class dict
+#print(evaluation["accuracy"])
+print(f"\nMetric: {evaluation}")
+
+evaluation_tensor = torch.tensor(evaluation["accuracy"]).to(device)
+
+dist.reduce(evaluation_tensor, op=torch.distributed.ReduceOp.AVG, dst=0)
+
+if rank == 0:
+    print(f"\nAverge Accuracy: {evaluation_tensor.item():.3f}")
+```
+
+```
+(large-scale-lm) [gpu05]$ torchrun --nproc_per_node=4 ddp.py
+W0908 21:52:13.856000 47481656617152 torch/distributed/run.py:757]
+W0908 21:52:13.856000 47481656617152 torch/distributed/run.py:757] *****************************************
+W0908 21:52:13.856000 47481656617152 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0908 21:52:13.856000 47481656617152 torch/distributed/run.py:757] *****************************************
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Map:   0%|                                                           | 0/39271 [00:00<?, ? examples/s]/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Map:  20%|█████████▎                                    | 8000/39271 [00:01<00:04, 6525.43 examples/s]/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Map: 100%|█████████████████████████████████████████████| 39271/39271 [00:05<00:00, 6732.23 examples/s]
+Map: 100%|█████████████████████████████████████████████| 39271/39271 [00:05<00:00, 6585.32 examples/s]
+Map: 100%|█████████████████████████████████████████████| 39271/39271 [00:05<00:00, 6578.37 examples/s]
+Map:  81%|████████████████████████████████████▋        | 32000/39271 [00:04<00:00, 7292.94 examples/s]Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/optimization.py:591: FutureWarning: This implementation of AdamW is deprecated and will be removed in a future version. Use the PyTorch implementation torch.optim.AdamW instead, or set `no_deprecation_warning=True` to disable this warning
+  warnings.warn(
+Map:  84%|█████████████████████████████████████▊       | 33000/39271 [00:04<00:00, 7603.37 examples/s]Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/optimization.py:591: FutureWarning: This implementation of AdamW is deprecated and will be removed in a future version. Use the PyTorch implementation torch.optim.AdamW instead, or set `no_deprecation_warning=True` to disable this warning
+  warnings.warn(
+Map:  87%|██████████████████████████████████████▉      | 34000/39271 [00:05<00:00, 7669.44 examples/s]Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/optimization.py:591: FutureWarning: This implementation of AdamW is deprecated and will be removed in a future version. Use the PyTorch implementation torch.optim.AdamW instead, or set `no_deprecation_warning=True` to disable this warning
+  warnings.warn(
+Map: 100%|█████████████████████████████████████████████| 39271/39271 [00:05<00:00, 6713.38 examples/s]
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-cased and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/optimization.py:591: FutureWarning: This implementation of AdamW is deprecated and will be removed in a future version. Use the PyTorch implementation torch.optim.AdamW instead, or set `no_deprecation_warning=True` to disable this warning
+  warnings.warn(
+  0%|                                                                        | 0/2762 [00:00<?, ?it/s]huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+100%|█████████████████████████████████████████████████████████████| 2762/2762 [09:48<00:00,  4.69it/s]
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+100%|█████████████████████████████████████████████████████████████| 2762/2762 [09:48<00:00,  4.69it/s]
+100%|█████████████████████████████████████████████████████████████| 2762/2762 [09:48<00:00,  4.69it/s]
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+100%|█████████████████████████████████████████████████████████████| 2762/2762 [09:48<00:00,  4.69it/s]
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+        - Avoid using `tokenizers` before the fork if possible
+        - Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+
+Metric: {'accuracy': 0.8206355673253208}█████████████████████       | 273/307 [00:15<00:01, 19.72it/s]
+ 92%|█████████████████████████████████████████████████████████▊     | 282/307 [00:15<00:01, 18.73it/s]
+Metric: {'accuracy': 0.8306172336524751}████████████████████████▋   | 291/307 [00:16<00:00, 21.02it/s]
+ 98%|█████████████████████████████████████████████████████████████▌ | 300/307 [00:16<00:00, 20.47it/s]
+Metric: {'accuracy': 0.8219596659197392}
+100%|███████████████████████████████████████████████████████████████| 307/307 [00:16<00:00, 18.25it/s]
+100%|███████████████████████████████████████████████████████████████| 307/307 [00:16<00:00, 18.25it/s]
+
+Metric: {'accuracy': 0.8224689346099002}███████████████████████████▊| 306/307 [00:17<00:00, 22.01it/s]
+
+Averge Accuracy: 0.824
+100%|███████████████████████████████████████████████████████████████| 307/307 [00:17<00:00, 17.48it/s]
+100%|███████████████████████████████████████████████████████████████| 307/307 [00:17<00:00, 17.50it/s]
 ```
 
 ### 그런데 잠깐, All-reduce를 언제 수행하는게 좋을까요?
