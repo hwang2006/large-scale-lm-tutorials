@@ -450,7 +450,7 @@ class ReLU(torch.autograd.Function):
 위와 같은 명령어를 입력하면 `torch.distributed.launch`와 동일하게 작동합니다. 이제부터는 모든 분산처리 프로그램에 `deepspeed`의 명령어를 사용하도록 하겠습니다. (솔직히 `torch.distributed.launch`는 너무 길어요 😭)
 ```
 """
-src/pipe_dream.py
+src/ch5/pipe_dream.org.py
 """
 import deepspeed
 import torch
@@ -606,18 +606,98 @@ if __name__ == "__main__":
         if i % 10 == 0 and rank == 0:
             print(f"step: {i}, loss: {loss}")
 ```
+
 ```
-[glogin01]$ ds --num_gpus=4 ../src/pipe_dream.py
-[2021-10-21 23:11:01,063] [WARNING] [runner.py:122:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
-[2021-10-21 23:11:01,184] [INFO] [runner.py:360:main] cmd = /home/ubuntu/kevin/kevin_env/bin/python3 -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMCwgMSwgMiwgM119 --master_addr=127.0.0.1 --master_port=29500 ../src/pipe_dream.py
-[2021-10-21 23:11:02,065] [INFO] [launch.py:80:main] WORLD INFO DICT: {'localhost': [0, 1, 2, 3]}
-[2021-10-21 23:11:02,065] [INFO] [launch.py:86:main] nnodes=1, num_local_procs=4, node_rank=0
-[2021-10-21 23:11:02,065] [INFO] [launch.py:101:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0, 1, 2, 3]})
-[2021-10-21 23:11:02,065] [INFO] [launch.py:102:main] dist_world_size=4
-[2021-10-21 23:11:02,065] [INFO] [launch.py:104:main] Setting CUDA_VISIBLE_DEVICES=0,1,2,3
+(large-scale-lm) [gpu05]$ pip install deepspeed
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Collecting deepspeed
+  Downloading deepspeed-0.15.1.tar.gz (1.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 16.5 MB/s eta 0:00:00
+  Preparing metadata (setup.py) ... done
+Collecting hjson (from deepspeed)
+  Downloading hjson-3.1.0-py3-none-any.whl.metadata (2.6 kB)
+Collecting ninja (from deepspeed)
+  Downloading ninja-1.11.1.1-py2.py3-none-manylinux1_x86_64.manylinux_2_5_x86_64.whl.metadata (5.3 kB)
+Requirement already satisfied: numpy in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from deepspeed) (2.0.1)
+Requirement already satisfied: packaging>=20.0 in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from deepspeed) (24.1)
+Collecting psutil (from deepspeed)
+  Downloading psutil-6.0.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (21 kB)
+Collecting py-cpuinfo (from deepspeed)
+  Downloading py_cpuinfo-9.0.0-py3-none-any.whl.metadata (794 bytes)
+Collecting pydantic>=2.0.0 (from deepspeed)
+  Downloading pydantic-2.9.0-py3-none-any.whl.metadata (146 kB)
+Requirement already satisfied: torch in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from deepspeed) (2.3.0)
+Requirement already satisfied: tqdm in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from deepspeed) (4.66.5)
+Collecting nvidia-ml-py (from deepspeed)
+  Downloading nvidia_ml_py-12.560.30-py3-none-any.whl.metadata (8.6 kB)
+Collecting annotated-types>=0.4.0 (from pydantic>=2.0.0->deepspeed)
+  Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.23.2 (from pydantic>=2.0.0->deepspeed)
+  Downloading pydantic_core-2.23.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+Requirement already satisfied: typing-extensions>=4.6.1 in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from pydantic>=2.0.0->deepspeed) (4.11.0)
+Requirement already satisfied: tzdata in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from pydantic>=2.0.0->deepspeed) (2024.1)
+Requirement already satisfied: filelock in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from torch->deepspeed) (3.13.1)
+Requirement already satisfied: sympy in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from torch->deepspeed) (1.13.2)
+Requirement already satisfied: networkx in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from torch->deepspeed) (3.2.1)
+Requirement already satisfied: jinja2 in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from torch->deepspeed) (3.1.4)
+Requirement already satisfied: fsspec in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from torch->deepspeed) (2024.6.1)
+Requirement already satisfied: MarkupSafe>=2.0 in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from jinja2->torch->deepspeed) (2.1.3)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages (from sympy->torch->deepspeed) (1.3.0)
+Downloading pydantic-2.9.0-py3-none-any.whl (434 kB)
+Downloading pydantic_core-2.23.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 27.5 MB/s eta 0:00:00
+Downloading hjson-3.1.0-py3-none-any.whl (54 kB)
+Downloading ninja-1.11.1.1-py2.py3-none-manylinux1_x86_64.manylinux_2_5_x86_64.whl (307 kB)
+Downloading nvidia_ml_py-12.560.30-py3-none-any.whl (40 kB)
+Downloading psutil-6.0.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (290 kB)
+Downloading py_cpuinfo-9.0.0-py3-none-any.whl (22 kB)
+Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+Building wheels for collected packages: deepspeed
+  Building wheel for deepspeed (setup.py) ... done
+  Created wheel for deepspeed: filename=deepspeed-0.15.1-py3-none-any.whl size=1483871 sha256=8df093efa22a297d30e79d70db35ce6ff73e58b19dac1ff3015eaf3a9a2cd60b
+  Stored in directory: /tmp/pip-ephem-wheel-cache-c_ezqmsr/wheels/da/cb/14/9cbba50c73df044eb32a7ca29e34844c5f8959e12d22ae8b60
+Successfully built deepspeed
+Installing collected packages: py-cpuinfo, nvidia-ml-py, ninja, hjson, pydantic-core, psutil, annotated-types, pydantic, deepspeed
+Successfully installed annotated-types-0.7.0 deepspeed-0.15.1 hjson-3.1.0 ninja-1.11.1.1 nvidia-ml-py-12.560.30 psutil-6.0.0 py-cpuinfo-9.0.0 pydantic-2.9.0 pydantic-core-2.23.2
+```
+```
+(large-scale-lm) [gpu05]$ ds --num_gpus=4 pipe_dream.org.py
+[2024-09-08 23:02:41,542] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-08 23:02:45,778] [WARNING] [runner.py:212:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
+Detected VISIBLE_DEVICES=0,1,2,3 but ignoring it because one or several of --include/--exclude/--num_gpus/--num_nodes cl args were used. If you want to use CUDA_VISIBLE_DEVICES don't pass any of these arguments to deepspeed.
+[2024-09-08 23:02:45,778] [INFO] [runner.py:585:main] cmd = /scratch/qualis/miniconda3/envs/large-scale-lm/bin/python -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMCwgMSwgMiwgM119 --master_addr=127.0.0.1 --master_port=29500 --enable_each_rank_log=None pipe_dream.org.py
+[2024-09-08 23:02:47,226] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-08 23:02:49,632] [INFO] [launch.py:139:main] 0 NCCL_HOME=/scratch/qualis/nccl_2.11.4-1+cuda11.4_x86_64
+[2024-09-08 23:02:49,632] [INFO] [launch.py:146:main] WORLD INFO DICT: {'localhost': [0, 1, 2, 3]}
+[2024-09-08 23:02:49,632] [INFO] [launch.py:152:main] nnodes=1, num_local_procs=4, node_rank=0
+[2024-09-08 23:02:49,632] [INFO] [launch.py:163:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0, 1, 2, 3]})
+[2024-09-08 23:02:49,632] [INFO] [launch.py:164:main] dist_world_size=4
+[2024-09-08 23:02:49,632] [INFO] [launch.py:168:main] Setting CUDA_VISIBLE_DEVICES=0,1,2,3
+[2024-09-08 23:02:49,633] [INFO] [launch.py:256:main] process 51266 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'pipe_dream.org.py', '--local_rank=0']
+[2024-09-08 23:02:49,634] [INFO] [launch.py:256:main] process 51267 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'pipe_dream.org.py', '--local_rank=1']
+[2024-09-08 23:02:49,635] [INFO] [launch.py:256:main] process 51268 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'pipe_dream.org.py', '--local_rank=2']
+[2024-09-08 23:02:49,636] [INFO] [launch.py:256:main] process 51269 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'pipe_dream.org.py', '--local_rank=3']
+[2024-09-08 23:02:51,219] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-08 23:02:51,257] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-08 23:02:51,266] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-08 23:02:51,269] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-08 23:02:56,095] [INFO] [comm.py:652:init_distributed] cdb=None
+[2024-09-08 23:02:56,095] [INFO] [comm.py:652:init_distributed] cdb=None
+[2024-09-08 23:02:56,095] [INFO] [comm.py:652:init_distributed] cdb=None
+[2024-09-08 23:02:56,095] [INFO] [comm.py:683:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
+[2024-09-08 23:02:56,095] [INFO] [comm.py:652:init_distributed] cdb=None
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+[2024-09-08 23:02:58,121] [INFO] [config.py:733:__init__] Config mesh_device None world_size = 1
 SEED_LAYERS=False BASE_SEED=1234 SEED_FN=None
 Using topology: {ProcessCoord(pipe=0, data=0): 0, ProcessCoord(pipe=1, data=0): 1, ProcessCoord(pipe=2, data=0): 2, ProcessCoord(pipe=3, data=0): 3}
-[2021-10-21 23:11:24,460] [INFO] [module.py:365:_partition_layers] Partitioning pipeline stages with method type:GPT2Block
+[2024-09-08 23:02:58,452] [INFO] [module.py:396:_partition_layers] Partitioning pipeline stages with method type:GPT2Block
 stage=0 layers=4
      0: GPT2Preprocessing
      1: GPT2Block
@@ -637,195 +717,195 @@ stage=3 layers=4
     12: GPT2Block
     13: GPT2Postprocessing
   loss: loss_fn
-[2021-10-21 23:14:05,483] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed info: version=0.5.4+c6d1418, git-hash=c6d1418, git-branch=master
-[2021-10-21 23:14:05,869] [INFO] [engine.py:204:__init__] DeepSpeed Flops Profiler Enabled: False
-[2021-10-21 23:14:05,869] [INFO] [engine.py:848:_configure_optimizer] Removing param_group that has no 'params' in the client Optimizer
-[2021-10-21 23:14:05,869] [INFO] [engine.py:854:_configure_optimizer] Using client Optimizer as basic optimizer
-[2021-10-21 23:14:05,892] [INFO] [engine.py:870:_configure_optimizer] DeepSpeed Basic Optimizer = Adam
-[2021-10-21 23:14:05,892] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed Final Optimizer = Adam
-[2021-10-21 23:14:05,892] [INFO] [engine.py:596:_configure_lr_scheduler] DeepSpeed using client LR scheduler
-[2021-10-21 23:14:05,892] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed LR Scheduler = None
-[2021-10-21 23:14:05,892] [INFO] [logging.py:68:log_dist] [Rank 0] step=0, skipped=0, lr=[3e-05], mom=[(0.9, 0.999)]
-[2021-10-21 23:14:05,892] [INFO] [config.py:940:print] DeepSpeedEngine configuration:
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   activation_checkpointing_config  {
-    "partition_activations": false, 
-    "contiguous_memory_optimization": false, 
-    "cpu_checkpointing": false, 
-    "number_checkpoints": null, 
-    "synchronize_checkpoint_boundary": false, 
+[2024-09-08 23:02:58,513] [INFO] [engine.py:146:__init__] is_pipe_partitioned= False is_grad_partitioned= False
+[2024-09-08 23:02:58,539] [INFO] [config.py:733:__init__] Config mesh_device None world_size = 1
+[2024-09-08 23:02:58,753] [INFO] [logging.py:96:log_dist] [Rank 0] DeepSpeed info: version=0.15.1, git-hash=unknown, git-branch=unknown
+[2024-09-08 23:02:58,753] [INFO] [config.py:733:__init__] Config mesh_device None world_size = 1
+[2024-09-08 23:02:58,757] [INFO] [engine.py:146:__init__] is_pipe_partitioned= False is_grad_partitioned= False
+[2024-09-08 23:02:58,911] [INFO] [config.py:733:__init__] Config mesh_device None world_size = 1
+[2024-09-08 23:02:58,980] [INFO] [logging.py:96:log_dist] [Rank 0] DeepSpeed Flops Profiler Enabled: False
+[2024-09-08 23:02:58,981] [INFO] [logging.py:96:log_dist] [Rank 0] Using client Optimizer as basic optimizer
+[2024-09-08 23:02:58,981] [INFO] [logging.py:96:log_dist] [Rank 0] Removing param_group that has no 'params' in the basic Optimizer
+[2024-09-08 23:02:58,982] [INFO] [logging.py:96:log_dist] [Rank 0] DeepSpeed Basic Optimizer = Adam
+[2024-09-08 23:02:58,983] [INFO] [logging.py:96:log_dist] [Rank 0] DeepSpeed Final Optimizer = Adam
+[2024-09-08 23:02:58,983] [INFO] [logging.py:96:log_dist] [Rank 0] DeepSpeed using configured LR scheduler = None
+[2024-09-08 23:02:58,983] [INFO] [logging.py:96:log_dist] [Rank 0] DeepSpeed LR Scheduler = None
+[2024-09-08 23:02:58,983] [INFO] [logging.py:96:log_dist] [Rank 0] step=0, skipped=0, lr=[3e-05], mom=[(0.9, 0.999)]
+[2024-09-08 23:02:58,984] [INFO] [config.py:999:print] DeepSpeedEngine configuration:
+[2024-09-08 23:02:58,985] [INFO] [config.py:1003:print]   activation_checkpointing_config  {
+    "partition_activations": false,
+    "contiguous_memory_optimization": false,
+    "cpu_checkpointing": false,
+    "number_checkpoints": null,
+    "synchronize_checkpoint_boundary": false,
     "profile": false
 }
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   aio_config ................... {'block_size': 1048576, 'queue_depth': 8, 'thread_count': 1, 'single_submit': False, 'overlap_events': True}
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   allreduce_always_fp32 ........ False
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   amp_enabled .................. False
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   amp_params ................... False
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   checkpoint_tag_validation_enabled  True
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   checkpoint_tag_validation_fail  False
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   curriculum_enabled ........... False
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   curriculum_params ............ False
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   dataloader_drop_last ......... False
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   disable_allgather ............ False
-[2021-10-21 23:14:05,893] [INFO] [config.py:944:print]   dump_state ................... False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   dynamic_loss_scale_args ...... None
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   eigenvalue_enabled ........... False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   eigenvalue_gas_boundary_resolution  1
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   eigenvalue_layer_name ........ bert.encoder.layer
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   eigenvalue_layer_num ......... 0
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   eigenvalue_max_iter .......... 100
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   eigenvalue_stability ......... 1e-06
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   eigenvalue_tol ............... 0.01
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   eigenvalue_verbose ........... False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   elasticity_enabled ........... False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   flops_profiler_config ........ {
-    "enabled": false, 
-    "profile_step": 1, 
-    "module_depth": -1, 
-    "top_modules": 1, 
-    "detailed": true, 
+[2024-09-08 23:02:58,985] [INFO] [config.py:1003:print]   aio_config ................... {'block_size': 1048576, 'queue_depth': 8, 'thread_count': 1, 'single_submit': False, 'overlap_events': True, 'use_gds': False}
+[2024-09-08 23:02:58,985] [INFO] [config.py:1003:print]   amp_enabled .................. False
+[2024-09-08 23:02:58,985] [INFO] [config.py:1003:print]   amp_params ................... False
+[2024-09-08 23:02:58,986] [INFO] [config.py:1003:print]   autotuning_config ............ {
+    "enabled": false,
+    "start_step": null,
+    "end_step": null,
+    "metric_path": null,
+    "arg_mappings": null,
+    "metric": "throughput",
+    "model_info": null,
+    "results_dir": "autotuning_results",
+    "exps_dir": "autotuning_exps",
+    "overwrite": true,
+    "fast": true,
+    "start_profile_step": 3,
+    "end_profile_step": 5,
+    "tuner_type": "gridsearch",
+    "tuner_early_stopping": 5,
+    "tuner_num_trials": 50,
+    "model_info_path": null,
+    "mp_size": 1,
+    "max_train_batch_size": null,
+    "min_train_batch_size": 1,
+    "max_train_micro_batch_size_per_gpu": 1.024000e+03,
+    "min_train_micro_batch_size_per_gpu": 1,
+    "num_tuning_micro_batch_sizes": 3
+}
+[2024-09-08 23:02:58,986] [INFO] [config.py:1003:print]   bfloat16_enabled ............. False
+[2024-09-08 23:02:58,986] [INFO] [config.py:1003:print]   bfloat16_immediate_grad_update  False
+[2024-09-08 23:02:58,986] [INFO] [config.py:1003:print]   checkpoint_parallel_write_pipeline  False
+[2024-09-08 23:02:58,986] [INFO] [config.py:1003:print]   checkpoint_tag_validation_enabled  True
+[2024-09-08 23:02:58,986] [INFO] [config.py:1003:print]   checkpoint_tag_validation_fail  False
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   comms_config ................. <deepspeed.comm.config.DeepSpeedCommsConfig object at 0x2af14644d480>
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   communication_data_type ...... None
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   compression_config ........... {'weight_quantization': {'shared_parameters': {'enabled': False, 'quantizer_kernel': False, 'schedule_offset': 0, 'quantize_groups': 1, 'quantize_verbose': False, 'quantization_type': 'symmetric', 'quantize_weight_in_forward': False, 'rounding': 'nearest', 'fp16_mixed_quantize': False, 'quantize_change_ratio': 0.001}, 'different_groups': {}}, 'activation_quantization': {'shared_parameters': {'enabled': False, 'quantization_type': 'symmetric', 'range_calibration': 'dynamic', 'schedule_offset': 1000}, 'different_groups': {}}, 'sparse_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'row_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'head_pruning': {'shared_parameters': {'enabled': False, 'method': 'topk', 'schedule_offset': 1000}, 'different_groups': {}}, 'channel_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'layer_reduction': {'enabled': False}}
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   curriculum_enabled_legacy .... False
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   curriculum_params_legacy ..... False
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   data_efficiency_config ....... {'enabled': False, 'seed': 1234, 'data_sampling': {'enabled': False, 'num_epochs': 1000, 'num_workers': 0, 'curriculum_learning': {'enabled': False}}, 'data_routing': {'enabled': False, 'random_ltd': {'enabled': False, 'layer_token_lr_schedule': {'enabled': False}}}}
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   data_efficiency_enabled ...... False
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   dataloader_drop_last ......... False
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   disable_allgather ............ False
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   dump_state ................... False
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   dynamic_loss_scale_args ...... None
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   eigenvalue_enabled ........... False
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   eigenvalue_gas_boundary_resolution  1
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   eigenvalue_layer_name ........ bert.encoder.layer
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   eigenvalue_layer_num ......... 0
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   eigenvalue_max_iter .......... 100
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   eigenvalue_stability ......... 1e-06
+[2024-09-08 23:02:58,987] [INFO] [config.py:1003:print]   eigenvalue_tol ............... 0.01
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   eigenvalue_verbose ........... False
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   elasticity_enabled ........... False
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   flops_profiler_config ........ {
+    "enabled": false,
+    "recompute_fwd_factor": 0.0,
+    "profile_step": 1,
+    "module_depth": -1,
+    "top_modules": 1,
+    "detailed": true,
     "output_file": null
 }
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   fp16_enabled ................. False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   fp16_master_weights_and_gradients  False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   fp16_mixed_quantize .......... False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   global_rank .................. 0
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   gradient_accumulation_steps .. 1
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   gradient_clipping ............ 0.0
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   gradient_predivide_factor .... 1.0
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   initial_dynamic_scale ........ 4294967296
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   loss_scale ................... 0
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   memory_breakdown ............. False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   optimizer_legacy_fusion ...... False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   optimizer_name ............... None
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   optimizer_params ............. None
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   pipeline ..................... {'stages': 'auto', 'partition': 'best', 'seed_layers': False, 'activation_checkpoint_interval': 0}
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   pld_enabled .................. False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   pld_params ................... False
-[2021-10-21 23:14:05,894] [INFO] [config.py:944:print]   prescale_gradients ........... False
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_change_rate ......... 0.001
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_groups .............. 1
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_offset .............. 1000
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_period .............. 1000
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_rounding ............ 0
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_start_bits .......... 16
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_target_bits ......... 8
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_training_enabled .... False
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_type ................ 0
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   quantize_verbose ............. False
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   scheduler_name ............... None
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   scheduler_params ............. None
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   sparse_attention ............. None
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   sparse_gradients_enabled ..... False
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   steps_per_print .............. 9999999
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   tensorboard_enabled .......... False
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   tensorboard_job_name ......... DeepSpeedJobName
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   tensorboard_output_path ...... 
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   train_batch_size ............. 16
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   train_micro_batch_size_per_gpu  16
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   use_quantizer_kernel ......... False
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   wall_clock_breakdown ......... False
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   world_size ................... 1
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   zero_allow_untested_optimizer  False
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   zero_config .................. {
-    "stage": 0, 
-    "contiguous_gradients": true, 
-    "reduce_scatter": true, 
-    "reduce_bucket_size": 5.000000e+08, 
-    "allgather_partitions": true, 
-    "allgather_bucket_size": 5.000000e+08, 
-    "overlap_comm": false, 
-    "load_from_fp32_weights": true, 
-    "elastic_checkpoint": true, 
-    "offload_param": null, 
-    "offload_optimizer": null, 
-    "sub_group_size": 1.000000e+09, 
-    "prefetch_bucket_size": 5.000000e+07, 
-    "param_persistence_threshold": 1.000000e+05, 
-    "max_live_parameters": 1.000000e+09, 
-    "max_reuse_distance": 1.000000e+09, 
-    "gather_fp16_weights_on_model_save": false, 
-    "ignore_unused_parameters": true, 
-    "round_robin_gradients": false, 
-    "legacy_stage1": false
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   fp16_auto_cast ............... None
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   fp16_enabled ................. False
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   fp16_master_weights_and_gradients  False
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   global_rank .................. 0
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   grad_accum_dtype ............. None
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   gradient_accumulation_steps .. 1
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   gradient_clipping ............ 0.0
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   gradient_predivide_factor .... 1.0
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   graph_harvesting ............. False
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   hybrid_engine ................ enabled=False max_out_tokens=512 inference_tp_size=1 release_inference_cache=False pin_parameters=True tp_gather_partition_size=8
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   initial_dynamic_scale ........ 65536
+[2024-09-08 23:02:58,988] [INFO] [config.py:1003:print]   load_universal_checkpoint .... False
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   loss_scale ................... 0
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   memory_breakdown ............. False
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   mics_hierarchial_params_gather  False
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   mics_shard_size .............. -1
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   monitor_config ............... tensorboard=TensorBoardConfig(enabled=False, output_path='', job_name='DeepSpeedJobName') comet=CometConfig(enabled=False, samples_log_interval=100, project=None, workspace=None, api_key=None, experiment_name=None, experiment_key=None, online=None, mode=None) wandb=WandbConfig(enabled=False, group=None, team=None, project='deepspeed') csv_monitor=CSVConfig(enabled=False, output_path='', job_name='DeepSpeedJobName')
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   nebula_config ................ {
+    "enabled": false,
+    "persistent_storage_path": null,
+    "persistent_time_interval": 100,
+    "num_of_version_in_retention": 2,
+    "enable_nebula_load": true,
+    "load_path": null
 }
-[2021-10-21 23:14:05,895] [INFO] [config.py:944:print]   zero_enabled ................. False
-[2021-10-21 23:14:05,896] [INFO] [config.py:944:print]   zero_optimization_stage ...... 0
-[2021-10-21 23:14:05,896] [INFO] [config.py:946:print]   json = {
-    "train_batch_size": 16, 
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   optimizer_legacy_fusion ...... False
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   optimizer_name ............... None
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   optimizer_params ............. None
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   pipeline ..................... {'stages': 'auto', 'partition': 'best', 'seed_layers': False, 'activation_checkpoint_interval': 0, 'pipe_partitioned': True, 'grad_partitioned': True}
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   pld_enabled .................. False
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   pld_params ................... False
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   prescale_gradients ........... False
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   scheduler_name ............... None
+[2024-09-08 23:02:58,989] [INFO] [config.py:1003:print]   scheduler_params ............. None
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   seq_parallel_communication_data_type  torch.float32
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   sparse_attention ............. None
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   sparse_gradients_enabled ..... False
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   steps_per_print .............. 9999999
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   timers_config ................ enabled=True synchronized=True
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   train_batch_size ............. 16
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   train_micro_batch_size_per_gpu  16
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   use_data_before_expert_parallel_  False
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   use_node_local_storage ....... False
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   wall_clock_breakdown ......... False
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   weight_quantization_config ... None
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   world_size ................... 1
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   zero_allow_untested_optimizer  False
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   zero_config .................. stage=0 contiguous_gradients=True reduce_scatter=True reduce_bucket_size=500000000 use_multi_rank_bucket_allreduce=True allgather_partitions=True allgather_bucket_size=500000000 overlap_comm=False load_from_fp32_weights=True elastic_checkpoint=False offload_param=None offload_optimizer=None sub_group_size=1000000000 cpu_offload_param=None cpu_offload_use_pin_memory=None cpu_offload=None prefetch_bucket_size=50000000 param_persistence_threshold=100000 model_persistence_threshold=9223372036854775807 max_live_parameters=1000000000 max_reuse_distance=1000000000 gather_16bit_weights_on_model_save=False use_all_reduce_for_fetch_params=False stage3_gather_fp16_weights_on_model_save=False ignore_unused_parameters=True legacy_stage1=False round_robin_gradients=False zero_hpz_partition_size=1 zero_quantized_weights=False zero_quantized_nontrainable_weights=False zero_quantized_gradients=False mics_shard_size=-1 mics_hierarchical_params_gather=False memory_efficient_linear=True pipeline_loading_checkpoint=False override_module_apply=True
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   zero_enabled ................. False
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   zero_force_ds_cpu_optimizer .. True
+[2024-09-08 23:02:58,990] [INFO] [config.py:1003:print]   zero_optimization_stage ...... 0
+[2024-09-08 23:02:58,991] [INFO] [config.py:989:print_user_config]   json = {
+    "train_batch_size": 16,
     "steps_per_print": 9.999999e+06
 }
-Using /home/ubuntu/.cache/torch_extensions as PyTorch extensions root...
-Using /home/ubuntu/.cache/torch_extensions as PyTorch extensions root...
-Using /home/ubuntu/.cache/torch_extensions as PyTorch extensions root...
-Emitting ninja build file /home/ubuntu/.cache/torch_extensions/utils/build.ninja...
-Building extension module utils...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-Using /home/ubuntu/.cache/torch_extensions as PyTorch extensions root...
-ninja: no work to do.
-Loading extension module utils...
-Time to load utils op: 0.6987707614898682 seconds
-Loading extension module utils...
-Time to load utils op: 0.30276012420654297 seconds
-[2021-10-21 23:14:06,793] [INFO] [engine.py:77:__init__] CONFIG: micro_batches=1 micro_batch_size=16
-Loading extension module utils...
-Time to load utils op: 0.3035085201263428 seconds
-Loading extension module utils...
-Time to load utils op: 0.10213756561279297 seconds
-[2021-10-21 23:14:08,589] [INFO] [engine.py:135:__init__] RANK=0 STAGE=0 LAYERS=4 [0, 4) STAGE_PARAMS=60647424 (60.647M) TOTAL_PARAMS=163037184 (163.037M) UNIQUE_PARAMS=163037184 (163.037M)
-[2021-10-21 23:14:08,589] [INFO] [engine.py:135:__init__] RANK=1 STAGE=1 LAYERS=3 [4, 7) STAGE_PARAMS=21263616 (21.264M) TOTAL_PARAMS=163037184 (163.037M) UNIQUE_PARAMS=163037184 (163.037M)
-[2021-10-21 23:14:08,589] [INFO] [engine.py:135:__init__] RANK=3 STAGE=3 LAYERS=4 [10, 14) STAGE_PARAMS=59862528 (59.863M) TOTAL_PARAMS=163037184 (163.037M) UNIQUE_PARAMS=163037184 (163.037M)
-[2021-10-21 23:14:08,589] [INFO] [engine.py:135:__init__] RANK=2 STAGE=2 LAYERS=3 [7, 10) STAGE_PARAMS=21263616 (21.264M) TOTAL_PARAMS=163037184 (163.037M) UNIQUE_PARAMS=163037184 (163.037M)
-WARNING:datasets.builder:Reusing dataset squad (/home/ubuntu/.cache/huggingface/datasets/squad/plain_text/1.0.0/d6ec3ceb99ca480ce37cdd35555d6cb2511d223b9150cce08a837ef62ffea453)
-100%|████████████████████████████████████████████| 2/2 [00:00<00:00, 256.29it/s]
-WARNING:datasets.builder:Reusing dataset squad (/home/ubuntu/.cache/huggingface/datasets/squad/plain_text/1.0.0/d6ec3ceb99ca480ce37cdd35555d6cb2511d223b9150cce08a837ef62ffea453)
-100%|████████████████████████████████████████████| 2/2 [00:00<00:00, 472.65it/s]
-  0%|                                                  | 0/4800 [00:00<?, ?it/s]Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
-  0%|                                                  | 0/4800 [00:00<?, ?it/s]Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
-  1%|▌                                       | 68/4800 [00:00<00:07, 675.70it/s]WARNING:datasets.builder:Reusing dataset squad (/home/ubuntu/.cache/huggingface/datasets/squad/plain_text/1.0.0/d6ec3ceb99ca480ce37cdd35555d6cb2511d223b9150cce08a837ef62ffea453)
-100%|████████████████████████████████████████████| 2/2 [00:00<00:00, 258.86it/s]
-  3%|█                                      | 136/4800 [00:00<00:07, 654.28it/s]WARNING:datasets.builder:Reusing dataset squad (/home/ubuntu/.cache/huggingface/datasets/squad/plain_text/1.0.0/d6ec3ceb99ca480ce37cdd35555d6cb2511d223b9150cce08a837ef62ffea453)
-  0%|                                                  | 0/4800 [00:00<?, ?it/s]Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
-100%|████████████████████████████████████████████| 2/2 [00:00<00:00, 275.05it/s]
-  0%|                                                  | 0/4800 [00:00<?, ?it/s]Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
-100%|██████████████████████████████████████| 4800/4800 [00:04<00:00, 973.69it/s]
-100%|██████████████████████████████████████| 4800/4800 [00:05<00:00, 954.25it/s]
-100%|██████████████████████████████████████| 4800/4800 [00:04<00:00, 991.46it/s]
-100%|██████████████████████████████████████| 4800/4800 [00:04<00:00, 978.01it/s]
-/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/deepspeed/runtime/pipe/engine.py:1067: UserWarning: The .grad attribute of a Tensor that is not a leaf Tensor is being accessed. Its .grad attribute won't be populated during autograd.backward(). If you indeed want the gradient for a non-leaf Tensor, use .retain_grad() on the non-leaf Tensor. If you access the non-leaf Tensor by mistake, make sure you access the leaf Tensor instead. See github.com/pytorch/pytorch/pull/30531 for more informations.
-  if inputs.grad is not None:
-/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/deepspeed/runtime/pipe/engine.py:1067: UserWarning: The .grad attribute of a Tensor that is not a leaf Tensor is being accessed. Its .grad attribute won't be populated during autograd.backward(). If you indeed want the gradient for a non-leaf Tensor, use .retain_grad() on the non-leaf Tensor. If you access the non-leaf Tensor by mistake, make sure you access the leaf Tensor instead. See github.com/pytorch/pytorch/pull/30531 for more informations.
-  if inputs.grad is not None:
-/home/ubuntu/kevin/kevin_env/lib/python3.8/site-packages/deepspeed/runtime/pipe/engine.py:1067: UserWarning: The .grad attribute of a Tensor that is not a leaf Tensor is being accessed. Its .grad attribute won't be populated during autograd.backward(). If you indeed want the gradient for a non-leaf Tensor, use .retain_grad() on the non-leaf Tensor. If you access the non-leaf Tensor by mistake, make sure you access the leaf Tensor instead. See github.com/pytorch/pytorch/pull/30531 for more informations.
-  if inputs.grad is not None:
-step: 0, loss: 6.578999996185303
-step: 10, loss: 1.040749192237854
-step: 20, loss: 1.0263590812683105
-step: 30, loss: 0.7057000398635864
-step: 40, loss: 0.7450851798057556
-step: 50, loss: 0.8148608207702637
-step: 60, loss: 0.8103674650192261
-step: 70, loss: 0.744097113609314
-step: 80, loss: 0.6200798749923706
-step: 90, loss: 0.5470073819160461
-step: 100, loss: 0.6563196778297424
-step: 110, loss: 0.5391805768013
-step: 120, loss: 0.6279033422470093
-step: 130, loss: 0.6154615879058838
-step: 140, loss: 0.5165692567825317
-step: 150, loss: 0.4756263792514801
-step: 160, loss: 0.4647936522960663
-step: 170, loss: 0.5400715470314026
-step: 180, loss: 0.48079714179039
-step: 190, loss: 0.41679126024246216
-step: 200, loss: 0.44041475653648376
-step: 210, loss: 0.39728063344955444
-step: 220, loss: 0.364980012178421
-step: 230, loss: 0.3382536768913269
-step: 240, loss: 0.30256345868110657
-step: 250, loss: 0.260995090007782
-step: 260, loss: 0.2987060546875
-step: 270, loss: 0.2671171724796295
-step: 280, loss: 0.2043372541666031
-step: 290, loss: 0.18478398025035858
+[2024-09-08 23:02:58,991] [INFO] [engine.py:105:__init__] CONFIG: micro_batches=1 micro_batch_size=16
+[2024-09-08 23:02:58,991] [INFO] [engine.py:146:__init__] is_pipe_partitioned= False is_grad_partitioned= False
+[2024-09-08 23:02:59,124] [INFO] [engine.py:146:__init__] is_pipe_partitioned= False is_grad_partitioned= False
+[2024-09-08 23:02:59,384] [INFO] [engine.py:165:__init__] RANK=0 STAGE=0 LAYERS=4 [0, 4) STAGE_PARAMS=60647424 (60.647M) TOTAL_PARAMS=163037184 (163.037M) UNIQUE_PARAMS=163037184 (163.037M)
+[2024-09-08 23:02:59,384] [INFO] [engine.py:165:__init__] RANK=3 STAGE=3 LAYERS=4 [10, 14) STAGE_PARAMS=59862528 (59.863M) TOTAL_PARAMS=163037184 (163.037M) UNIQUE_PARAMS=163037184 (163.037M)
+[2024-09-08 23:02:59,384] [INFO] [engine.py:165:__init__] RANK=1 STAGE=1 LAYERS=3 [4, 7) STAGE_PARAMS=21263616 (21.264M) TOTAL_PARAMS=163037184 (163.037M) UNIQUE_PARAMS=163037184 (163.037M)
+[2024-09-08 23:02:59,384] [INFO] [engine.py:165:__init__] RANK=2 STAGE=2 LAYERS=3 [7, 10) STAGE_PARAMS=21263616 (21.264M) TOTAL_PARAMS=163037184 (163.037M) UNIQUE_PARAMS=163037184 (163.037M)
+  0%|                                                                        | 0/4800 [00:00<?, ?it/s]Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
+  0%|                                                                        | 0/4800 [00:00<?, ?it/s]Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
+  0%|                                                                        | 0/4800 [00:00<?, ?it/s]Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
+  0%|                                                                        | 0/4800 [00:00<?, ?it/s]Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
+100%|███████████████████████████████████████████████████████████| 4800/4800 [00:03<00:00, 1214.26it/s]
+100%|███████████████████████████████████████████████████████████| 4800/4800 [00:04<00:00, 1181.26it/s]
+100%|███████████████████████████████████████████████████████████| 4800/4800 [00:04<00:00, 1145.26it/s]
+100%|███████████████████████████████████████████████████████████| 4800/4800 [00:04<00:00, 1133.00it/s]
+step: 0, loss: 6.572026252746582
+step: 10, loss: 1.0279344320297241
+step: 20, loss: 1.028913974761963
+step: 30, loss: 0.7047958970069885
+step: 40, loss: 0.7454834580421448
+step: 50, loss: 0.812176525592804
+step: 60, loss: 0.8095153570175171
+step: 70, loss: 0.7496554255485535
+step: 80, loss: 0.6204543113708496
+step: 90, loss: 0.5449276566505432
+step: 100, loss: 0.6550153493881226
+step: 110, loss: 0.5415732264518738
+step: 120, loss: 0.6244872808456421
+step: 130, loss: 0.6143221855163574
+step: 140, loss: 0.5201988816261292
+step: 150, loss: 0.46794116497039795
+step: 160, loss: 0.46409428119659424
+step: 170, loss: 0.5390290021896362
+step: 180, loss: 0.48016053438186646
+step: 190, loss: 0.4120233952999115
+step: 200, loss: 0.4341399371623993
+step: 210, loss: 0.39358749985694885
+step: 220, loss: 0.36393406987190247
+step: 230, loss: 0.3397323787212372
+step: 240, loss: 0.30079731345176697
+step: 250, loss: 0.2613028287887573
+step: 260, loss: 0.29585179686546326
+step: 270, loss: 0.2654482126235962
+step: 280, loss: 0.2011309415102005
+step: 290, loss: 0.18337950110435486
+[2024-09-08 23:09:58,105] [INFO] [launch.py:351:main] Process 51269 exits successfully.
+[2024-09-08 23:09:58,105] [INFO] [launch.py:351:main] Process 51266 exits successfully.
+[2024-09-08 23:09:59,106] [INFO] [launch.py:351:main] Process 51267 exits successfully.
+[2024-09-08 23:09:59,107] [INFO] [launch.py:351:main] Process 51268 exits successfully.
 ```
 
 ## 5. Interleaved Scheduling
