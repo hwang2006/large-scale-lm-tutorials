@@ -23,7 +23,7 @@ Megatron-LM은 NVIDA에서 공개한 Intra-layer 모델 병렬화 구현체로, 
 직접 코딩해서 결과를 확인해봅시다. 가장 먼저 텐서 X와 텐서 A의 행렬곱 결과는 다음과 같습니다.
 ```
 """
-src/non_parallelism.py
+src/ch6/non_parallelism.py
 """
 
 import torch
@@ -49,7 +49,7 @@ Y = X @ A
 print(Y)
 ```
 ```
-[glogin01]$ python ../src/non_parallelism.py
+(large-scale-lm) [glogin01]$ python non_parallelism.py
 tensor([[ 74,  98],
         [258, 346]])
 ```
@@ -57,7 +57,7 @@ tensor([[ 74,  98],
 column parallelism은 모델의 파라미터(A)를 수직방향으로 자른 뒤 연산후 연산 결과를 concat하는 방식입니다. 그림에서와 같이 X는 복제하고 텐서 A를 수직방향으로 분할한 뒤 연산 후 concat 해보겠습니다.
 ```
 """
-src/column_parallelism.py
+src/ch6/column_parallelism.py
 """
 
 import torch
@@ -97,7 +97,7 @@ Y = torch.cat([Y1, Y2], dim=1)
 print(Y)
 ```
 ```
-[glogin01]$ python ../src/column_parallelism.py
+(large-scale-lm) [glogin01]$ python column_parallelism.py
 tensor([[ 74],
         [258]])
 tensor([[ 98],
@@ -110,7 +110,7 @@ tensor([[ 74,  98],
 그 다음으로 row parallelism를 알아봅시다. row parallelism은 모델의 파라미터(A)를 수평방향으로 분할 한 뒤 연산 결과를 더하는 방식입니다. 그림과 같이 X와 Y 모두를 분할한 뒤 연산 후 결과 값을 더해보겠습니다.
 ```
 """
-src/row_parallelism.py
+src/ch6/row_parallelism.py
 """
 
 import torch
@@ -154,7 +154,7 @@ Y = Y1 + Y2
 print(Y)
 ```
 ```
-[glogin01]$ python ../src/row_parallelism.py
+(large-scale-lm) [glogin01]$ python row_parallelism.py
 tensor([[ 11,  15],
         [ 95, 131]])
 tensor([[ 63,  83],
@@ -342,7 +342,7 @@ $$Row Paralleism: GeLU(XW1 + XW2) \\neq GeLU(XW1) + GeLU(XW2)$$
 이를 코드로 구현해서 확인해봅시다."
 ```
 """
-src/megatron_mlp_gelu.py
+src/ch6/megatron_mlp_gelu.py
 """
 
 import torch
