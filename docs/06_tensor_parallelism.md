@@ -685,6 +685,7 @@ def forward(ctx, vocab_parallel_logits, target):
 
 ### Megatron-LM으로 모델 학습해보기
 Megatron-LM을 사용해서 모델을 학습해보도록 하겠습니다. Megaton-LM은 Hugging Face `transformers`와 같이 코드레벨로 사용하는 프레임워크가 아니라 이미 잘 짜여진 코드를 활용하여 모델을 만드는 데에 쓰입니다. 따라서 레포를 클론한 뒤에 진행하도록 하겠습니다.
+<!--
 ```
 # git과 wget이 설치되어있지 않다면 아래 명령어를 통해 설치합니다.
 [glogin01]$ apt update && apt install git wget -y
@@ -708,6 +709,7 @@ git is already the newest version (1:2.17.1-1ubuntu0.9).
 wget is already the newest version (1.19.4-1ubuntu2.2).
 0 upgraded, 0 newly installed, 0 to remove and 54 not upgraded.
 ```
+-->
 ```
 # Megatron-LM을 clone 합니다.
 [glogin01]$ git clone https://github.com/NVIDIA/Megatron-LM
