@@ -751,13 +751,25 @@ WARNING: Running pip as root will break packages and permissions. You should ins
 [glogin01]$ git clone https://github.com/NVIDIA/apex
 [glogin01]$ cd apex
 [glogin01]$ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
-[glogin01]$ cd ..
+.
+.
+.
+RuntimeError: device >= 0 && device < num_gpus INTERNAL ASSERT FAILED at "/opt/conda/conda-bld/pytorch_1720538459595/work/aten/src/ATen/cuda/CUDAContext.cpp":49, please report a bug to PyTorch. device=, num_gpus=
+.
+.
+.
 ```
-
+MIG (Multi-Instance GPU)에서 빌딩하면 빌딩 아래와 같은 빌딩 에러가 발생합니다. 뉴론 시스템 로그인 노드 1번과 3번은 MIG 설정된 노드입니다. 노드 2번(neuron02.ksc.re.kr)으로 직접 로그인 한 후에 Apex를 다시 빌딩합니다.  
+```
+[globin02] cd apex
+[glogin02]$ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+[glogin02]$ cd ..
+```
+Apex를 성공적으로 빌당되면 로그인 노드 1 - 3번 중에 아무 노드에서 계속해서 튜토리얼을 진행해도 됩니다.  
 이제 데이터셋을 만들어보도록 하겠습니다. Megatron-LM으로 모델을 Pre-training을 할 때는 `{\"text\": \"샘플\"}`과 같은 json 구조가 여러라인으로 구성된 간단한 구조의 jsonl 파일을 만들면 되고, Fine-tuning의 경우는 해당 태스크에 맞게 데이터셋을 구성해야 합니다. 본 튜토리얼에서는 Pre-training만 다루고 있기 때문에 Fine-tuning이 필요하시면 Megatron-LM 깃헙 레포를 참고해주세요.
 ```
 """
-src/megatron_datasets.py
+src/ch6/megatron_datasets.py
 """
 
 import json
@@ -801,13 +813,13 @@ for sample in dataset_read:
 
 ```
 [glogin01]$ python ../../src/megatron_datasets.py
-Reusing dataset wikitext (/root/.cache/huggingface/datasets/wikitext/wikitext-103-raw-v1/1.0.0/aa5e094000ec7afeb74c3be92c88313cd6f132d564c7effd961c10fd47c76f20)
-100%|████████████████████████████████████████████| 3/3 [00:00<00:00, 369.35it/s]
+Downloading readme: 100%|██████████████████████████████████████████████| 10.5k/10.5k [00:00<00:00, 25.5kB/s]
 {"text": " Senjō no Valkyria 3 : Unrecorded Chronicles ( Japanese : 戦場のヴァルキュリア3 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first game and follows the \" Nameless \" , a penal military unit serving the nation of Gallia during the Second Europan War who perform secret black operations and are pitted against the Imperial unit \" Calamaty Raven \" . \n"}
 
 {"text": " The game began development in 2010 , carrying over a large portion of the work done on Valkyria Chronicles II . While it retained the standard features of the series , it also underwent multiple adjustments , such as making the game more forgiving for series newcomers . Character designer Raita Honjou and composer Hitoshi Sakimoto both returned from previous entries , along with Valkyria Chronicles II director Takeshi Ozawa . A large team of writers handled the script . The game 's opening theme was sung by May 'n . \n"}
 
 {"text": " It met with positive sales in Japan , and was praised by both Japanese and western critics . After release , it received downloadable content , along with an expanded edition in November of that year . It was also adapted into manga and an original video animation series . Due to low sales of Valkyria Chronicles II , Valkyria Chronicles III was not localized , but a fan translation compatible with the game 's expanded edition was released in 2014 . Media.Vision would return to the franchise with the development of Valkyria : Azure Revolution for the PlayStation 4 . \n"}
+
 ```
 
 Tokenization에 사용할 Vocab을 다운로드 받습니다.
