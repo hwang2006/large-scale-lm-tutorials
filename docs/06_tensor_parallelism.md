@@ -1105,122 +1105,28 @@ def __getitem__(self, idx: Union[int, slice]) -> np.ndarray:
 그러나 이렇게 모든 샘플을 하나의 문자열로 연결해버리면 샘플과 샘플사이에 구분이 없어지기 때문에 문제가 될 수 있는데요. `append-eod` 옵션을 추가하면 샘플들 사이에 `end of document`로써 토큰을 추가하여 샘플과 샘플을 구분합니다. GPT2의 경우, `eod` 토큰은 `eos`토큰으로 설정되어 있습니다. 
 
 ```
-!python tools/preprocess_data.py \
-       --input megatron_datasets.jsonl \
-       --output-prefix my-gpt2 \
-       --vocab vocab.json \
-       --dataset-impl mmap \
-       --tokenizer-type GPT2BPETokenizer \
-       --merge-file merges.txt \
-       --append-eod
+(large-scale-lm) [glogin01]$ python tools/preprocess_data.py  --input megatron_datasets.jsonl  --output-prefix my-gpt2    --vocab-file vocab.json    --tokenizer-type GPT2BPETokenizer   --merge-file merges.txt   --append-eod --workers 8
+/scratch/qualis/test/Megatron-LM/megatron/core/tensor_parallel/layers.py:280: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  def forward(ctx, input, weight, bias, allreduce_dgrad):
+/scratch/qualis/test/Megatron-LM/megatron/core/tensor_parallel/layers.py:290: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/scratch/qualis/test/Megatron-LM/megatron/core/tensor_parallel/layers.py:381: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  def forward(
+/scratch/qualis/test/Megatron-LM/megatron/core/tensor_parallel/layers.py:420: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
 Opening megatron_datasets.jsonl
-> building GPT2BPETokenizer tokenizer ...
- > padded vocab (size: 50257) with 47 dummy tokens (new size: 50304)
-> building GPT2BPETokenizer tokenizer ...
-Vocab size: 50257
-Output prefix: my-gpt2
-Time to startup: 0.10664248466491699
- > padded vocab (size: 50257) with 47 dummy tokens (new size: 50304)
-Processed 100 documents (341.3833406586251 docs/s, 0.3231593169572366 MB/s).
-Processed 200 documents (444.607170228531 docs/s, 0.40740195023601483 MB/s).
-Processed 300 documents (507.4913064836572 docs/s, 0.4595645619121138 MB/s).
-Processed 400 documents (548.2460078910855 docs/s, 0.500913350338969 MB/s).
-Processed 500 documents (599.4126924512631 docs/s, 0.5385256945623461 MB/s).
-Processed 600 documents (632.3274718382903 docs/s, 0.567304677135345 MB/s).
-Processed 700 documents (656.5582187492173 docs/s, 0.5942094322137902 MB/s).
-Processed 800 documents (679.473341028289 docs/s, 0.6114298442783954 MB/s).
-Processed 900 documents (694.3271845460217 docs/s, 0.62567246230091 MB/s).
-Processed 1000 documents (711.744028291217 docs/s, 0.6423042951843672 MB/s).
-Processed 1100 documents (729.9288697633211 docs/s, 0.6542551575749905 MB/s).
-Processed 1200 documents (747.7031942801465 docs/s, 0.6652560847870334 MB/s).
-Processed 1300 documents (764.753374323305 docs/s, 0.674766482549341 MB/s).
-Processed 1400 documents (779.1577277991438 docs/s, 0.6864365578362863 MB/s).
-Processed 1500 documents (790.4512469780717 docs/s, 0.6969633845696908 MB/s).
-Processed 1600 documents (801.193106685724 docs/s, 0.7046774423849909 MB/s).
-Processed 1700 documents (806.756631686137 docs/s, 0.7161883857098408 MB/s).
-Processed 1800 documents (816.3964718380284 docs/s, 0.7252975026731121 MB/s).
-Processed 1900 documents (831.3950475039509 docs/s, 0.7346526580053557 MB/s).
-Processed 2000 documents (847.4097235137235 docs/s, 0.7413089470505299 MB/s).
-Processed 2100 documents (860.2405635449649 docs/s, 0.7517782182921232 MB/s).
-Processed 2200 documents (865.0414363514374 docs/s, 0.7580306631156802 MB/s).
-Processed 2300 documents (873.5639245027145 docs/s, 0.7657585442996709 MB/s).
-Processed 2400 documents (882.2530951029984 docs/s, 0.7761644859970351 MB/s).
-Processed 2500 documents (891.107956554136 docs/s, 0.7840518788650122 MB/s).
-Processed 2600 documents (897.586649345728 docs/s, 0.7875825232354006 MB/s).
-Processed 2700 documents (905.6928118212825 docs/s, 0.7926364268970261 MB/s).
-Processed 2800 documents (913.7765768432254 docs/s, 0.8018945842245223 MB/s).
-Processed 2900 documents (921.524677708312 docs/s, 0.8078279296759729 MB/s).
-Processed 3000 documents (927.0432557886642 docs/s, 0.8133901847218254 MB/s).
-Processed 3100 documents (933.5282763595969 docs/s, 0.8191782812561477 MB/s).
-Processed 3200 documents (939.0246851114703 docs/s, 0.8237833190795807 MB/s).
-Processed 3300 documents (944.3738598478612 docs/s, 0.8299497689998975 MB/s).
-Processed 3400 documents (949.8985798514814 docs/s, 0.8350220705057206 MB/s).
-Processed 3500 documents (954.9541380070546 docs/s, 0.8388551190620309 MB/s).
-Processed 3600 documents (961.0590894824982 docs/s, 0.8433869951112278 MB/s).
-Processed 3700 documents (966.5140585535103 docs/s, 0.8475759648916847 MB/s).
-Processed 3800 documents (970.2837410964693 docs/s, 0.8515277975713496 MB/s).
-Processed 3900 documents (972.3412659421506 docs/s, 0.8543419280083547 MB/s).
-Processed 4000 documents (977.5591959913655 docs/s, 0.8567109649824823 MB/s).
-Processed 4100 documents (982.1164774000912 docs/s, 0.8622407256560518 MB/s).
-Processed 4200 documents (988.3455181621163 docs/s, 0.8663715108177805 MB/s).
-Processed 4300 documents (994.3620512933041 docs/s, 0.8692481274017909 MB/s).
-Processed 4400 documents (1000.1573051427661 docs/s, 0.873466585121912 MB/s).
-Processed 4500 documents (1005.4718143362228 docs/s, 0.8773737720380832 MB/s).
-Processed 4600 documents (1011.1278894667505 docs/s, 0.8824701168076114 MB/s).
-Processed 4700 documents (1015.2351380478192 docs/s, 0.8859525079616727 MB/s).
-Processed 4800 documents (1019.9879167915307 docs/s, 0.8900802431435392 MB/s).
-Processed 4900 documents (1025.282676115802 docs/s, 0.8932444033863115 MB/s).
-Processed 5000 documents (1028.8323471665524 docs/s, 0.8972957799296275 MB/s).
-Processed 5100 documents (1034.2091617577757 docs/s, 0.9009465518440909 MB/s).
-Processed 5200 documents (1038.183730940605 docs/s, 0.9030075814649406 MB/s).
-Processed 5300 documents (1041.6586495443958 docs/s, 0.9053369784979305 MB/s).
-Processed 5400 documents (1044.9539766559153 docs/s, 0.9071277474789929 MB/s).
-Processed 5500 documents (1046.3650306901518 docs/s, 0.9081639586462895 MB/s).
-Processed 5600 documents (1048.7924539068933 docs/s, 0.9100967579157073 MB/s).
-Processed 5700 documents (1052.2622870902087 docs/s, 0.9127531725504879 MB/s).
-Processed 5800 documents (1054.5030800058553 docs/s, 0.9157142263287714 MB/s).
-Processed 5900 documents (1059.7019272813493 docs/s, 0.9178686686803795 MB/s).
-Processed 6000 documents (1059.6815063398376 docs/s, 0.9181303779496783 MB/s).
-Processed 6100 documents (1063.2851114676184 docs/s, 0.9198782219223729 MB/s).
-Processed 6200 documents (1066.3967801931324 docs/s, 0.9227200915033248 MB/s).
-Processed 6300 documents (1069.4742049968804 docs/s, 0.9247615387280403 MB/s).
-Processed 6400 documents (1071.4283102781826 docs/s, 0.9253310711247418 MB/s).
-Processed 6500 documents (1076.4308423075795 docs/s, 0.927823003864186 MB/s).
-Processed 6600 documents (1080.6832634984266 docs/s, 0.9302894964375688 MB/s).
-Processed 6700 documents (1084.397451300038 docs/s, 0.9318886244572675 MB/s).
-Processed 6800 documents (1086.1487193706437 docs/s, 0.9348595253581037 MB/s).
-Processed 6900 documents (1087.0879823630048 docs/s, 0.9361755003019657 MB/s).
-Processed 7000 documents (1089.6505729269404 docs/s, 0.9391088768093419 MB/s).
-Processed 7100 documents (1093.8213019164195 docs/s, 0.9425288656669819 MB/s).
-Processed 7200 documents (1095.2519889281548 docs/s, 0.9441749502405283 MB/s).
-Processed 7300 documents (1096.064652681706 docs/s, 0.9454755215221007 MB/s).
-Processed 7400 documents (1099.8706995407156 docs/s, 0.9476494730035326 MB/s).
-Processed 7500 documents (1102.1014294958984 docs/s, 0.949519284921672 MB/s).
-Processed 7600 documents (1105.5783850300058 docs/s, 0.9512555401678863 MB/s).
-Processed 7700 documents (1108.5371715132862 docs/s, 0.953457808444335 MB/s).
-Processed 7800 documents (1110.6911912777482 docs/s, 0.9559848048283311 MB/s).
-Processed 7900 documents (1111.308633853119 docs/s, 0.9587627880560639 MB/s).
-Processed 8000 documents (1112.5253845256852 docs/s, 0.9598524220291513 MB/s).
-Processed 8100 documents (1107.9573503503889 docs/s, 0.9570326111709778 MB/s).
-Processed 8200 documents (1101.5736838840019 docs/s, 0.9513888668691332 MB/s).
-Processed 8300 documents (1104.7169150313523 docs/s, 0.9545691909319388 MB/s).
-Processed 8400 documents (1105.1751785362064 docs/s, 0.955716897713522 MB/s).
-Processed 8500 documents (1107.2811136051005 docs/s, 0.9568425534848921 MB/s).
-Processed 8600 documents (1111.0993018845525 docs/s, 0.9593719961195478 MB/s).
-Processed 8700 documents (1113.3003045048206 docs/s, 0.961563294988248 MB/s).
-Processed 8800 documents (1116.428968728601 docs/s, 0.9632621638462902 MB/s).
-Processed 8900 documents (1118.174477463872 docs/s, 0.9645029463232418 MB/s).
-Processed 9000 documents (1119.366311295253 docs/s, 0.9668497240291574 MB/s).
-Processed 9100 documents (1121.6658086995078 docs/s, 0.9681949708107495 MB/s).
-Processed 9200 documents (1124.1491570526603 docs/s, 0.9693218680263417 MB/s).
-Processed 9300 documents (1126.638738761637 docs/s, 0.9728182383237711 MB/s).
-Processed 9400 documents (1128.1680778666728 docs/s, 0.9741808572135104 MB/s).
-Processed 9500 documents (1130.7785091089281 docs/s, 0.9758539826709395 MB/s).
-Processed 9600 documents (1133.1699075004083 docs/s, 0.9774758616877791 MB/s).
-Processed 9700 documents (1135.8416609360074 docs/s, 0.9789269570433953 MB/s).
-Processed 9800 documents (1137.7800453559933 docs/s, 0.9799055810547384 MB/s).
-Processed 9900 documents (1139.50573789508 docs/s, 0.9805926001463556 MB/s).
-Processed 10000 documents (1141.5376306433773 docs/s, 0.9824856620038298 MB/s).
+Time to startup: 0.15536856651306152
+Processed 1000 documents (4517.679498502833 docs/s, 4.076922082678098 MB/s).
+Processed 2000 documents (5735.114088912438 docs/s, 5.0170434307006 MB/s).
+Processed 3000 documents (6388.614042356152 docs/s, 5.605386721256875 MB/s).
+Processed 4000 documents (7059.590644111501 docs/s, 6.18686698247938 MB/s).
+Processed 5000 documents (7587.995553908855 docs/s, 6.61786772878844 MB/s).
+Processed 6000 documents (7819.407279438724 docs/s, 6.774899172875795 MB/s).
+Processed 7000 documents (8150.381658834173 docs/s, 7.024358042262432 MB/s).
+Processed 8000 documents (8471.471700437833 docs/s, 7.308923232599674 MB/s).
+Processed 9000 documents (8653.491370862088 docs/s, 7.474430541084828 MB/s).
+Processed 10000 documents (8858.767601141883 docs/s, 7.624463633529589 MB/s).
+
 ```
 
 데이터셋 전처리가 완료되었습니다. 데이터를 확인해봅시다
@@ -1236,11 +1142,64 @@ examples/  my-gpt2_text_document.bin  pretrain_t5.py    vocab.json
 images/    my-gpt2_text_document.idx  pretrain_vit.py
 ```
 
-이제 모델 학습을 시작해보겠습니다.
+모델을 시작하기 전에 Mix Precesion 지원을 위해서 [Transformer Engine](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/index.html)을 설치해야 한다.
+```
+(large-scale-lm) [glogin01]$ pip install git+https://github.com/NVIDIA/TransformerEngine.git@stable
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Collecting git+https://github.com/NVIDIA/TransformerEngine.git@stable
+  Cloning https://github.com/NVIDIA/TransformerEngine.git (to revision stable) to /tmp/pip-req-build-qfbxqfc2
+  Running command git clone --quiet https://github.com/NVIDIA/TransformerEngine.git /tmp/pip-req-build-qfbxqfc2
+  Running command git checkout -b stable --track origin/stable
+  Switched to a new branch 'stable'
+  Branch stable set up to track remote branch stable from origin.
+  Resolved https://github.com/NVIDIA/TransformerEngine.git to commit 08a85d3b2657f1d4e0b478f6682c17fe6bba8b05
+  Running command git submodule update --init --recursive -q
+  Preparing metadata (setup.py) ... done
+Requirement already satisfied: pydantic in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from transformer_engine==1.10.0+08a85d3) (2.9.1)
+Requirement already satisfied: packaging in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from transformer_engine==1.10.0+08a85d3) (24.1)
+Requirement already satisfied: importlib-metadata>=1.0 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from transformer_engine==1.10.0+08a85d3) (8.4.0)
+Requirement already satisfied: flash-attn!=2.0.9,!=2.1.0,<=2.5.8,>=2.0.6 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from transformer_engine==1.10.0+08a85d3) (2.4.2)
+Requirement already satisfied: torch in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from transformer_engine==1.10.0+08a85d3) (2.4.0)
+Requirement already satisfied: einops in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from flash-attn!=2.0.9,!=2.1.0,<=2.5.8,>=2.0.6->transformer_engine==1.10.0+08a85d3) (0.8.0)
+Requirement already satisfied: ninja in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from flash-attn!=2.0.9,!=2.1.0,<=2.5.8,>=2.0.6->transformer_engine==1.10.0+08a85d3) (1.11.1.1)
+Requirement already satisfied: zipp>=0.5 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from importlib-metadata>=1.0->transformer_engine==1.10.0+08a85d3) (3.20.1)
+Requirement already satisfied: annotated-types>=0.6.0 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from pydantic->transformer_engine==1.10.0+08a85d3) (0.7.0)
+Requirement already satisfied: pydantic-core==2.23.3 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from pydantic->transformer_engine==1.10.0+08a85d3) (2.23.3)
+Requirement already satisfied: typing-extensions>=4.6.1 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from pydantic->transformer_engine==1.10.0+08a85d3) (4.11.0)
+Requirement already satisfied: filelock in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from torch->transformer_engine==1.10.0+08a85d3) (3.13.1)
+Requirement already satisfied: sympy in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from torch->transformer_engine==1.10.0+08a85d3) (1.13.2)
+Requirement already satisfied: networkx in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from torch->transformer_engine==1.10.0+08a85d3) (3.2.1)
+Requirement already satisfied: jinja2 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from torch->transformer_engine==1.10.0+08a85d3) (3.1.4)
+Requirement already satisfied: fsspec in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from torch->transformer_engine==1.10.0+08a85d3) (2024.6.1)
+Requirement already satisfied: MarkupSafe>=2.0 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from jinja2->torch->transformer_engine==1.10.0+08a85d3) (2.1.3)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages (from sympy->torch->transformer_engine==1.10.0+08a85d3) (1.3.0)
+Building wheels for collected packages: transformer_engine
+  Building wheel for transformer_engine (setup.py) ... done
+  Created wheel for transformer_engine: filename=transformer_engine-1.10.0+08a85d3-cp310-cp310-linux_x86_64.whl size=120308837 sha256=31b1990d90b87e4e4cbf3f762b66b8b1cf4f2f3b148a293045936b3a60f7b9d1
+  Stored in directory: /tmp/pip-ephem-wheel-cache-0yc2vyhu/wheels/ab/50/b6/2909ca23194f6269dc6544353545c76efae2d0cc25c692828c
+Successfully built transformer_engine
+Installing collected packages: transformer_engine
+Successfully installed transformer_engine-1.10.0+08a85d3
+```
+
+먼저 뉴론 시스템에서 노드 1개와 GPU 4개를 할당받는다. src/ch6 디렉토리로 이동하고 모듈을 로드한다.
+
+```
+[glogin01]$ salloc --partition=cas_v100nv_8 -J debug --nodes=1 --time=8:00:00 --gres=gpu:4 --comment pytorch
+...
+salloc: Nodes gpu[05] are ready for job
+[gpu05]$ pwd
+/scratch/qualis/git-projects/large-scale-lm-tutorials/src/ch6
+[gpu05]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
+[gpu05]$ conda activate large-scale-lm
+```
+
+이제 모델 학습을 시작해보겠습니다. 
 ```
 # 일단 Tensor parallelism만 사용해보도록 하겠습니다.
 # Data parallelism과 Pipeline parallelism은 Multi-dimensional Parallelism 세션에서 사용해봅시다. :)
 # 학습은 1000 스텝만 시키도록 하겠습니다. 실제 학습할 땐 더 많은 숫자로 설정해주세요.
+
 
 !python -m torch.distributed.launch \
                   --nproc_per_node "4" \
