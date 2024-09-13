@@ -1198,156 +1198,169 @@ salloc: Nodes gpu[05] are ready for job
 ```
 # 일단 Tensor parallelism만 사용해보도록 하겠습니다.
 # Data parallelism과 Pipeline parallelism은 Multi-dimensional Parallelism 세션에서 사용해봅시다. :)
-# 학습은 1000 스텝만 시키도록 하겠습니다. 실제 학습할 땐 더 많은 숫자로 설정해주세요.
+# 학습은 200 스텝만 시키도록 하겠습니다. 실제 학습할 땐 더 많은 숫자로 설정해주세요.
 
 
-!python -m torch.distributed.launch \
-                  --nproc_per_node "4" \
-                  --nnodes "1" \
-                  --node_rank "0" \
-                  --master_addr "localhost" \
-                  --master_port "6000" \
-                  ./pretrain_gpt.py \
-                  --num-layers "24" \
-                  --hidden-size "1024" \
-                  --num-attention-heads "16" \
-                  --seq-length "1024" \
-                  --max-position-embeddings "1024" \
-                  --micro-batch-size "4" \
-                  --global-batch-size "8" \
-                  --lr "0.00015" \
-                  --train-iters "1000" \
-                  --lr-decay-iters "300" \
-                  --lr-decay-style cosine \
-                  --vocab-file "vocab.json" \
-                  --merge-file "merges.txt" \
-                  --lr-warmup-fraction ".01" \
-                  --fp16 \
-                  --log-interval "10" \
-                  --save-interval "500" \
-                  --eval-interval "100" \
-                  --eval-iters 10 \
-                  --activations-checkpoint-method "uniform" \
-                  --save "checkpoints/gpt2_345m" \
-                  --load "checkpoints/gpt2_345m" \
-                  --data-path "my-gpt2_text_document" \
-                  --tensor-model-parallel-size "4" \
-                  --pipeline-model-parallel-size "1" \
-                  --DDP-impl "torch"
+(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 2  pretrain_gpt.py     --tensor-model-parallel-size 
+2     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 
+1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200    
+--lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --
+clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 
+949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save 
+checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
+```
 
-# Megatron-LM에는 위에 설정한 옵션 이외에도 굉장히 많은 옵션들이 있습니다.
-# 모든 옵션을 설명하기는 어려우니 아래 주소를 참고해주세요.
-# https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/arguments.py
+모델을 저장할 때에 (위의 경우에 매 50스탭 마다) 에러 발생합니다. 예전 Megatron-LM 브랜치를 체크아웃해서 다시 실행해 보도록 하겠습니다.
 
-/opt/conda/lib/python3.7/site-packages/torch/distributed/launch.py:164: DeprecationWarning: The 'warn' method is deprecated, use 'warning' instead
-  "The module torch.distributed.launch is deprecated "
-The module torch.distributed.launch is deprecated and going to be removed in future.Migrate to torch.distributed.run
-*****************************************
-Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
-*****************************************
-WARNING:torch.distributed.run:--use_env is deprecated and will be removed in future releases.
- Please read local_rank from `os.environ('LOCAL_RANK')` instead.
-INFO:torch.distributed.launcher.api:Starting elastic_operator with launch configs:
-  entrypoint       : ./pretrain_gpt.py
-  min_nodes        : 1
-  max_nodes        : 1
-  nproc_per_node   : 4
-  run_id           : none
-  rdzv_backend     : static
-  rdzv_endpoint    : localhost:6000
-  rdzv_configs     : {'rank': 0, 'timeout': 900}
-  max_restarts     : 3
-  monitor_interval : 5
-  log_dir          : None
-  metrics_cfg      : {}
-
-INFO:torch.distributed.elastic.agent.server.local_elastic_agent:log directory set to: /tmp/torchelastic_2zzg5_sz/none_mjqneoph
-INFO:torch.distributed.elastic.agent.server.api:[default] starting workers for entrypoint: python
-INFO:torch.distributed.elastic.agent.server.api:[default] Rendezvous'ing worker group
-/opt/conda/lib/python3.7/site-packages/torch/distributed/elastic/utils/store.py:53: FutureWarning: This is an experimental API and will be changed in future.
-  "This is an experimental API and will be changed in future.", FutureWarning
-INFO:torch.distributed.elastic.agent.server.api:[default] Rendezvous complete for workers. Result:
-  restart_count=0
-  master_addr=localhost
-  master_port=6000
-  group_rank=0
-  group_world_size=1
-  local_ranks=[0, 1, 2, 3]
-  role_ranks=[0, 1, 2, 3]
-  global_ranks=[0, 1, 2, 3]
-  role_world_sizes=[4, 4, 4, 4]
-  global_world_sizes=[4, 4, 4, 4]
-
-INFO:torch.distributed.elastic.agent.server.api:[default] Starting worker group
-INFO:torch.distributed.elastic.multiprocessing:Setting worker0 reply file to: /tmp/torchelastic_2zzg5_sz/none_mjqneoph/attempt_0/0/error.json
-INFO:torch.distributed.elastic.multiprocessing:Setting worker1 reply file to: /tmp/torchelastic_2zzg5_sz/none_mjqneoph/attempt_0/1/error.json
-INFO:torch.distributed.elastic.multiprocessing:Setting worker2 reply file to: /tmp/torchelastic_2zzg5_sz/none_mjqneoph/attempt_0/2/error.json
-INFO:torch.distributed.elastic.multiprocessing:Setting worker3 reply file to: /tmp/torchelastic_2zzg5_sz/none_mjqneoph/attempt_0/3/error.json
-using world size: 4, data-parallel-size: 1, tensor-model-parallel size: 4, pipeline-model-parallel size: 1 
+```
+(large-scale-lm) [gpu05]$ git checkout core_r0.5.0
+Branch core_r0.5.0 set up to track remote branch core_r0.5.0 from origin.
+Switched to a new branch 'core_r0.5.0'
+(large-scale-lm) [gpu05]$ git branch 
+* core_r0.5.0
+  main
+(large-scale-lm) [gpu05]$ ls
+./               .gitignore                 my-gpt2_text_document.bin.bak  pretrain_vision_inpaint.py
+../              .gitlab-ci.yml             my-gpt2_text_document.idx      pyproject.toml
+CODEOWNERS       images/                    my-gpt2_text_document.idx.bak  README.md
+CONTRIBUTING.md  jet-tests.yml              pretrain_bert.py               report_theoretical_memory.py
+.coveragerc      LICENSE                    pretrain_gpt.py                setup.py
+Dockerfile.ci    MANIFEST.in                pretrain_ict.py                tasks/
+docs/            megatron/                  pretrain_retro.py              tests/
+examples/        megatron_datasets.jsonl    pretrain_t5.py                 tools/
+.git/            merges.txt                 pretrain_vision_classify.py    vocab.json
+.github/         my-gpt2_text_document.bin  pretrain_vision_dino.py
+(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 2  pretrain_gpt.py     --tensor-model-parallel-size 2     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
+W0914 07:23:27.651000 47540863811520 torch/distributed/run.py:779]
+W0914 07:23:27.651000 47540863811520 torch/distributed/run.py:779] *****************************************
+W0914 07:23:27.651000 47540863811520 torch/distributed/run.py:779] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0914 07:23:27.651000 47540863811520 torch/distributed/run.py:779] *****************************************
+Zarr-based strategies will not be registered because of missing packages
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:254: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  def forward(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:265: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:325: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  def forward(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:360: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:254: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  def forward(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:265: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:325: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  def forward(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:360: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+using world size: 2, data-parallel size: 1, context-parallel size: 1 tensor-model-parallel size: 2, pipeline-model-parallel size: 1
+WARNING: Setting args.overlap_p2p_comm to False since non-interleaved schedule does not support overlapping p2p communication
 using torch.float16 for parameters ...
 ------------------------ arguments ------------------------
   accumulate_allreduce_grads_in_fp32 .............. False
-  activations_checkpoint_method ................... uniform
-  activations_checkpoint_num_layers ............... 1
   adam_beta1 ...................................... 0.9
   adam_beta2 ...................................... 0.999
   adam_eps ........................................ 1e-08
+  add_bias_linear ................................. True
+  add_position_embedding .......................... True
+  add_qkv_bias .................................... False
   adlr_autoresume ................................. False
   adlr_autoresume_interval ........................ 1000
-  apply_query_key_layer_scaling ................... True
+  apply_layernorm_1p .............................. False
+  apply_query_key_layer_scaling ................... False
   apply_residual_connection_post_layernorm ........ False
+  apply_rope_fusion ............................... True
+  async_tensor_model_parallel_allreduce ........... False
   attention_dropout ............................... 0.1
-  attention_softmax_in_fp32 ....................... False
+  attention_softmax_in_fp32 ....................... True
+  barrier_with_L1_time ............................ True
   bert_binary_head ................................ True
+  bert_embedder_type .............................. megatron
   bert_load ....................................... None
   bf16 ............................................ False
   bias_dropout_fusion ............................. True
   bias_gelu_fusion ................................ True
+  bias_swiglu_fusion .............................. True
   biencoder_projection_dim ........................ 0
   biencoder_shared_query_context_model ............ False
   block_data_path ................................. None
+  check_for_nan_in_loss_and_grad .................. True
+  classes_fraction ................................ 1.0
   clip_grad ....................................... 1.0
+  clone_scatter_output_in_embedding ............... True
   consumed_train_samples .......................... 0
   consumed_valid_samples .......................... 0
-  data_impl ....................................... infer
+  context_parallel_size ........................... 1
+  data_cache_path ................................. None
+  data_parallel_random_init ....................... False
   data_parallel_size .............................. 1
   data_path ....................................... ['my-gpt2_text_document']
+  data_per_class_fraction ......................... 1.0
+  data_sharding ................................... True
   dataloader_type ................................. single
-  DDP_impl ........................................ torch
+  decoder_num_layers .............................. None
   decoder_seq_length .............................. None
-  distribute_checkpointed_activations ............. False
+  delay_grad_reduce ............................... True
+  delay_param_gather .............................. False
+  dino_bottleneck_size ............................ 256
+  dino_freeze_last_layer .......................... 1
+  dino_head_hidden_size ........................... 2048
+  dino_local_crops_number ......................... 10
+  dino_local_img_size ............................. 96
+  dino_norm_last_layer ............................ False
+  dino_teacher_temp ............................... 0.07
+  dino_warmup_teacher_temp ........................ 0.04
+  dino_warmup_teacher_temp_epochs ................. 30
+  distribute_saved_activations .................... False
   distributed_backend ............................. nccl
+  distributed_timeout_minutes ..................... 10
   embedding_path .................................. None
   empty_unused_memory_level ....................... 0
+  enable_one_logger ............................... False
+  encoder_num_layers .............................. 24
   encoder_seq_length .............................. 1024
+  end_weight_decay ................................ 0.01
   eod_mask_loss ................................... False
   eval_interval ................................... 100
   eval_iters ...................................... 10
   evidence_data_path .............................. None
   exit_duration_in_mins ........................... None
   exit_interval ................................... None
+  exit_on_missing_checkpoint ...................... False
+  exit_signal_handler ............................. False
+  expert_model_parallel_size ...................... 1
   ffn_hidden_size ................................. 4096
   finetune ........................................ False
   fp16 ............................................ True
   fp16_lm_cross_entropy ........................... False
   fp32_residual_connection ........................ False
-  global_batch_size ............................... 8
+  fp8 ............................................. None
+  fp8_amax_compute_algo ........................... most_recent
+  fp8_amax_history_len ............................ 1
+  fp8_interval .................................... 1
+  fp8_margin ...................................... 0
+  fp8_wgrad ....................................... True
+  global_batch_size ............................... 16
+  gradient_accumulation_fusion .................... True
+  group_query_attention ........................... False
+  head_lr_mult .................................... 1.0
   hidden_dropout .................................. 0.1
   hidden_size ..................................... 1024
   hysteresis ...................................... 2
   ict_head_size ................................... None
   ict_load ........................................ None
-  img_dim ......................................... 224
+  img_h ........................................... 224
+  img_w ........................................... 224
   indexer_batch_size .............................. 128
   indexer_log_interval ............................ 1000
+  inference_batch_times_seqlen_threshold .......... 512
   init_method_std ................................. 0.02
   init_method_xavier_uniform ...................... False
   initial_loss_scale .............................. 4294967296
+  iter_per_epoch .................................. 1250
   kv_channels ..................................... 64
-  layernorm_epsilon ............................... 1e-05
   lazy_mpu_init ................................... None
-  load ............................................ checkpoints/gpt2_345m
-  local_rank ...................................... 0
+  load ............................................ checkpoints/gpt2_345m_dist_mp
+  local_rank ...................................... None
   log_batch_size_to_tensorboard ................... False
   log_interval .................................... 10
   log_learning_rate_to_tensorboard ................ True
@@ -1355,1095 +1368,664 @@ using torch.float16 for parameters ...
   log_memory_to_tensorboard ....................... False
   log_num_zeros_in_grad ........................... False
   log_params_norm ................................. False
+  log_progress .................................... False
+  log_throughput .................................. False
   log_timers_to_tensorboard ....................... False
   log_validation_ppl_to_tensorboard ............... False
+  log_world_size_to_tensorboard ................... False
   loss_scale ...................................... None
   loss_scale_window ............................... 1000
   lr .............................................. 0.00015
-  lr_decay_iters .................................. 300
+  lr_decay_iters .................................. 320000
   lr_decay_samples ................................ None
   lr_decay_style .................................. cosine
   lr_warmup_fraction .............................. 0.01
+  lr_warmup_init .................................. 0.0
   lr_warmup_iters ................................. 0
   lr_warmup_samples ............................... 0
   make_vocab_size_divisible_by .................... 128
+  manual_gc ....................................... False
+  manual_gc_eval .................................. True
+  manual_gc_interval .............................. 0
+  mask_factor ..................................... 1.0
   mask_prob ....................................... 0.15
+  mask_type ....................................... random
   masked_softmax_fusion ........................... True
   max_position_embeddings ......................... 1024
+  max_tokens_to_oom ............................... 12000
   merge_file ...................................... merges.txt
   micro_batch_size ................................ 4
   min_loss_scale .................................. 1.0
-  min_lr .......................................... 0.0
-  mmap_warmup ..................................... False
-  no_async_tensor_model_parallel_allreduce ........ False
+  min_lr .......................................... 1e-05
+  mock_data ....................................... False
+  moe_aux_loss_coeff .............................. 0.0
+  moe_grouped_gemm ................................ False
+  moe_input_jitter_eps ............................ None
+  moe_router_load_balancing_type .................. aux_loss
+  moe_router_topk ................................. 2
+  moe_token_dropping .............................. False
+  moe_z_loss_coeff ................................ None
+  nccl_communicator_config_path ................... None
   no_load_optim ................................... None
   no_load_rng ..................................... None
+  no_persist_layer_norm ........................... False
   no_save_optim ................................... None
   no_save_rng ..................................... None
+  norm_epsilon .................................... 1e-05
+  normalization ................................... LayerNorm
   num_attention_heads ............................. 16
   num_channels .................................... 3
   num_classes ..................................... 1000
+  num_experts ..................................... None
   num_layers ...................................... 24
   num_layers_per_virtual_pipeline_stage ........... None
+  num_query_groups ................................ 1
   num_workers ..................................... 2
+  one_logger_entity ............................... hwinf_dcm
+  one_logger_project .............................. e2e-tracking
+  one_logger_run_name ............................. None
   onnx_safe ....................................... None
   openai_gelu ..................................... False
   optimizer ....................................... adam
-  override_lr_scheduler ........................... False
+  output_bert_embeddings .......................... False
+  overlap_grad_reduce ............................. False
+  overlap_p2p_comm ................................ False
+  overlap_param_gather ............................ False
+  override_opt_param_scheduler .................... False
   params_dtype .................................... torch.float16
   patch_dim ....................................... 16
+  perform_initialization .......................... True
   pipeline_model_parallel_size .................... 1
   pipeline_model_parallel_split_rank .............. None
+  position_embedding_type ......................... learned_absolute
+  profile ......................................... False
+  profile_ranks ................................... [0]
+  profile_step_end ................................ 12
+  profile_step_start .............................. 10
   query_in_block_prob ............................. 0.1
   rampup_batch_size ............................... None
   rank ............................................ 0
+  recompute_granularity ........................... None
+  recompute_method ................................ None
+  recompute_num_layers ............................ None
   reset_attention_mask ............................ False
   reset_position_ids .............................. False
   retriever_report_topk_accuracies ................ []
   retriever_score_scaling ......................... False
   retriever_seq_length ............................ 256
+  retro_add_retriever ............................. False
+  retro_attention_gate ............................ 1
+  retro_cyclic_train_iters ........................ None
+  retro_encoder_attention_dropout ................. 0.1
+  retro_encoder_hidden_dropout .................... 0.1
+  retro_encoder_layers ............................ 2
+  retro_num_neighbors ............................. 2
+  retro_num_retrieved_chunks ...................... 2
+  retro_return_doc_ids ............................ False
+  retro_verify_neighbor_count ..................... True
+  retro_workdir ................................... None
+  rotary_interleaved .............................. False
+  rotary_percent .................................. 1.0
+  rotary_seq_len_interpolation_factor ............. None
   sample_rate ..................................... 1.0
-  save ............................................ checkpoints/gpt2_345m
-  save_interval ................................... 500
+  save ............................................ checkpoints/gpt2_345m_dist_mp
+  save_interval ................................... 50
   scatter_gather_tensors_in_pipeline .............. True
   seed ............................................ 1234
   seq_length ...................................... 1024
+  sequence_parallel ............................... True
   sgd_momentum .................................... 0.9
   short_seq_prob .................................. 0.1
-  split ........................................... 969, 30, 1
-  tensor_model_parallel_size ...................... 4
+  skip_train ...................................... False
+  spec ............................................ None
+  split ........................................... 949,50,1
+  squared_relu .................................... False
+  standalone_embedding_stage ...................... False
+  start_weight_decay .............................. 0.01
+  swiglu .......................................... False
+  swin_backbone_type .............................. tiny
+  tensor_model_parallel_size ...................... 2
   tensorboard_dir ................................. None
   tensorboard_log_interval ........................ 1
   tensorboard_queue_size .......................... 1000
+  test_data_path .................................. None
+  timing_log_level ................................ 0
+  timing_log_option ............................... minmax
   titles_data_path ................................ None
+  tokenizer_model ................................. None
   tokenizer_type .................................. GPT2BPETokenizer
-  train_iters ..................................... 1000
+  tp_comm_bulk_dgrad .............................. True
+  tp_comm_bulk_wgrad .............................. True
+  tp_comm_overlap ................................. False
+  tp_comm_overlap_cfg ............................. None
+  tp_comm_split_ag ................................ True
+  tp_comm_split_rs ................................ True
+  train_data_path ................................. None
+  train_iters ..................................... 200
   train_samples ................................... None
-  use_checkpoint_lr_scheduler ..................... False
-  use_contiguous_buffers_in_local_ddp ............. False
+  transformer_impl ................................ local
+  transformer_pipeline_model_parallel_size ........ 1
+  untie_embeddings_and_output_weights ............. False
+  use_checkpoint_args ............................. False
+  use_checkpoint_opt_param_scheduler .............. False
   use_cpu_initialization .......................... None
+  use_distributed_optimizer ....................... False
+  use_flash_attn .................................. False
+  use_mcore_models ................................ False
   use_one_sent_docs ............................... False
+  use_ring_exchange_p2p ........................... False
+  use_rotary_position_embeddings .................. False
+  valid_data_path ................................. None
+  variable_seq_lengths ............................ False
   virtual_pipeline_model_parallel_size ............ None
+  vision_backbone_type ............................ vit
+  vision_pretraining .............................. False
+  vision_pretraining_type ......................... classify
   vocab_extra_ids ................................. 0
   vocab_file ...................................... vocab.json
+  vocab_size ...................................... None
+  wandb_exp_name ..................................
+  wandb_project ...................................
+  wandb_save_dir ..................................
   weight_decay .................................... 0.01
-  world_size ...................................... 4
+  weight_decay_incr_style ......................... constant
+  world_size ...................................... 2
 -------------------- end of arguments ---------------------
-setting number of micro-batches to constant 2
+setting number of micro-batches to constant 4
 > building GPT2BPETokenizer tokenizer ...
- > padded vocab (size: 50257) with 431 dummy tokens (new size: 50688)
+ > padded vocab (size: 50257) with 175 dummy tokens (new size: 50432)
 > initializing torch distributed ...
-> initializing tensor model parallel with size 4
-> initializing pipeline model parallel with size 1
-[W ProcessGroupNCCL.cpp:1569] Rank 3 using best-guess GPU 3 to perform barrier as devices used by this process are currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect.Specify device_ids in barrier() to force use of a particular device.
-[W ProcessGroupNCCL.cpp:1569] Rank 1 using best-guess GPU 1 to perform barrier as devices used by this process are currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect.Specify device_ids in barrier() to force use of a particular device.
+> initialized tensor model parallel with size 2
+> initialized pipeline model parallel with size 1
 > setting random seeds to 1234 ...
-> initializing model parallel cuda seeds on global rank 0, model parallel rank 0, and data parallel rank 0 with model parallel seed: 3952 and data parallel seed: 1234
-[W ProcessGroupNCCL.cpp:1569] Rank 2 using best-guess GPU 2 to perform barrier as devices used by this process are currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect.Specify device_ids in barrier() to force use of a particular device.
 > compiling dataset index builder ...
-make: Entering directory '/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/data'
-g++ -O3 -Wall -shared -std=c++11 -fPIC -fdiagnostics-color -I/opt/conda/include/python3.7m -I/opt/conda/lib/python3.7/site-packages/pybind11/include helpers.cpp -o helpers.cpython-37m-x86_64-linux-gnu.so
-make: Leaving directory '/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/data'
->>> done with dataset index builder. Compilation time: 4.847 seconds
+make: Entering directory `/scratch/qualis/work/Megatron-LM/megatron/core/datasets'
+g++ -O3 -Wall -shared -std=c++11 -fPIC -fdiagnostics-color -I/scratch/qualis/miniconda3/envs/megatron/include/python3.10 -I/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/pybind11/include helpers.cpp -o helpers.cpython-310-x86_64-linux-gnu.so
+make: Leaving directory `/scratch/qualis/work/Megatron-LM/megatron/core/datasets'
+>>> done with dataset index builder. Compilation time: 6.201 seconds
 > compiling and loading fused kernels ...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/build/build.ninja...
-Building extension module scaled_upper_triang_masked_softmax_cuda...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-[1/3] c++ -MMD -MF scaled_upper_triang_masked_softmax.o.d -DTORCH_EXTENSION_NAME=scaled_upper_triang_masked_softmax_cuda -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -isystem /opt/conda/lib/python3.7/site-packages/torch/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/torch/csrc/api/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/TH -isystem /opt/conda/lib/python3.7/site-packages/torch/include/THC -isystem /usr/local/cuda/include -isystem /opt/conda/include/python3.7m -D_GLIBCXX_USE_CXX11_ABI=0 -fPIC -std=c++14 -O3 -c /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/scaled_upper_triang_masked_softmax.cpp -o scaled_upper_triang_masked_softmax.o 
-[2/3] /usr/local/cuda/bin/nvcc  -DTORCH_EXTENSION_NAME=scaled_upper_triang_masked_softmax_cuda -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -isystem /opt/conda/lib/python3.7/site-packages/torch/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/torch/csrc/api/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/TH -isystem /opt/conda/lib/python3.7/site-packages/torch/include/THC -isystem /usr/local/cuda/include -isystem /opt/conda/include/python3.7m -D_GLIBCXX_USE_CXX11_ABI=0 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_80,code=compute_80 -gencode=arch=compute_80,code=sm_80 --compiler-options '-fPIC' -O3 -gencode arch=compute_70,code=sm_70 --use_fast_math -U__CUDA_NO_HALF_OPERATORS__ -U__CUDA_NO_HALF_CONVERSIONS__ --expt-relaxed-constexpr --expt-extended-lambda -gencode arch=compute_80,code=sm_80 -std=c++14 -c /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/scaled_upper_triang_masked_softmax_cuda.cu -o scaled_upper_triang_masked_softmax_cuda.cuda.o 
-[3/3] c++ scaled_upper_triang_masked_softmax.o scaled_upper_triang_masked_softmax_cuda.cuda.o -shared -L/opt/conda/lib/python3.7/site-packages/torch/lib -lc10 -lc10_cuda -ltorch_cpu -ltorch_cuda_cu -ltorch_cuda_cpp -ltorch -ltorch_python -L/usr/local/cuda/lib64 -lcudart -o scaled_upper_triang_masked_softmax_cuda.so
-Loading extension module scaled_upper_triang_masked_softmax_cuda...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/build/build.ninja...
-Building extension module scaled_masked_softmax_cuda...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-[1/3] c++ -MMD -MF scaled_masked_softmax.o.d -DTORCH_EXTENSION_NAME=scaled_masked_softmax_cuda -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -isystem /opt/conda/lib/python3.7/site-packages/torch/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/torch/csrc/api/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/TH -isystem /opt/conda/lib/python3.7/site-packages/torch/include/THC -isystem /usr/local/cuda/include -isystem /opt/conda/include/python3.7m -D_GLIBCXX_USE_CXX11_ABI=0 -fPIC -std=c++14 -O3 -c /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/scaled_masked_softmax.cpp -o scaled_masked_softmax.o 
-[2/3] /usr/local/cuda/bin/nvcc  -DTORCH_EXTENSION_NAME=scaled_masked_softmax_cuda -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -isystem /opt/conda/lib/python3.7/site-packages/torch/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/torch/csrc/api/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/TH -isystem /opt/conda/lib/python3.7/site-packages/torch/include/THC -isystem /usr/local/cuda/include -isystem /opt/conda/include/python3.7m -D_GLIBCXX_USE_CXX11_ABI=0 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_80,code=compute_80 -gencode=arch=compute_80,code=sm_80 --compiler-options '-fPIC' -O3 -gencode arch=compute_70,code=sm_70 --use_fast_math -U__CUDA_NO_HALF_OPERATORS__ -U__CUDA_NO_HALF_CONVERSIONS__ --expt-relaxed-constexpr --expt-extended-lambda -gencode arch=compute_80,code=sm_80 -std=c++14 -c /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/scaled_masked_softmax_cuda.cu -o scaled_masked_softmax_cuda.cuda.o 
-[3/3] c++ scaled_masked_softmax.o scaled_masked_softmax_cuda.cuda.o -shared -L/opt/conda/lib/python3.7/site-packages/torch/lib -lc10 -lc10_cuda -ltorch_cpu -ltorch_cuda_cu -ltorch_cuda_cpp -ltorch -ltorch_python -L/usr/local/cuda/lib64 -lcudart -o scaled_masked_softmax_cuda.so
-Loading extension module scaled_masked_softmax_cuda...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/build/build.ninja...
-Building extension module fused_mix_prec_layer_norm_cuda...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-[1/3] c++ -MMD -MF layer_norm_cuda.o.d -DTORCH_EXTENSION_NAME=fused_mix_prec_layer_norm_cuda -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -isystem /opt/conda/lib/python3.7/site-packages/torch/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/torch/csrc/api/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/TH -isystem /opt/conda/lib/python3.7/site-packages/torch/include/THC -isystem /usr/local/cuda/include -isystem /opt/conda/include/python3.7m -D_GLIBCXX_USE_CXX11_ABI=0 -fPIC -std=c++14 -O3 -c /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda.cpp -o layer_norm_cuda.o 
-[2/3] /usr/local/cuda/bin/nvcc  -DTORCH_EXTENSION_NAME=fused_mix_prec_layer_norm_cuda -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -isystem /opt/conda/lib/python3.7/site-packages/torch/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/torch/csrc/api/include -isystem /opt/conda/lib/python3.7/site-packages/torch/include/TH -isystem /opt/conda/lib/python3.7/site-packages/torch/include/THC -isystem /usr/local/cuda/include -isystem /opt/conda/include/python3.7m -D_GLIBCXX_USE_CXX11_ABI=0 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_80,code=compute_80 -gencode=arch=compute_80,code=sm_80 --compiler-options '-fPIC' -O3 -gencode arch=compute_70,code=sm_70 --use_fast_math -maxrregcount=50 -gencode arch=compute_80,code=sm_80 -std=c++14 -c /home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu -o layer_norm_cuda_kernel.cuda.o 
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu: In function ‘void cuda_layer_norm(at::Tensor*, at::Tensor*, at::Tensor*, at::Tensor*, int, int, c10::IntList, at::Tensor*, at::Tensor*, double)’:
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:224: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:247: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:272: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:296: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                        ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:359: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:414: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                              ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:119: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:142: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                              ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:167: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:191: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                               ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:258: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                  ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:317: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                             ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:131: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                   ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:154: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                          ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:179: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                   ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:203: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                           ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:274: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                  ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:337: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                 ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:151: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:174: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                              ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:199: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:227: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                   ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:294: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                      ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:353: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                 ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:166: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                      ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:189: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                             ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:214: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                      ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:246: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                      ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:317: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                             ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:703:380: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                            ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu: In function ‘void cuda_layer_norm_gradient(at::Tensor*, at::Tensor*, at::Tensor*, at::Tensor*, int, int, c10::IntList, at::Tensor*, at::Tensor*, double, at::Tensor*, at::Tensor*, at::Tensor*)’:
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:224: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:247: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:272: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:333: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                             ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:389: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                     ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:438: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                      ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:489: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:550: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:120: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                        ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:143: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                               ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:168: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                        ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:233: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                         ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:293: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                     ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:342: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                      ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:397: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                             ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:462: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:132: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                    ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:155: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                           ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:180: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                    ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:249: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                         ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:313: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                         ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:362: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                          ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:421: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                     ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:490: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:152: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                        ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:175: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                               ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:200: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                        ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:265: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                         ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:325: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                     ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:378: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                          ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:433: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                 ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:498: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:167: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:190: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                              ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:215: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                       ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:284: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                            ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:348: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                            ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:405: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                     ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:464: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:533: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     DISPATCH_FLOAT_HALF_AND_BFLOAT_INOUT_TYPES(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ^
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu: In instantiation of ‘void HostLayerNormGradient(const V*, const U*, const U*, at::Tensor*, int, int, const V*, const V*, double, T*, V*, V*) [with T = float; U = float; V = float]’:
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:562:   required from here
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:779:97: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     cuComputeGradInput<<<blocks1, threads1, nshared, stream>>>(
-                                                                                                 ^                                                                                         
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu: In instantiation of ‘void HostLayerNormGradient(const V*, const U*, const U*, at::Tensor*, int, int, const V*, const V*, double, T*, V*, V*) [with T = float; U = float; V = c10::Half]’:
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:474:   required from here
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:779:97: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     cuComputeGradInput<<<blocks1, threads1, nshared, stream>>>(
-                                                                                                 ^                                                                                         
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu: In instantiation of ‘void HostLayerNormGradient(const V*, const U*, const U*, at::Tensor*, int, int, const V*, const V*, double, T*, V*, V*) [with T = float; U = float; V = c10::BFloat16]’:
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:502:   required from here
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:779:97: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     cuComputeGradInput<<<blocks1, threads1, nshared, stream>>>(
-                                                                                                 ^                                                                                         
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu: In instantiation of ‘void HostLayerNormGradient(const V*, const U*, const U*, at::Tensor*, int, int, const V*, const V*, double, T*, V*, V*) [with T = c10::Half; U = float; V = c10::Half]’:
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:510:   required from here
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:779:97: warning: ‘T* at::Tensor::data() const [with T = c10::Half]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     cuComputeGradInput<<<blocks1, threads1, nshared, stream>>>(
-                                                                                                 ^                                                                                         
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu: In instantiation of ‘void HostLayerNormGradient(const V*, const U*, const U*, at::Tensor*, int, int, const V*, const V*, double, T*, V*, V*) [with T = c10::BFloat16; U = float; V = c10::BFloat16]’:
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:811:545:   required from here
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:748:106: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
-                                                                                                          ^                                                                                                                                                     
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:761:102: warning: ‘T* at::Tensor::data() const [with T = float]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-       cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
-                                                                                                      ^                                                                                                                        
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM/megatron/fused_kernels/layer_norm_cuda_kernel.cu:779:97: warning: ‘T* at::Tensor::data() const [with T = c10::BFloat16]’ is deprecated: Tensor.data<T>() is deprecated. Please use Tensor.data_ptr<T>() instead. [-Wdeprecated-declarations]
-     cuComputeGradInput<<<blocks1, threads1, nshared, stream>>>(
-                                                                                                 ^                                                                                         
-/opt/conda/lib/python3.7/site-packages/torch/include/ATen/core/TensorBody.h:501:1: note: declared here
-   T * data() const {
- ^ ~~
-[3/3] c++ layer_norm_cuda.o layer_norm_cuda_kernel.cuda.o -shared -L/opt/conda/lib/python3.7/site-packages/torch/lib -lc10 -lc10_cuda -ltorch_cpu -ltorch_cuda_cu -ltorch_cuda_cpp -ltorch -ltorch_python -L/usr/local/cuda/lib64 -lcudart -o fused_mix_prec_layer_norm_cuda.so
-Loading extension module fused_mix_prec_layer_norm_cuda...
-[W ProcessGroupNCCL.cpp:1569] Rank 0 using best-guess GPU 0 to perform barrier as devices used by this process are currently unknown. This can potentially cause a hang if this rank to GPU mapping is incorrect.Specify device_ids in barrier() to force use of a particular device.
->>> done with compiling and loading fused kernels. Compilation time: 213.651 seconds
-time to initialize megatron (seconds): 219.000
-[after megatron is initialized] datetime: 2021-10-24 01:50:51 
+>>> done with compiling and loading fused kernels. Compilation time: 0.367 seconds
+[rank1]:[W914 07:23:41.174438216 init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+[rank0]:[W914 07:23:41.174582000 init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+time to initialize megatron (seconds): 9.962
+[after megatron is initialized] datetime: 2024-09-14 07:23:44
 building GPT model ...
- > number of parameters on (tensor, pipeline) model parallel rank (0, 0): 89714688
- > number of parameters on (tensor, pipeline) model parallel rank (2, 0): 89714688
- > number of parameters on (tensor, pipeline) model parallel rank (3, 0): 89714688
- > number of parameters on (tensor, pipeline) model parallel rank (1, 0): 89714688
+ > number of parameters on (tensor, pipeline) model parallel rank (0, 0): 178100224
+ > number of parameters on (tensor, pipeline) model parallel rank (1, 0): 178100224
+INFO:megatron.core.distributed.grad_buffer:Number of buckets for gradient all-reduce / reduce-scatter: 1
+INFO:megatron.core.distributed.grad_buffer:Params for bucket 1 (178100224 elements):
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.final_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.final_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.embedding.word_embeddings.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.embedding.position_embeddings.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.post_attention_norm.weight
 > learning rate decay style: cosine
-WARNING: could not find the metadata file checkpoints/gpt2_345m/latest_checkpointed_iteration.txt 
+WARNING: could not find the metadata file checkpoints/gpt2_345m_dist_mp/latest_checkpointed_iteration.txt
     will not load any checkpoints and will start from random
-time (ms) | load-checkpoint: 0.33
-[after model, optimizer, and learning rate scheduler are built] datetime: 2021-10-24 01:50:52 
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+(min, max) time across ranks (ms):
+    load-checkpoint ................................: (0.42, 0.47)
+[after model, optimizer, and learning rate scheduler are built] datetime: 2024-09-14 07:23:45
 > building train, validation, and test datasets ...
  > datasets target sizes (minimum size):
-    train:      8000
-    validation: 880
-    test:       80
+    train:      3200
+    validation: 480
+    test:       160
+INFO:megatron.core.datasets.blended_megatron_dataset_config:mock = False
+INFO:megatron.core.datasets.blended_megatron_dataset_config:Let split_matrix = [(0, 0.949), (0.949, 0.999), (0.999, 1.0)]
 > building train, validation, and test datasets for GPT ...
- > building dataset index ...
-    reading sizes...
-    reading pointers...
-    reading document index...
-    creating numpy buffer of mmap...
-    creating memory view of numpy buffer...
- > finished creating indexed dataset in 0.002126 seconds
-    number of documents: 10000
- > dataset split:
-    train:
-     document indices in [0, 9690) total of 9690 documents
-    validation:
-     document indices in [9690, 9990) total of 300 documents
-    test:
-     document indices in [9990, 10000) total of 10 documents
- > WARNING: could not find index map files, building the indices on rank 0 ...
- > last epoch number of samples (722) is smaller than 80% of number of samples per epoch (1819), setting separate_last_epoch to True
- > elasped time to build and save doc-idx mapping (seconds): 0.005900
-    using:
-     number of documents:       9690
-     number of epochs:          5
-     sequence length:           1024
-     total number of samples:   9097
- > elasped time to build and save sample-idx mapping (seconds): 0.002049
- > building shuffle index with split [0, 7278) and [7278, 9097) ...
- > elasped time to build and save shuffle-idx mapping (seconds): 0.001257
- > loading doc-idx mapping from my-gpt2_text_document_train_indexmap_8000ns_1024sl_1234s_doc_idx.npy
- > loading sample-idx mapping from my-gpt2_text_document_train_indexmap_8000ns_1024sl_1234s_sample_idx.npy
- > loading shuffle-idx mapping from my-gpt2_text_document_train_indexmap_8000ns_1024sl_1234s_shuffle_idx.npy
-    loaded indexed file in 0.048 seconds
-    total number of samples: 9098
-    total number of epochs: 5
- > WARNING: could not find index map files, building the indices on rank 0 ...
- > last epoch number of samples (16) is smaller than 80% of number of samples per epoch (54), setting separate_last_epoch to True
- > elasped time to build and save doc-idx mapping (seconds): 0.000634
-    using:
-     number of documents:       300
-     number of epochs:          17
-     sequence length:           1024
-     total number of samples:   918
- > elasped time to build and save sample-idx mapping (seconds): 0.000432
- > building shuffle index with split [0, 864) and [864, 918) ...
- > elasped time to build and save shuffle-idx mapping (seconds): 0.000260
- > loading doc-idx mapping from my-gpt2_text_document_valid_indexmap_880ns_1024sl_1234s_doc_idx.npy
- > loading sample-idx mapping from my-gpt2_text_document_valid_indexmap_880ns_1024sl_1234s_sample_idx.npy
- > loading shuffle-idx mapping from my-gpt2_text_document_valid_indexmap_880ns_1024sl_1234s_shuffle_idx.npy
-    loaded indexed file in 0.001 seconds
-    total number of samples: 919
-    total number of epochs: 17
- > WARNING: could not find index map files, building the indices on rank 0 ...
- > last epoch number of samples (1) is larger than 80% of number of samples per epoch (1), setting separate_last_epoch to False
- > elasped time to build and save doc-idx mapping (seconds): 0.000269
-    using:
-     number of documents:       10
-     number of epochs:          53
-     sequence length:           1024
-     total number of samples:   80
- > elasped time to build and save sample-idx mapping (seconds): 0.000271
- > building shuffle index with split [0, 80) and [80, 80) ...
- > elasped time to build and save shuffle-idx mapping (seconds): 0.000210
- > loading doc-idx mapping from my-gpt2_text_document_test_indexmap_80ns_1024sl_1234s_doc_idx.npy
- > loading sample-idx mapping from my-gpt2_text_document_test_indexmap_80ns_1024sl_1234s_sample_idx.npy
- > loading shuffle-idx mapping from my-gpt2_text_document_test_indexmap_80ns_1024sl_1234s_shuffle_idx.npy
-    loaded indexed file in 0.001 seconds
-    total number of samples: 81
-    total number of epochs: 53
+INFO:megatron.core.datasets.indexed_dataset:Load the _IndexReader from my-gpt2_text_document.idx
+INFO:megatron.core.datasets.indexed_dataset:    Extract the sequence lengths
+INFO:megatron.core.datasets.indexed_dataset:    Extract the sequence pointers
+INFO:megatron.core.datasets.indexed_dataset:    Extract the document indices
+INFO:megatron.core.datasets.indexed_dataset:> total number of sequences: 10000
+INFO:megatron.core.datasets.indexed_dataset:> total number of documents: 10000
+INFO:megatron.core.datasets.gpt_dataset:Build and save the GPTDataset train indices
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the document index to a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the sample index to a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the shuffle index to a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 3570
+INFO:megatron.core.datasets.gpt_dataset:> total number of epochs: 2
+INFO:megatron.core.datasets.gpt_dataset:Build and save the GPTDataset valid indices
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the document index to e9d835bb86bcaca4cd08b4977794f406-GPTDataset-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the sample index to e9d835bb86bcaca4cd08b4977794f406-GPTDataset-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the shuffle index to e9d835bb86bcaca4cd08b4977794f406-GPTDataset-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 530
+INFO:megatron.core.datasets.gpt_dataset:> total number of epochs: 6
+INFO:megatron.core.datasets.gpt_dataset:Build and save the GPTDataset test indices
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the document index to fceb23beb87bf7aa15e27415203c9636-GPTDataset-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the sample index to fceb23beb87bf7aa15e27415203c9636-GPTDataset-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Build and save the shuffle index to fceb23beb87bf7aa15e27415203c9636-GPTDataset-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 161
+INFO:megatron.core.datasets.gpt_dataset:> total number of epochs: 106
 > finished creating GPT datasets ...
-[W pthreadpool-cpp.cc:90] Warning: Leaking Caffe2 thread-pool after fork. (function pthreadpool)
-[W pthreadpool-cpp.cc:90] Warning: Leaking Caffe2 thread-pool after fork. (function pthreadpool)
-[W pthreadpool-cpp.cc:90] Warning: Leaking Caffe2 thread-pool after fork. (function pthreadpool)
-[W pthreadpool-cpp.cc:90] Warning: Leaking Caffe2 thread-pool after fork. (function pthreadpool)
-time (ms) | model-and-optimizer-setup: 760.83 | train/valid/test-data-iterators-setup: 3023.08
-[after dataloaders are built] datetime: 2021-10-24 01:50:56 
+[after dataloaders are built] datetime: 2024-09-14 07:23:45
 done with setup ...
+(min, max) time across ranks (ms):
+    model-and-optimizer-setup ......................: (151.32, 450.99)
+    train/valid/test-data-iterators-setup ..........: (169.26, 364.59)
 training ...
-[before the start of training step] datetime: 2021-10-24 01:50:56 
- iteration       10/    1000 | consumed samples:           80 | elapsed time per iteration (ms): 1210.0 | learning rate: 0.000E+00 | global batch size:     8 | loss scale: 8388608.0 | number of skipped iterations:  10 | number of nan iterations:   0 |
-time (ms) | forward-compute: 762.12 | backward-compute: 240.12 | backward-embedding-all-reduce: 0.05 | optimizer-copy-to-main-grad: 6.75 | optimizer-unscale-and-check-inf: 198.62 | optimizer: 205.56 | batch-generator: 3.78
- iteration       20/    1000 | consumed samples:          160 | elapsed time per iteration (ms): 223.5 | learning rate: 1.500E-04 | global batch size:     8 | lm loss: 1.032014E+01 | loss scale: 131072.0 | number of skipped iterations:   6 | number of nan iterations:   0 |
-[Rank 1] (after 20 iterations) memory (MB) | allocated: 1735.81884765625 | max allocated: 2072.75390625 | reserved: 2394.0 | max reserved: 2394.0
-[Rank 2] (after 20 iterations) memory (MB) | allocated: 1728.82275390625 | max allocated: 2071.75634765625 | reserved: 2394.0 | max reserved: 2394.0[Rank 0] (after 20 iterations) memory (MB) | allocated: 1734.69384765625 | max allocated: 2070.740234375 | reserved: 2390.0 | max reserved: 2390.0
-
-[Rank 3] (after 20 iterations) memory (MB) | allocated: 1728.1044921875 | max allocated: 2071.29248046875 | reserved: 2340.0 | max reserved: 2340.0
-time (ms) | forward-compute: 67.56 | backward-compute: 134.86 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.44 | optimizer-unscale-and-check-inf: 1.96 | optimizer-clip-main-grad: 1.22 | optimizer-copy-main-to-model-params: 1.02 | optimizer: 18.85 | batch-generator: 1.87
- iteration       30/    1000 | consumed samples:          240 | elapsed time per iteration (ms): 217.2 | learning rate: 1.496E-04 | global batch size:     8 | lm loss: 8.906515E+00 | loss scale: 65536.0 | grad norm: 1.458 | number of skipped iterations:   1 | number of nan iterations:   0 |
-time (ms) | forward-compute: 66.82 | backward-compute: 133.33 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.07 | optimizer-unscale-and-check-inf: 2.00 | optimizer-clip-main-grad: 2.97 | optimizer-copy-main-to-model-params: 2.27 | optimizer: 14.86 | batch-generator: 2.12
- iteration       40/    1000 | consumed samples:          320 | elapsed time per iteration (ms): 217.4 | learning rate: 1.483E-04 | global batch size:     8 | lm loss: 7.911682E+00 | loss scale: 65536.0 | grad norm: 0.737 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 66.62 | backward-compute: 133.69 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.25 | optimizer-unscale-and-check-inf: 1.86 | optimizer-clip-main-grad: 2.64 | optimizer-copy-main-to-model-params: 2.51 | optimizer: 15.06 | batch-generator: 2.56
- iteration       50/    1000 | consumed samples:          400 | elapsed time per iteration (ms): 207.5 | learning rate: 1.463E-04 | global batch size:     8 | lm loss: 7.568282E+00 | loss scale: 65536.0 | grad norm: 22.903 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 61.79 | backward-compute: 129.01 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.11 | optimizer-unscale-and-check-inf: 2.00 | optimizer-clip-main-grad: 2.39 | optimizer-copy-main-to-model-params: 2.47 | optimizer: 14.76 | batch-generator: 1.75
- iteration       60/    1000 | consumed samples:          480 | elapsed time per iteration (ms): 217.9 | learning rate: 1.434E-04 | global batch size:     8 | lm loss: 7.328167E+00 | loss scale: 65536.0 | grad norm: 1.077 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.53 | backward-compute: 135.97 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.20 | optimizer-unscale-and-check-inf: 2.04 | optimizer-clip-main-grad: 2.71 | optimizer-copy-main-to-model-params: 2.61 | optimizer: 15.39 | batch-generator: 2.10
- iteration       70/    1000 | consumed samples:          560 | elapsed time per iteration (ms): 214.9 | learning rate: 1.398E-04 | global batch size:     8 | lm loss: 7.168855E+00 | loss scale: 65536.0 | grad norm: 0.704 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 61.95 | backward-compute: 134.92 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.15 | optimizer-unscale-and-check-inf: 2.74 | optimizer-clip-main-grad: 2.76 | optimizer-copy-main-to-model-params: 2.52 | optimizer: 16.01 | batch-generator: 1.82
- iteration       80/    1000 | consumed samples:          640 | elapsed time per iteration (ms): 210.3 | learning rate: 1.354E-04 | global batch size:     8 | lm loss: 7.056370E+00 | loss scale: 65536.0 | grad norm: 0.623 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 62.49 | backward-compute: 130.66 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.08 | optimizer-unscale-and-check-inf: 2.25 | optimizer-clip-main-grad: 2.45 | optimizer-copy-main-to-model-params: 2.50 | optimizer: 15.09 | batch-generator: 1.76
- iteration       90/    1000 | consumed samples:          720 | elapsed time per iteration (ms): 211.4 | learning rate: 1.304E-04 | global batch size:     8 | lm loss: 7.006987E+00 | loss scale: 65536.0 | grad norm: 0.671 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 63.06 | backward-compute: 131.17 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.17 | optimizer-unscale-and-check-inf: 2.16 | optimizer-clip-main-grad: 2.40 | optimizer-copy-main-to-model-params: 2.53 | optimizer: 15.09 | batch-generator: 1.74
- iteration      100/    1000 | consumed samples:          800 | elapsed time per iteration (ms): 214.3 | learning rate: 1.247E-04 | global batch size:     8 | lm loss: 6.978156E+00 | loss scale: 65536.0 | grad norm: 0.562 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.87 | backward-compute: 131.98 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.17 | optimizer-unscale-and-check-inf: 2.32 | optimizer-clip-main-grad: 2.44 | optimizer-copy-main-to-model-params: 2.52 | optimizer: 15.29 | batch-generator: 1.81
+[before the start of training step] datetime: 2024-09-14 07:23:45
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  torch.distributed._reduce_scatter_base(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  torch.distributed._reduce_scatter_base(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  torch.distributed._reduce_scatter_base(
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  torch.distributed._reduce_scatter_base(
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  handle = torch.distributed._reduce_scatter_base(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  handle = torch.distributed._reduce_scatter_base(
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  handle = torch.distributed._reduce_scatter_base(
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  handle = torch.distributed._reduce_scatter_base(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  torch.distributed._reduce_scatter_base(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  torch.distributed._reduce_scatter_base(
+ iteration       10/     200 | consumed samples:          160 | elapsed time per iteration (ms): 859.9 | learning rate: 0.000E+00 | global batch size:    16 | loss scale: 8388608.0 | number of skipped iterations:  10 | number of nan iterations:   0 |
+ iteration       20/     200 | consumed samples:          320 | elapsed time per iteration (ms): 746.5 | learning rate: 2.344E-07 | global batch size:    16 | lm loss: 1.103711E+01 | loss scale: 262144.0 | grad norm: 23.812 | number of skipped iterations:   5 | number of nan iterations:   0 |
+[Rank 1] (after 20 iterations) memory (MB) | allocated: 3483.29833984375 | max allocated: 9277.48583984375 | reserved: 9710.0 | max reserved: 9710.0
+[Rank 0] (after 20 iterations) memory (MB) | allocated: 3483.29833984375 | max allocated: 9277.48583984375 | reserved: 9710.0 | max reserved: 9710.0
+ iteration       30/     200 | consumed samples:          480 | elapsed time per iteration (ms): 749.7 | learning rate: 7.031E-07 | global batch size:    16 | lm loss: 1.075573E+01 | loss scale: 262144.0 | grad norm: 18.487 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       40/     200 | consumed samples:          640 | elapsed time per iteration (ms): 748.7 | learning rate: 1.172E-06 | global batch size:    16 | lm loss: 1.005369E+01 | loss scale: 262144.0 | grad norm: 8.084 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       50/     200 | consumed samples:          800 | elapsed time per iteration (ms): 755.4 | learning rate: 1.641E-06 | global batch size:    16 | lm loss: 9.577724E+00 | loss scale: 262144.0 | grad norm: 4.090 | number of skipped iterations:   0 | number of nan iterations:   0 |
+saving checkpoint at iteration      50 to checkpoints/gpt2_345m_dist_mp
+  successfully saved checkpoint at iteration      50 to checkpoints/gpt2_345m_dist_mp
+(min, max) time across ranks (ms):
+    save-checkpoint ................................: (3137.64, 3137.87)
+ iteration       60/     200 | consumed samples:          960 | elapsed time per iteration (ms): 753.3 | learning rate: 2.109E-06 | global batch size:    16 | lm loss: 9.351546E+00 | loss scale: 262144.0 | grad norm: 3.010 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       70/     200 | consumed samples:         1120 | elapsed time per iteration (ms): 755.0 | learning rate: 2.578E-06 | global batch size:    16 | lm loss: 9.235643E+00 | loss scale: 262144.0 | grad norm: 2.778 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       80/     200 | consumed samples:         1280 | elapsed time per iteration (ms): 778.9 | learning rate: 3.047E-06 | global batch size:    16 | lm loss: 9.091523E+00 | loss scale: 262144.0 | grad norm: 3.415 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       90/     200 | consumed samples:         1440 | elapsed time per iteration (ms): 754.2 | learning rate: 3.516E-06 | global batch size:    16 | lm loss: 8.887043E+00 | loss scale: 262144.0 | grad norm: 3.890 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      100/     200 | consumed samples:         1600 | elapsed time per iteration (ms): 765.1 | learning rate: 3.984E-06 | global batch size:    16 | lm loss: 8.740536E+00 | loss scale: 262144.0 | grad norm: 2.530 | number of skipped iterations:   0 | number of nan iterations:   0 |
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  torch.distributed._reduce_scatter_base(
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  torch.distributed._reduce_scatter_base(
+/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
+  return func(*args, **kwargs)
+(min, max) time across ranks (ms):
+    evaluate .......................................: (3215.86, 3216.06)
 -----------------------------------------------------------------------------------------------
- validation loss at iteration 100 | lm loss value: 7.086492E+00 | lm loss PPL: 1.195706E+03 | 
+ validation loss at iteration 100 | lm loss value: 8.661982E+00 | lm loss PPL: 5.778975E+03 |
 -----------------------------------------------------------------------------------------------
- iteration      110/    1000 | consumed samples:          880 | elapsed time per iteration (ms): 281.4 | learning rate: 1.185E-04 | global batch size:     8 | lm loss: 6.893764E+00 | loss scale: 65536.0 | grad norm: 0.518 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 124.13 | backward-compute: 139.23 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.45 | optimizer-unscale-and-check-inf: 2.08 | optimizer-clip-main-grad: 2.51 | optimizer-copy-main-to-model-params: 2.51 | optimizer: 15.41 | batch-generator: 5.25
- iteration      120/    1000 | consumed samples:          960 | elapsed time per iteration (ms): 221.7 | learning rate: 1.118E-04 | global batch size:     8 | lm loss: 6.834893E+00 | loss scale: 65536.0 | grad norm: 0.615 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 68.97 | backward-compute: 134.54 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.76 | optimizer-unscale-and-check-inf: 3.53 | optimizer-clip-main-grad: 2.75 | optimizer-copy-main-to-model-params: 2.63 | optimizer: 16.50 | batch-generator: 2.29
- iteration      130/    1000 | consumed samples:         1040 | elapsed time per iteration (ms): 227.8 | learning rate: 1.047E-04 | global batch size:     8 | lm loss: 6.838863E+00 | loss scale: 65536.0 | grad norm: 0.607 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 65.06 | backward-compute: 146.34 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.44 | optimizer-unscale-and-check-inf: 2.93 | optimizer-clip-main-grad: 2.40 | optimizer-copy-main-to-model-params: 2.41 | optimizer: 14.87 | batch-generator: 2.45
- iteration      140/    1000 | consumed samples:         1120 | elapsed time per iteration (ms): 228.0 | learning rate: 9.727E-05 | global batch size:     8 | lm loss: 6.824157E+00 | loss scale: 65536.0 | grad norm: 0.715 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.07 | backward-compute: 146.24 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.07 | optimizer-unscale-and-check-inf: 2.36 | optimizer-clip-main-grad: 3.20 | optimizer-copy-main-to-model-params: 2.45 | optimizer: 15.85 | batch-generator: 1.77
- iteration      150/    1000 | consumed samples:         1200 | elapsed time per iteration (ms): 228.7 | learning rate: 8.958E-05 | global batch size:     8 | lm loss: 6.753051E+00 | loss scale: 65536.0 | grad norm: 0.732 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 68.35 | backward-compute: 142.91 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.34 | optimizer-unscale-and-check-inf: 2.12 | optimizer-clip-main-grad: 2.61 | optimizer-copy-main-to-model-params: 2.61 | optimizer: 15.49 | batch-generator: 1.82
- iteration      160/    1000 | consumed samples:         1280 | elapsed time per iteration (ms): 224.1 | learning rate: 8.173E-05 | global batch size:     8 | lm loss: 6.697730E+00 | loss scale: 65536.0 | grad norm: 0.740 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 68.91 | backward-compute: 136.67 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.68 | optimizer-unscale-and-check-inf: 2.34 | optimizer-clip-main-grad: 2.88 | optimizer-copy-main-to-model-params: 2.65 | optimizer: 16.45 | batch-generator: 2.46
- iteration      170/    1000 | consumed samples:         1360 | elapsed time per iteration (ms): 210.2 | learning rate: 7.381E-05 | global batch size:     8 | lm loss: 6.682823E+00 | loss scale: 65536.0 | grad norm: 0.645 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 65.78 | backward-compute: 127.74 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.89 | optimizer-unscale-and-check-inf: 2.28 | optimizer-clip-main-grad: 2.51 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 14.90 | batch-generator: 1.43
- iteration      180/    1000 | consumed samples:         1440 | elapsed time per iteration (ms): 225.2 | learning rate: 6.590E-05 | global batch size:     8 | lm loss: 6.639360E+00 | loss scale: 65536.0 | grad norm: 0.676 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 63.28 | backward-compute: 146.22 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.45 | optimizer-unscale-and-check-inf: 2.01 | optimizer-clip-main-grad: 2.35 | optimizer-copy-main-to-model-params: 2.43 | optimizer: 14.04 | batch-generator: 1.64
- iteration      190/    1000 | consumed samples:         1520 | elapsed time per iteration (ms): 213.4 | learning rate: 5.809E-05 | global batch size:     8 | lm loss: 6.666003E+00 | loss scale: 65536.0 | grad norm: 0.697 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 62.21 | backward-compute: 135.18 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.62 | optimizer-unscale-and-check-inf: 2.06 | optimizer-clip-main-grad: 2.37 | optimizer-copy-main-to-model-params: 2.49 | optimizer: 14.32 | batch-generator: 1.87
- iteration      200/    1000 | consumed samples:         1600 | elapsed time per iteration (ms): 230.0 | learning rate: 5.047E-05 | global batch size:     8 | lm loss: 6.610323E+00 | loss scale: 65536.0 | grad norm: 0.747 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 74.85 | backward-compute: 137.16 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.46 | optimizer-unscale-and-check-inf: 2.66 | optimizer-clip-main-grad: 2.66 | optimizer-copy-main-to-model-params: 2.44 | optimizer: 15.05 | batch-generator: 2.15
+saving checkpoint at iteration     100 to checkpoints/gpt2_345m_dist_mp
+  successfully saved checkpoint at iteration     100 to checkpoints/gpt2_345m_dist_mp
+(min, max) time across ranks (ms):
+    save-checkpoint ................................: (3191.42, 3191.63)
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  handle = torch.distributed._reduce_scatter_base(
+/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
+  handle = torch.distributed._reduce_scatter_base(
+ iteration      110/     200 | consumed samples:         1760 | elapsed time per iteration (ms): 749.0 | learning rate: 4.453E-06 | global batch size:    16 | lm loss: 8.607948E+00 | loss scale: 262144.0 | grad norm: 2.465 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      120/     200 | consumed samples:         1920 | elapsed time per iteration (ms): 748.0 | learning rate: 4.922E-06 | global batch size:    16 | lm loss: 8.517817E+00 | loss scale: 262144.0 | grad norm: 2.223 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      130/     200 | consumed samples:         2080 | elapsed time per iteration (ms): 748.3 | learning rate: 5.391E-06 | global batch size:    16 | lm loss: 8.443025E+00 | loss scale: 262144.0 | grad norm: 2.529 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      140/     200 | consumed samples:         2240 | elapsed time per iteration (ms): 748.5 | learning rate: 5.859E-06 | global batch size:    16 | lm loss: 8.364165E+00 | loss scale: 262144.0 | grad norm: 2.909 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      150/     200 | consumed samples:         2400 | elapsed time per iteration (ms): 749.4 | learning rate: 6.328E-06 | global batch size:    16 | lm loss: 8.302343E+00 | loss scale: 262144.0 | grad norm: 3.281 | number of skipped iterations:   0 | number of nan iterations:   0 |
+saving checkpoint at iteration     150 to checkpoints/gpt2_345m_dist_mp
+  successfully saved checkpoint at iteration     150 to checkpoints/gpt2_345m_dist_mp
+(min, max) time across ranks (ms):
+    save-checkpoint ................................: (3261.72, 3261.77)
+ iteration      160/     200 | consumed samples:         2560 | elapsed time per iteration (ms): 749.3 | learning rate: 6.797E-06 | global batch size:    16 | lm loss: 8.218843E+00 | loss scale: 262144.0 | grad norm: 2.577 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      170/     200 | consumed samples:         2720 | elapsed time per iteration (ms): 748.7 | learning rate: 7.266E-06 | global batch size:    16 | lm loss: 8.157039E+00 | loss scale: 262144.0 | grad norm: 2.724 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      180/     200 | consumed samples:         2880 | elapsed time per iteration (ms): 749.2 | learning rate: 7.734E-06 | global batch size:    16 | lm loss: 8.062502E+00 | loss scale: 262144.0 | grad norm: 1.932 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      190/     200 | consumed samples:         3040 | elapsed time per iteration (ms): 748.3 | learning rate: 8.203E-06 | global batch size:    16 | lm loss: 8.000146E+00 | loss scale: 262144.0 | grad norm: 1.853 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      200/     200 | consumed samples:         3200 | elapsed time per iteration (ms): 747.9 | learning rate: 8.672E-06 | global batch size:    16 | lm loss: 7.894510E+00 | loss scale: 262144.0 | grad norm: 2.182 | number of skipped iterations:   0 | number of nan iterations:   0 |
+(min, max) time across ranks (ms):
+    evaluate .......................................: (2951.78, 2951.85)
 -----------------------------------------------------------------------------------------------
- validation loss at iteration 200 | lm loss value: 6.859974E+00 | lm loss PPL: 9.533422E+02 | 
+ validation loss at iteration 200 | lm loss value: 7.874336E+00 | lm loss PPL: 2.628941E+03 |
 -----------------------------------------------------------------------------------------------
- iteration      210/    1000 | consumed samples:         1680 | elapsed time per iteration (ms): 310.6 | learning rate: 4.312E-05 | global batch size:     8 | lm loss: 6.620341E+00 | loss scale: 65536.0 | grad norm: 0.699 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 151.66 | backward-compute: 138.52 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.81 | optimizer-unscale-and-check-inf: 4.17 | optimizer-clip-main-grad: 3.51 | optimizer-copy-main-to-model-params: 2.73 | optimizer: 18.15 | batch-generator: 3.99
- iteration      220/    1000 | consumed samples:         1760 | elapsed time per iteration (ms): 228.1 | learning rate: 3.613E-05 | global batch size:     8 | lm loss: 6.600768E+00 | loss scale: 65536.0 | grad norm: 0.754 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 77.23 | backward-compute: 132.63 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.11 | optimizer-unscale-and-check-inf: 4.54 | optimizer-clip-main-grad: 2.83 | optimizer-copy-main-to-model-params: 2.48 | optimizer: 16.73 | batch-generator: 3.24
- iteration      230/    1000 | consumed samples:         1840 | elapsed time per iteration (ms): 221.8 | learning rate: 2.958E-05 | global batch size:     8 | lm loss: 6.569440E+00 | loss scale: 65536.0 | grad norm: 0.718 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 69.80 | backward-compute: 135.45 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.42 | optimizer-unscale-and-check-inf: 2.80 | optimizer-clip-main-grad: 2.48 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 14.97 | batch-generator: 2.90
- iteration      240/    1000 | consumed samples:         1920 | elapsed time per iteration (ms): 231.9 | learning rate: 2.353E-05 | global batch size:     8 | lm loss: 6.547186E+00 | loss scale: 65536.0 | grad norm: 0.693 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 72.26 | backward-compute: 142.22 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.48 | optimizer-unscale-and-check-inf: 3.20 | optimizer-clip-main-grad: 2.70 | optimizer-copy-main-to-model-params: 2.57 | optimizer: 15.80 | batch-generator: 3.49
- iteration      250/    1000 | consumed samples:         2000 | elapsed time per iteration (ms): 238.5 | learning rate: 1.806E-05 | global batch size:     8 | lm loss: 6.529446E+00 | loss scale: 65536.0 | grad norm: 0.639 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 75.63 | backward-compute: 144.86 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.25 | optimizer-unscale-and-check-inf: 3.83 | optimizer-clip-main-grad: 3.11 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 16.44 | batch-generator: 2.98
- iteration      260/    1000 | consumed samples:         2080 | elapsed time per iteration (ms): 239.5 | learning rate: 1.322E-05 | global batch size:     8 | lm loss: 6.534592E+00 | loss scale: 65536.0 | grad norm: 0.637 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 79.20 | backward-compute: 142.68 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.32 | optimizer-unscale-and-check-inf: 3.56 | optimizer-clip-main-grad: 2.91 | optimizer-copy-main-to-model-params: 2.42 | optimizer: 16.00 | batch-generator: 3.47
- iteration      270/    1000 | consumed samples:         2160 | elapsed time per iteration (ms): 234.9 | learning rate: 9.079E-06 | global batch size:     8 | lm loss: 6.515455E+00 | loss scale: 65536.0 | grad norm: 0.597 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 69.58 | backward-compute: 148.37 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.22 | optimizer-unscale-and-check-inf: 3.18 | optimizer-clip-main-grad: 2.56 | optimizer-copy-main-to-model-params: 2.50 | optimizer: 15.25 | batch-generator: 2.36
- iteration      280/    1000 | consumed samples:         2240 | elapsed time per iteration (ms): 216.3 | learning rate: 5.671E-06 | global batch size:     8 | lm loss: 6.529461E+00 | loss scale: 65536.0 | grad norm: 0.583 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 67.92 | backward-compute: 132.46 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 3.71 | optimizer-unscale-and-check-inf: 3.36 | optimizer-clip-main-grad: 2.55 | optimizer-copy-main-to-model-params: 2.35 | optimizer: 14.64 | batch-generator: 2.19
- iteration      290/    1000 | consumed samples:         2320 | elapsed time per iteration (ms): 207.9 | learning rate: 3.038E-06 | global batch size:     8 | lm loss: 6.513412E+00 | loss scale: 65536.0 | grad norm: 0.618 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.06 | backward-compute: 127.69 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 3.65 | optimizer-unscale-and-check-inf: 3.66 | optimizer-clip-main-grad: 2.44 | optimizer-copy-main-to-model-params: 2.40 | optimizer: 14.82 | batch-generator: 2.86
- iteration      300/    1000 | consumed samples:         2400 | elapsed time per iteration (ms): 215.7 | learning rate: 1.209E-06 | global batch size:     8 | lm loss: 6.521043E+00 | loss scale: 65536.0 | grad norm: 0.642 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 65.02 | backward-compute: 134.84 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 4.03 | optimizer-unscale-and-check-inf: 2.93 | optimizer-clip-main-grad: 2.40 | optimizer-copy-main-to-model-params: 2.37 | optimizer: 14.42 | batch-generator: 2.00
------------------------------------------------------------------------------------------------
- validation loss at iteration 300 | lm loss value: 6.749321E+00 | lm loss PPL: 8.534790E+02 | 
------------------------------------------------------------------------------------------------
- iteration      310/    1000 | consumed samples:         2480 | elapsed time per iteration (ms): 279.7 | learning rate: 2.055E-07 | global batch size:     8 | lm loss: 6.526622E+00 | loss scale: 65536.0 | grad norm: 0.633 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 125.71 | backward-compute: 136.51 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.30 | optimizer-unscale-and-check-inf: 2.96 | optimizer-clip-main-grad: 2.82 | optimizer-copy-main-to-model-params: 2.53 | optimizer: 15.45 | batch-generator: 4.78
- iteration      320/    1000 | consumed samples:         2560 | elapsed time per iteration (ms): 220.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.520487E+00 | loss scale: 65536.0 | grad norm: 0.600 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 68.29 | backward-compute: 135.67 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.19 | optimizer-unscale-and-check-inf: 2.77 | optimizer-clip-main-grad: 2.60 | optimizer-copy-main-to-model-params: 2.41 | optimizer: 14.74 | batch-generator: 2.25
- iteration      330/    1000 | consumed samples:         2640 | elapsed time per iteration (ms): 222.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.492335E+00 | loss scale: 65536.0 | grad norm: 0.644 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 67.09 | backward-compute: 138.64 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.27 | optimizer-unscale-and-check-inf: 3.01 | optimizer-clip-main-grad: 2.46 | optimizer-copy-main-to-model-params: 2.43 | optimizer: 14.97 | batch-generator: 2.09
- iteration      340/    1000 | consumed samples:         2720 | elapsed time per iteration (ms): 211.9 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.539624E+00 | loss scale: 65536.0 | grad norm: 0.597 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 65.04 | backward-compute: 130.94 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.01 | optimizer-unscale-and-check-inf: 2.98 | optimizer-clip-main-grad: 2.35 | optimizer-copy-main-to-model-params: 2.40 | optimizer: 14.49 | batch-generator: 2.48
- iteration      350/    1000 | consumed samples:         2800 | elapsed time per iteration (ms): 226.3 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.521507E+00 | loss scale: 65536.0 | grad norm: 0.657 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 78.07 | backward-compute: 130.17 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 3.99 | optimizer-unscale-and-check-inf: 4.61 | optimizer-clip-main-grad: 2.88 | optimizer-copy-main-to-model-params: 2.42 | optimizer: 16.64 | batch-generator: 4.07
- iteration      360/    1000 | consumed samples:         2880 | elapsed time per iteration (ms): 217.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.495512E+00 | loss scale: 65536.0 | grad norm: 0.615 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 66.52 | backward-compute: 134.08 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 3.94 | optimizer-unscale-and-check-inf: 3.63 | optimizer-clip-main-grad: 2.44 | optimizer-copy-main-to-model-params: 2.38 | optimizer: 15.10 | batch-generator: 3.51
- iteration      370/    1000 | consumed samples:         2960 | elapsed time per iteration (ms): 225.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.504739E+00 | loss scale: 65536.0 | grad norm: 0.596 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 67.82 | backward-compute: 140.81 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 3.87 | optimizer-unscale-and-check-inf: 3.75 | optimizer-clip-main-grad: 2.45 | optimizer-copy-main-to-model-params: 2.37 | optimizer: 15.16 | batch-generator: 3.64
- iteration      380/    1000 | consumed samples:         3040 | elapsed time per iteration (ms): 213.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.548125E+00 | loss scale: 65536.0 | grad norm: 0.618 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 65.14 | backward-compute: 132.85 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 3.86 | optimizer-unscale-and-check-inf: 3.05 | optimizer-clip-main-grad: 2.35 | optimizer-copy-main-to-model-params: 2.37 | optimizer: 14.36 | batch-generator: 2.85
- iteration      390/    1000 | consumed samples:         3120 | elapsed time per iteration (ms): 218.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.529753E+00 | loss scale: 65536.0 | grad norm: 0.588 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 63.89 | backward-compute: 138.93 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.09 | optimizer-unscale-and-check-inf: 2.31 | optimizer-clip-main-grad: 2.35 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 13.97 | batch-generator: 2.09
- iteration      400/    1000 | consumed samples:         3200 | elapsed time per iteration (ms): 222.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.502573E+00 | loss scale: 65536.0 | grad norm: 0.583 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 72.92 | backward-compute: 132.56 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 3.93 | optimizer-unscale-and-check-inf: 3.37 | optimizer-clip-main-grad: 2.87 | optimizer-copy-main-to-model-params: 2.38 | optimizer: 15.28 | batch-generator: 3.32
------------------------------------------------------------------------------------------------
- validation loss at iteration 400 | lm loss value: 6.788503E+00 | lm loss PPL: 8.875836E+02 | 
------------------------------------------------------------------------------------------------
- iteration      410/    1000 | consumed samples:         3280 | elapsed time per iteration (ms): 288.0 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.540978E+00 | loss scale: 65536.0 | grad norm: 0.642 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 133.56 | backward-compute: 136.65 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.93 | optimizer-unscale-and-check-inf: 2.58 | optimizer-clip-main-grad: 2.55 | optimizer-copy-main-to-model-params: 2.70 | optimizer: 15.68 | batch-generator: 3.58
- iteration      420/    1000 | consumed samples:         3360 | elapsed time per iteration (ms): 217.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.535336E+00 | loss scale: 65536.0 | grad norm: 0.578 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 69.30 | backward-compute: 130.61 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.37 | optimizer-unscale-and-check-inf: 2.22 | optimizer-clip-main-grad: 2.53 | optimizer-copy-main-to-model-params: 2.73 | optimizer: 15.65 | batch-generator: 2.09
- iteration      430/    1000 | consumed samples:         3440 | elapsed time per iteration (ms): 207.8 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.531789E+00 | loss scale: 65536.0 | grad norm: 0.585 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 61.52 | backward-compute: 130.11 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 5.04 | optimizer-unscale-and-check-inf: 1.98 | optimizer-clip-main-grad: 2.34 | optimizer-copy-main-to-model-params: 2.43 | optimizer: 14.43 | batch-generator: 1.86
- iteration      440/    1000 | consumed samples:         3520 | elapsed time per iteration (ms): 208.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.468220E+00 | loss scale: 65536.0 | grad norm: 0.582 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 62.16 | backward-compute: 129.98 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.99 | optimizer-unscale-and-check-inf: 1.94 | optimizer-clip-main-grad: 2.39 | optimizer-copy-main-to-model-params: 2.54 | optimizer: 14.53 | batch-generator: 1.61
- iteration      450/    1000 | consumed samples:         3600 | elapsed time per iteration (ms): 208.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.536092E+00 | loss scale: 65536.0 | grad norm: 0.608 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 62.16 | backward-compute: 130.02 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.07 | optimizer-unscale-and-check-inf: 1.97 | optimizer-clip-main-grad: 2.44 | optimizer-copy-main-to-model-params: 2.44 | optimizer: 14.59 | batch-generator: 2.09
- iteration      460/    1000 | consumed samples:         3680 | elapsed time per iteration (ms): 213.4 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.524807E+00 | loss scale: 65536.0 | grad norm: 0.649 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 67.32 | backward-compute: 129.27 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.12 | optimizer-unscale-and-check-inf: 2.01 | optimizer-clip-main-grad: 2.58 | optimizer-copy-main-to-model-params: 2.47 | optimizer: 14.92 | batch-generator: 2.22
- iteration      470/    1000 | consumed samples:         3760 | elapsed time per iteration (ms): 213.3 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.509077E+00 | loss scale: 65536.0 | grad norm: 0.617 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.78 | backward-compute: 132.19 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.05 | optimizer-unscale-and-check-inf: 1.92 | optimizer-clip-main-grad: 2.40 | optimizer-copy-main-to-model-params: 2.45 | optimizer: 14.50 | batch-generator: 1.71
- iteration      480/    1000 | consumed samples:         3840 | elapsed time per iteration (ms): 215.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.516943E+00 | loss scale: 65536.0 | grad norm: 0.596 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 65.34 | backward-compute: 134.10 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 5.00 | optimizer-unscale-and-check-inf: 1.79 | optimizer-clip-main-grad: 2.41 | optimizer-copy-main-to-model-params: 2.50 | optimizer: 14.37 | batch-generator: 2.12
- iteration      490/    1000 | consumed samples:         3920 | elapsed time per iteration (ms): 223.8 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.487343E+00 | loss scale: 65536.0 | grad norm: 0.622 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 72.52 | backward-compute: 134.40 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.87 | optimizer-unscale-and-check-inf: 2.37 | optimizer-clip-main-grad: 2.91 | optimizer-copy-main-to-model-params: 2.43 | optimizer: 15.21 | batch-generator: 2.55
- iteration      500/    1000 | consumed samples:         4000 | elapsed time per iteration (ms): 225.4 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.547549E+00 | loss scale: 65536.0 | grad norm: 0.610 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 68.22 | backward-compute: 139.69 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.70 | optimizer-unscale-and-check-inf: 1.67 | optimizer-clip-main-grad: 2.61 | optimizer-copy-main-to-model-params: 2.62 | optimizer: 15.40 | batch-generator: 3.66
------------------------------------------------------------------------------------------------
- validation loss at iteration 500 | lm loss value: 6.763964E+00 | lm loss PPL: 8.660686E+02 | 
------------------------------------------------------------------------------------------------
-saving checkpoint at iteration     500 to checkpoints/gpt2_345m
-  successfully saved checkpoint at iteration     500 to checkpoints/gpt2_345m
-time (ms) | save-checkpoint: 5743.17
- iteration      510/    1000 | consumed samples:         4080 | elapsed time per iteration (ms): 872.0 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.522501E+00 | loss scale: 65536.0 | grad norm: 0.619 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 132.46 | backward-compute: 147.89 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 5.05 | optimizer-unscale-and-check-inf: 2.08 | optimizer-clip-main-grad: 2.55 | optimizer-copy-main-to-model-params: 2.57 | optimizer: 14.99 | batch-generator: 4.20
- iteration      520/    1000 | consumed samples:         4160 | elapsed time per iteration (ms): 222.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.509373E+00 | loss scale: 65536.0 | grad norm: 0.664 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.61 | backward-compute: 139.86 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 4.67 | optimizer-unscale-and-check-inf: 3.71 | optimizer-clip-main-grad: 2.63 | optimizer-copy-main-to-model-params: 2.51 | optimizer: 16.13 | batch-generator: 2.87
- iteration      530/    1000 | consumed samples:         4240 | elapsed time per iteration (ms): 243.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.504818E+00 | loss scale: 65536.0 | grad norm: 0.617 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 79.36 | backward-compute: 145.10 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.11 | optimizer-unscale-and-check-inf: 3.53 | optimizer-clip-main-grad: 3.05 | optimizer-copy-main-to-model-params: 2.56 | optimizer: 17.03 | batch-generator: 4.34
- iteration      540/    1000 | consumed samples:         4320 | elapsed time per iteration (ms): 230.0 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.529472E+00 | loss scale: 65536.0 | grad norm: 0.642 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 72.33 | backward-compute: 138.56 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.36 | optimizer-unscale-and-check-inf: 3.62 | optimizer-clip-main-grad: 2.93 | optimizer-copy-main-to-model-params: 2.61 | optimizer: 17.25 | batch-generator: 3.33
- iteration      550/    1000 | consumed samples:         4400 | elapsed time per iteration (ms): 227.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.471246E+00 | loss scale: 65536.0 | grad norm: 0.593 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 73.41 | backward-compute: 135.56 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.16 | optimizer-unscale-and-check-inf: 2.67 | optimizer-clip-main-grad: 2.74 | optimizer-copy-main-to-model-params: 2.80 | optimizer: 16.22 | batch-generator: 2.79
- iteration      560/    1000 | consumed samples:         4480 | elapsed time per iteration (ms): 234.8 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.502017E+00 | loss scale: 65536.0 | grad norm: 0.615 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 76.29 | backward-compute: 139.64 | backward-embedding-all-reduce: 0.06 | optimizer-copy-to-main-grad: 5.08 | optimizer-unscale-and-check-inf: 2.71 | optimizer-clip-main-grad: 3.00 | optimizer-copy-main-to-model-params: 2.78 | optimizer: 16.54 | batch-generator: 2.92
- iteration      570/    1000 | consumed samples:         4560 | elapsed time per iteration (ms): 239.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.512360E+00 | loss scale: 65536.0 | grad norm: 0.631 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 79.99 | backward-compute: 140.13 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.87 | optimizer-unscale-and-check-inf: 2.30 | optimizer-clip-main-grad: 2.97 | optimizer-copy-main-to-model-params: 2.90 | optimizer: 16.94 | batch-generator: 3.02
- iteration      580/    1000 | consumed samples:         4640 | elapsed time per iteration (ms): 255.9 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.503098E+00 | loss scale: 65536.0 | grad norm: 0.578 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 84.41 | backward-compute: 150.92 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.79 | optimizer-unscale-and-check-inf: 3.68 | optimizer-clip-main-grad: 2.82 | optimizer-copy-main-to-model-params: 3.01 | optimizer: 18.21 | batch-generator: 4.64
- iteration      590/    1000 | consumed samples:         4720 | elapsed time per iteration (ms): 233.6 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.527862E+00 | loss scale: 65536.0 | grad norm: 0.585 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 76.05 | backward-compute: 139.84 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 5.02 | optimizer-unscale-and-check-inf: 3.01 | optimizer-clip-main-grad: 2.96 | optimizer-copy-main-to-model-params: 2.43 | optimizer: 16.05 | batch-generator: 3.35
- iteration      600/    1000 | consumed samples:         4800 | elapsed time per iteration (ms): 232.4 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.491470E+00 | loss scale: 65536.0 | grad norm: 0.648 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 71.36 | backward-compute: 142.82 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.41 | optimizer-unscale-and-check-inf: 2.49 | optimizer-clip-main-grad: 2.72 | optimizer-copy-main-to-model-params: 2.67 | optimizer: 16.18 | batch-generator: 2.25
------------------------------------------------------------------------------------------------
- validation loss at iteration 600 | lm loss value: 6.787935E+00 | lm loss PPL: 8.870797E+02 | 
------------------------------------------------------------------------------------------------
- iteration      610/    1000 | consumed samples:         4880 | elapsed time per iteration (ms): 306.0 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.484891E+00 | loss scale: 65536.0 | grad norm: 0.628 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 145.15 | backward-compute: 140.91 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.14 | optimizer-unscale-and-check-inf: 4.35 | optimizer-clip-main-grad: 2.46 | optimizer-copy-main-to-model-params: 2.58 | optimizer: 17.29 | batch-generator: 6.33
- iteration      620/    1000 | consumed samples:         4960 | elapsed time per iteration (ms): 228.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.514090E+00 | loss scale: 65536.0 | grad norm: 0.603 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 72.59 | backward-compute: 137.39 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.36 | optimizer-unscale-and-check-inf: 3.08 | optimizer-clip-main-grad: 2.82 | optimizer-copy-main-to-model-params: 2.60 | optimizer: 16.68 | batch-generator: 2.49
- iteration      630/    1000 | consumed samples:         5040 | elapsed time per iteration (ms): 218.8 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.501205E+00 | loss scale: 65536.0 | grad norm: 0.582 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 68.57 | backward-compute: 133.76 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.46 | optimizer-unscale-and-check-inf: 2.80 | optimizer-clip-main-grad: 2.44 | optimizer-copy-main-to-model-params: 2.47 | optimizer: 14.96 | batch-generator: 2.93
- iteration      640/    1000 | consumed samples:         5120 | elapsed time per iteration (ms): 244.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.509297E+00 | loss scale: 65536.0 | grad norm: 0.598 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 74.58 | backward-compute: 152.13 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.08 | optimizer-unscale-and-check-inf: 2.98 | optimizer-clip-main-grad: 2.76 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 16.02 | batch-generator: 2.56
- iteration      650/    1000 | consumed samples:         5200 | elapsed time per iteration (ms): 223.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.522154E+00 | loss scale: 65536.0 | grad norm: 0.595 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 62.54 | backward-compute: 144.62 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.14 | optimizer-unscale-and-check-inf: 1.83 | optimizer-clip-main-grad: 2.35 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 14.53 | batch-generator: 2.13
- iteration      660/    1000 | consumed samples:         5280 | elapsed time per iteration (ms): 220.9 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.519691E+00 | loss scale: 65536.0 | grad norm: 0.620 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 66.70 | backward-compute: 137.31 | backward-embedding-all-reduce: 0.05 | optimizer-copy-to-main-grad: 4.85 | optimizer-unscale-and-check-inf: 2.51 | optimizer-clip-main-grad: 2.56 | optimizer-copy-main-to-model-params: 2.47 | optimizer: 15.14 | batch-generator: 2.77
- iteration      670/    1000 | consumed samples:         5360 | elapsed time per iteration (ms): 230.0 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.529554E+00 | loss scale: 65536.0 | grad norm: 0.636 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 71.73 | backward-compute: 140.32 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.81 | optimizer-unscale-and-check-inf: 3.13 | optimizer-clip-main-grad: 2.89 | optimizer-copy-main-to-model-params: 2.54 | optimizer: 16.10 | batch-generator: 3.92
- iteration      680/    1000 | consumed samples:         5440 | elapsed time per iteration (ms): 231.4 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.507520E+00 | loss scale: 65536.0 | grad norm: 0.593 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 71.19 | backward-compute: 142.42 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.93 | optimizer-unscale-and-check-inf: 3.04 | optimizer-clip-main-grad: 2.63 | optimizer-copy-main-to-model-params: 2.49 | optimizer: 15.90 | batch-generator: 2.32
- iteration      690/    1000 | consumed samples:         5520 | elapsed time per iteration (ms): 237.4 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.479575E+00 | loss scale: 65536.0 | grad norm: 0.600 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 72.01 | backward-compute: 146.95 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.21 | optimizer-unscale-and-check-inf: 2.95 | optimizer-clip-main-grad: 2.78 | optimizer-copy-main-to-model-params: 2.71 | optimizer: 16.49 | batch-generator: 2.37
- iteration      700/    1000 | consumed samples:         5600 | elapsed time per iteration (ms): 217.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.457946E+00 | loss scale: 65536.0 | grad norm: 0.596 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 66.75 | backward-compute: 133.90 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.88 | optimizer-unscale-and-check-inf: 2.18 | optimizer-clip-main-grad: 2.36 | optimizer-copy-main-to-model-params: 2.48 | optimizer: 14.67 | batch-generator: 2.02
------------------------------------------------------------------------------------------------
- validation loss at iteration 700 | lm loss value: 6.769063E+00 | lm loss PPL: 8.704963E+02 | 
------------------------------------------------------------------------------------------------
- iteration      710/    1000 | consumed samples:         5680 | elapsed time per iteration (ms): 289.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.499170E+00 | loss scale: 65536.0 | grad norm: 0.693 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 127.53 | backward-compute: 143.53 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.98 | optimizer-unscale-and-check-inf: 2.88 | optimizer-clip-main-grad: 2.61 | optimizer-copy-main-to-model-params: 2.48 | optimizer: 15.73 | batch-generator: 4.16
- iteration      720/    1000 | consumed samples:         5760 | elapsed time per iteration (ms): 235.4 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.530855E+00 | loss scale: 65536.0 | grad norm: 0.622 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 79.19 | backward-compute: 136.64 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.36 | optimizer-unscale-and-check-inf: 3.69 | optimizer-clip-main-grad: 3.03 | optimizer-copy-main-to-model-params: 2.65 | optimizer: 17.58 | batch-generator: 3.56
- iteration      730/    1000 | consumed samples:         5840 | elapsed time per iteration (ms): 221.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.553014E+00 | loss scale: 65536.0 | grad norm: 0.649 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 67.43 | backward-compute: 136.61 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.03 | optimizer-unscale-and-check-inf: 3.75 | optimizer-clip-main-grad: 2.46 | optimizer-copy-main-to-model-params: 2.43 | optimizer: 15.46 | batch-generator: 2.40
- iteration      740/    1000 | consumed samples:         5920 | elapsed time per iteration (ms): 232.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.515872E+00 | loss scale: 65536.0 | grad norm: 0.578 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 77.36 | backward-compute: 136.51 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.37 | optimizer-unscale-and-check-inf: 4.17 | optimizer-clip-main-grad: 2.76 | optimizer-copy-main-to-model-params: 2.44 | optimizer: 16.52 | batch-generator: 3.30
- iteration      750/    1000 | consumed samples:         6000 | elapsed time per iteration (ms): 231.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.508788E+00 | loss scale: 65536.0 | grad norm: 0.601 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 69.48 | backward-compute: 143.51 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.92 | optimizer-unscale-and-check-inf: 3.33 | optimizer-clip-main-grad: 2.90 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 16.34 | batch-generator: 2.74
- iteration      760/    1000 | consumed samples:         6080 | elapsed time per iteration (ms): 211.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.548122E+00 | loss scale: 65536.0 | grad norm: 0.584 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 66.67 | backward-compute: 127.41 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.90 | optimizer-unscale-and-check-inf: 2.57 | optimizer-clip-main-grad: 2.71 | optimizer-copy-main-to-model-params: 2.44 | optimizer: 15.35 | batch-generator: 2.79
- iteration      770/    1000 | consumed samples:         6160 | elapsed time per iteration (ms): 231.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.528199E+00 | loss scale: 65536.0 | grad norm: 0.604 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 67.55 | backward-compute: 146.65 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.08 | optimizer-unscale-and-check-inf: 2.22 | optimizer-clip-main-grad: 2.69 | optimizer-copy-main-to-model-params: 2.74 | optimizer: 15.58 | batch-generator: 1.94
- iteration      780/    1000 | consumed samples:         6240 | elapsed time per iteration (ms): 232.3 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.535383E+00 | loss scale: 65536.0 | grad norm: 0.599 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 74.10 | backward-compute: 140.54 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.81 | optimizer-unscale-and-check-inf: 3.13 | optimizer-clip-main-grad: 2.76 | optimizer-copy-main-to-model-params: 2.47 | optimizer: 15.95 | batch-generator: 2.40
- iteration      790/    1000 | consumed samples:         6320 | elapsed time per iteration (ms): 228.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.488659E+00 | loss scale: 65536.0 | grad norm: 0.581 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 72.56 | backward-compute: 136.73 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.85 | optimizer-unscale-and-check-inf: 4.19 | optimizer-clip-main-grad: 2.89 | optimizer-copy-main-to-model-params: 2.45 | optimizer: 17.12 | batch-generator: 3.51
- iteration      800/    1000 | consumed samples:         6400 | elapsed time per iteration (ms): 222.5 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.524655E+00 | loss scale: 65536.0 | grad norm: 0.582 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.41 | backward-compute: 141.33 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.97 | optimizer-unscale-and-check-inf: 2.37 | optimizer-clip-main-grad: 2.41 | optimizer-copy-main-to-model-params: 2.48 | optimizer: 15.00 | batch-generator: 3.35
------------------------------------------------------------------------------------------------
- validation loss at iteration 800 | lm loss value: 6.752643E+00 | lm loss PPL: 8.563191E+02 | 
------------------------------------------------------------------------------------------------
- iteration      810/    1000 | consumed samples:         6480 | elapsed time per iteration (ms): 288.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.534463E+00 | loss scale: 65536.0 | grad norm: 0.630 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 131.82 | backward-compute: 137.34 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.26 | optimizer-unscale-and-check-inf: 2.99 | optimizer-clip-main-grad: 2.86 | optimizer-copy-main-to-model-params: 2.54 | optimizer: 16.52 | batch-generator: 5.32
- iteration      820/    1000 | consumed samples:         6560 | elapsed time per iteration (ms): 226.2 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.547289E+00 | loss scale: 65536.0 | grad norm: 0.576 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 71.85 | backward-compute: 137.76 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.01 | optimizer-unscale-and-check-inf: 2.10 | optimizer-clip-main-grad: 2.41 | optimizer-copy-main-to-model-params: 2.45 | optimizer: 14.76 | batch-generator: 4.93
- iteration      830/    1000 | consumed samples:         6640 | elapsed time per iteration (ms): 221.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.519830E+00 | loss scale: 65536.0 | grad norm: 0.588 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 68.31 | backward-compute: 135.82 | backward-embedding-all-reduce: 0.04 | optimizer-copy-to-main-grad: 5.01 | optimizer-unscale-and-check-inf: 2.53 | optimizer-clip-main-grad: 2.82 | optimizer-copy-main-to-model-params: 2.49 | optimizer: 15.66 | batch-generator: 3.74
- iteration      840/    1000 | consumed samples:         6720 | elapsed time per iteration (ms): 229.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.521774E+00 | loss scale: 65536.0 | grad norm: 0.620 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 73.88 | backward-compute: 138.38 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.04 | optimizer-unscale-and-check-inf: 1.74 | optimizer-clip-main-grad: 2.51 | optimizer-copy-main-to-model-params: 2.65 | optimizer: 14.88 | batch-generator: 3.08
- iteration      850/    1000 | consumed samples:         6800 | elapsed time per iteration (ms): 212.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.523515E+00 | loss scale: 65536.0 | grad norm: 0.624 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 63.57 | backward-compute: 133.21 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.99 | optimizer-unscale-and-check-inf: 1.64 | optimizer-clip-main-grad: 2.33 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 14.17 | batch-generator: 2.17
- iteration      860/    1000 | consumed samples:         6880 | elapsed time per iteration (ms): 213.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.476500E+00 | loss scale: 65536.0 | grad norm: 0.606 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 62.64 | backward-compute: 135.12 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.88 | optimizer-unscale-and-check-inf: 1.72 | optimizer-clip-main-grad: 2.31 | optimizer-copy-main-to-model-params: 2.47 | optimizer: 14.15 | batch-generator: 1.77
- iteration      870/    1000 | consumed samples:         6960 | elapsed time per iteration (ms): 221.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.514040E+00 | loss scale: 65536.0 | grad norm: 0.609 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 70.14 | backward-compute: 134.20 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.05 | optimizer-unscale-and-check-inf: 2.49 | optimizer-clip-main-grad: 2.75 | optimizer-copy-main-to-model-params: 2.49 | optimizer: 15.55 | batch-generator: 2.58
- iteration      880/    1000 | consumed samples:         7040 | elapsed time per iteration (ms): 220.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.503362E+00 | loss scale: 65536.0 | grad norm: 0.589 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 63.77 | backward-compute: 140.37 | backward-embedding-all-reduce: 0.02 | optimizer-copy-to-main-grad: 4.76 | optimizer-unscale-and-check-inf: 2.48 | optimizer-clip-main-grad: 2.52 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 14.90 | batch-generator: 2.01
- iteration      890/    1000 | consumed samples:         7120 | elapsed time per iteration (ms): 237.8 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.472827E+00 | loss scale: 65536.0 | grad norm: 0.639 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 75.39 | backward-compute: 144.88 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.76 | optimizer-unscale-and-check-inf: 2.77 | optimizer-clip-main-grad: 2.54 | optimizer-copy-main-to-model-params: 2.65 | optimizer: 15.65 | batch-generator: 2.50
- iteration      900/    1000 | consumed samples:         7200 | elapsed time per iteration (ms): 213.9 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.486347E+00 | loss scale: 65536.0 | grad norm: 0.596 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 62.05 | backward-compute: 134.82 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.22 | optimizer-unscale-and-check-inf: 3.44 | optimizer-clip-main-grad: 2.64 | optimizer-copy-main-to-model-params: 2.42 | optimizer: 15.52 | batch-generator: 3.00
------------------------------------------------------------------------------------------------
- validation loss at iteration 900 | lm loss value: 6.769065E+00 | lm loss PPL: 8.704979E+02 | 
------------------------------------------------------------------------------------------------
- iteration      910/    1000 | consumed samples:         7280 | elapsed time per iteration (ms): 288.3 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.529728E+00 | loss scale: 65536.0 | grad norm: 0.592 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 127.65 | backward-compute: 142.65 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.26 | optimizer-unscale-and-check-inf: 3.65 | optimizer-clip-main-grad: 2.79 | optimizer-copy-main-to-model-params: 2.41 | optimizer: 15.94 | batch-generator: 4.78
- iteration      920/    1000 | consumed samples:         7360 | elapsed time per iteration (ms): 218.8 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.488005E+00 | loss scale: 65536.0 | grad norm: 0.588 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.98 | backward-compute: 137.06 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.29 | optimizer-unscale-and-check-inf: 3.20 | optimizer-clip-main-grad: 2.47 | optimizer-copy-main-to-model-params: 2.41 | optimizer: 15.15 | batch-generator: 2.80
- iteration      930/    1000 | consumed samples:         7440 | elapsed time per iteration (ms): 228.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.510791E+00 | loss scale: 65536.0 | grad norm: 0.619 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.60 | backward-compute: 146.57 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.81 | optimizer-unscale-and-check-inf: 2.80 | optimizer-clip-main-grad: 2.48 | optimizer-copy-main-to-model-params: 2.44 | optimizer: 15.31 | batch-generator: 1.84
- iteration      940/    1000 | consumed samples:         7520 | elapsed time per iteration (ms): 211.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.539231E+00 | loss scale: 65536.0 | grad norm: 0.575 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 63.55 | backward-compute: 131.36 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 5.09 | optimizer-unscale-and-check-inf: 1.70 | optimizer-clip-main-grad: 2.52 | optimizer-copy-main-to-model-params: 2.45 | optimizer: 14.50 | batch-generator: 2.44
- iteration      950/    1000 | consumed samples:         7600 | elapsed time per iteration (ms): 214.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.469627E+00 | loss scale: 65536.0 | grad norm: 0.587 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 64.68 | backward-compute: 133.72 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.48 | optimizer-unscale-and-check-inf: 1.96 | optimizer-clip-main-grad: 2.44 | optimizer-copy-main-to-model-params: 2.44 | optimizer: 14.09 | batch-generator: 2.40
- iteration      960/    1000 | consumed samples:         7680 | elapsed time per iteration (ms): 223.7 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.537416E+00 | loss scale: 65536.0 | grad norm: 0.625 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 71.94 | backward-compute: 134.60 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.16 | optimizer-unscale-and-check-inf: 3.62 | optimizer-clip-main-grad: 2.73 | optimizer-copy-main-to-model-params: 2.40 | optimizer: 15.65 | batch-generator: 3.01
- iteration      970/    1000 | consumed samples:         7760 | elapsed time per iteration (ms): 224.0 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.480746E+00 | loss scale: 65536.0 | grad norm: 0.613 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 71.85 | backward-compute: 134.52 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.36 | optimizer-unscale-and-check-inf: 3.78 | optimizer-clip-main-grad: 2.71 | optimizer-copy-main-to-model-params: 2.45 | optimizer: 16.08 | batch-generator: 2.95
- iteration      980/    1000 | consumed samples:         7840 | elapsed time per iteration (ms): 217.1 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.523880E+00 | loss scale: 65536.0 | grad norm: 0.609 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 67.95 | backward-compute: 132.26 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.17 | optimizer-unscale-and-check-inf: 3.51 | optimizer-clip-main-grad: 2.59 | optimizer-copy-main-to-model-params: 2.46 | optimizer: 15.48 | batch-generator: 3.00
- iteration      990/    1000 | consumed samples:         7920 | elapsed time per iteration (ms): 217.0 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.502033E+00 | loss scale: 65536.0 | grad norm: 0.624 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 65.62 | backward-compute: 134.21 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.11 | optimizer-unscale-and-check-inf: 3.42 | optimizer-clip-main-grad: 3.05 | optimizer-copy-main-to-model-params: 2.38 | optimizer: 15.70 | batch-generator: 2.25
- iteration     1000/    1000 | consumed samples:         8000 | elapsed time per iteration (ms): 230.9 | learning rate: 0.000E+00 | global batch size:     8 | lm loss: 6.476170E+00 | loss scale: 65536.0 | grad norm: 0.584 | number of skipped iterations:   0 | number of nan iterations:   0 |
-time (ms) | forward-compute: 67.75 | backward-compute: 145.95 | backward-embedding-all-reduce: 0.03 | optimizer-copy-to-main-grad: 4.10 | optimizer-unscale-and-check-inf: 4.00 | optimizer-clip-main-grad: 2.56 | optimizer-copy-main-to-model-params: 2.45 | optimizer: 15.83 | batch-generator: 3.14
-------------------------------------------------------------------------------------------------
- validation loss at iteration 1000 | lm loss value: 6.758039E+00 | lm loss PPL: 8.609518E+02 | 
-------------------------------------------------------------------------------------------------
-saving checkpoint at iteration    1000 to checkpoints/gpt2_345m
-  successfully saved checkpoint at iteration    1000 to checkpoints/gpt2_345m
-time (ms) | save-checkpoint: 71189.35
-[after training is done] datetime: 2021-10-24 01:56:13 
-saving checkpoint at iteration    1000 to checkpoints/gpt2_345m
-------------------------------------------------------------------------------------------------------------------
- validation loss at the end of training for val data | lm loss value: 6.744719E+00 | lm loss PPL: 8.495604E+02 | 
-------------------------------------------------------------------------------------------------------------------
-  successfully saved checkpoint at iteration    1000 to checkpoints/gpt2_345m
+saving checkpoint at iteration     200 to checkpoints/gpt2_345m_dist_mp
+  successfully saved checkpoint at iteration     200 to checkpoints/gpt2_345m_dist_mp
+(min, max) time across ranks (ms):
+    save-checkpoint ................................: (3112.00, 3112.12)
+[after training is done] datetime: 2024-09-14 07:26:35
+saving checkpoint at iteration     200 to checkpoints/gpt2_345m_dist_mp
+  successfully saved checkpoint at iteration     200 to checkpoints/gpt2_345m_dist_mp
+Evaluating on 160 samples
+Evaluating iter 1/10
+Evaluating iter 2/10
+Evaluating iter 3/10
+Evaluating iter 4/10
+Evaluating iter 5/10
+Evaluating iter 6/10
+Evaluating iter 7/10
+Evaluating iter 8/10
+Evaluating iter 9/10
 Evaluating iter 10/10
--------------------------------------------------------------------------------------------------------------------
- validation loss at the end of training for test data | lm loss value: 6.614303E+00 | lm loss PPL: 7.456849E+02 | 
--------------------------------------------------------------------------------------------------------------------
-INFO:torch.distributed.elastic.agent.server.api:[default] worker group successfully finished. Waiting 300 seconds for other agents to finish.
-INFO:torch.distributed.elastic.agent.server.api:Local worker group finished (SUCCEEDED). Waiting 300 seconds for other agents to finish
-/opt/conda/lib/python3.7/site-packages/torch/distributed/elastic/utils/store.py:71: FutureWarning: This is an experimental API and will be changed in future.
-  "This is an experimental API and will be changed in future.", FutureWarning
-INFO:torch.distributed.elastic.agent.server.api:Done waiting for other agents. Elapsed: 0.0009801387786865234 seconds
-{"name": "torchelastic.worker.status.SUCCEEDED", "source": "WORKER", "timestamp": 0, "metadata": {"run_id": "none", "global_rank": 0, "group_rank": 0, "worker_id": "18862", "role": "default", "hostname": "8632db213dbf", "state": "SUCCEEDED", "total_run_time": 570, "rdzv_backend": "static", "raw_error": null, "metadata": "{\"group_world_size\": 1, \"entry_point\": \"python\", \"local_rank\": [0], \"role_rank\": [0], \"role_world_size\": [4]}", "agent_restarts": 0}}
-{"name": "torchelastic.worker.status.SUCCEEDED", "source": "WORKER", "timestamp": 0, "metadata": {"run_id": "none", "global_rank": 1, "group_rank": 0, "worker_id": "18863", "role": "default", "hostname": "8632db213dbf", "state": "SUCCEEDED", "total_run_time": 570, "rdzv_backend": "static", "raw_error": null, "metadata": "{\"group_world_size\": 1, \"entry_point\": \"python\", \"local_rank\": [1], \"role_rank\": [1], \"role_world_size\": [4]}", "agent_restarts": 0}}
-{"name": "torchelastic.worker.status.SUCCEEDED", "source": "WORKER", "timestamp": 0, "metadata": {"run_id": "none", "global_rank": 2, "group_rank": 0, "worker_id": "18864", "role": "default", "hostname": "8632db213dbf", "state": "SUCCEEDED", "total_run_time": 570, "rdzv_backend": "static", "raw_error": null, "metadata": "{\"group_world_size\": 1, \"entry_point\": \"python\", \"local_rank\": [2], \"role_rank\": [2], \"role_world_size\": [4]}", "agent_restarts": 0}}
-{"name": "torchelastic.worker.status.SUCCEEDED", "source": "WORKER", "timestamp": 0, "metadata": {"run_id": "none", "global_rank": 3, "group_rank": 0, "worker_id": "18868", "role": "default", "hostname": "8632db213dbf", "state": "SUCCEEDED", "total_run_time": 570, "rdzv_backend": "static", "raw_error": null, "metadata": "{\"group_world_size\": 1, \"entry_point\": \"python\", \"local_rank\": [3], \"role_rank\": [3], \"role_world_size\": [4]}", "agent_restarts": 0}}
-{"name": "torchelastic.worker.status.SUCCEEDED", "source": "AGENT", "timestamp": 0, "metadata": {"run_id": "none", "global_rank": null, "group_rank": 0, "worker_id": null, "role": "default", "hostname": "8632db213dbf", "state": "SUCCEEDED", "total_run_time": 570, "rdzv_backend": "static", "raw_error": null, "metadata": "{\"group_world_size\": 1, \"entry_point\": \"python\"}", "agent_restarts": 0}}
-```
-```
-[glogin01]$ cd ..
-/home/ubuntu/kevin/jupyter/notebooks
-```
-
+(min, max) time across ranks (ms):
+    evaluate .......................................: (2970.63, 2971.05)
+-----------------------------------------------------------------------------------------------------------------
+ validation loss at iteration 200 on validation set | lm loss value: 7.873083E+00 | lm loss PPL: 2.625647E+03 |
+-----------------------------------------------------------------------------------------------------------------
+Evaluating on 160 samples
+Evaluating iter 1/10
+Evaluating iter 2/10
+Evaluating iter 3/10
+Evaluating iter 4/10
+Evaluating iter 5/10
+Evaluating iter 6/10
+Evaluating iter 7/10
+Evaluating iter 8/10
+Evaluating iter 9/10
+Evaluating iter 10/10
+(min, max) time across ranks (ms):
+    evaluate .......................................: (2953.31, 2953.41)
+-----------------------------------------------------------------------------------------------------------
+ validation loss at iteration 200 on test set | lm loss value: 7.644718E+00 | lm loss PPL: 2.089580E+03 |
+-----------------------------------------------------------------------------------------------------------
+[rank1]:[W914 07:26:45.188308016 ProcessGroupNCCL.cpp:1168] Warning: WARNING: process group has NOT been destroyed before we destruct ProcessGroupNCCL. On normal program exit, the application should call destroy_process_group to ensure that any pending NCCL operations have finished in this process. In rare cases this process can exit before this point and block the progress of another member of the process group. This constraint has always been present,  but this warning has only been added since PyTorch 2.4 (function operator())
+[rank0]:[W914 07:26:45.310999850 ProcessGroupNCCL.cpp:1168] Warning: WARNING: process group has NOT been destroyed before we destruct ProcessGroupNCCL. On normal program exit, the application should call destroy_process_group to ensure that any pending NCCL operations have finished in this process. In rare cases this process can exit before this point and block the progress of another member of the process group. This constraint has always been present,  but this warning has only been added since PyTorch 2.4 (function operator())
+``
 ## 3. Parallelformers
 ![](../images/parallelformers.png)
 지금까지 Megatron-LM으로 모델을 학습해봤습니다. Megatron-LM은 훌륭한 Tensor Parallelism 기능을 보유하고 있지만, 기존에 우리가 자주 쓰던 Hugging Face `transformers`로 학습된 모델을 병렬화 할 수는 없었습니다. 이러한 문제를 해결하기 위해 TUNiB은 2021년 `parallelformers`라는 오픈소스를 공개했습니다. `parallelformers`는 코드 한 두줄로 Hugging Face `transformers`로 학습된 거의 대부분의 모델에 Tensor Parallelism을 적용하여 인퍼런스 할 수 있는 도구 입니다.
