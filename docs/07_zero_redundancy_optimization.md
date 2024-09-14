@@ -363,27 +363,38 @@ tensor([[-0.6399, -1.1324, -2.4314,  ..., -3.1628,  1.4747, -1.5225],
    
 Pytorch에서는 다음과 같이 손쉽게 Mixed precision training을 수행할 수 있습니다.
 ```
-# 참고: https://pytorch.org/blog/accelerating-training-on-nvidia-gpus-with-pytorch-automatic-mixed-precision/
+# 참고: https://pytorch.org/docs/stable/notes/amp_examples.html#automatic-mixed-precision-examples
+# Creates model and optimizer in default precision
 import torch
-# Creates once at the beginning of training
+
+model = Net().cuda()
+optimizer = optim.SGD(model.parameters(), ...)
+
+# Creates a GradScaler once at the beginning of training.
 scaler = torch.cuda.amp.GradScaler()
 
-for data, label in data_iter:
-   optimizer.zero_grad()
-   # Casts operations to mixed precision
-   with torch.cuda.amp.autocast():
-      loss = model(data)
+for epoch in epochs:
+    for input, target in data:
+        optimizer.zero_grad()
 
-   # Scales the loss, and calls backward()
-   # to create scaled gradients
-   scaler.scale(loss).backward()
+        # Runs the forward pass with autocasting.
+        with torch.cuda.amp.autocast(device_type='cuda', dtype=torch.float16):
+            output = model(input)
+            loss = loss_fn(output, target)
 
-   # Unscales gradients and calls
-   # or skips optimizer.step()
-   scaler.step(optimizer)
+        # Scales loss.  Calls backward() on scaled loss to create scaled gradients.
+        # Backward passes under autocast are not recommended.
+        # Backward ops run in the same dtype autocast chose for corresponding forward ops.
+        scaler.scale(loss).backward()
 
-   # Updates the scale for next iteration
-   scaler.update()
+        # scaler.step() first unscales the gradients of the optimizer's assigned params.
+        # If these gradients do not contain infs or NaNs, optimizer.step() is then called,
+        # otherwise, optimizer.step() is skipped.
+        scaler.step(optimizer)
+
+        # Updates the scale for next iteration.
+        scaler.update()
+
 ```
   
 ### Dynamic Loss Scaling
