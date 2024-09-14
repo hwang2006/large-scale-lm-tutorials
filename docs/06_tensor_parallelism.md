@@ -750,7 +750,7 @@ WARNING: Running pip as root will break packages and permissions. You should ins
 ```
 [glogin01]$ git clone https://github.com/NVIDIA/apex
 [glogin01]$ cd apex
-[glogin01]$ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+[glogin01]$ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
 .
 .
 .
@@ -761,8 +761,8 @@ RuntimeError: device >= 0 && device < num_gpus INTERNAL ASSERT FAILED at "/opt/c
 ```
 MIG (Multi-Instance GPU)에서 빌딩하면 위와 같이 런타임 에러가 발생합니다. 뉴론 시스템 로그인 노드 1번과 3번은 MIG 설정된 노드입니다. 노드 2번(neuron02.ksc.re.kr)으로 직접 로그인 한 후에 Apex를 다시 빌딩합니다.  
 ```
-[globin02] cd apex
-[glogin02]$ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+[globin02]$ cd apex
+[glogin02]$ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
 [glogin02]$ cd ..
 ```
 Apex를 성공적으로 빌당되면 로그인 노드 1 - 3번 중에 아무 노드에서 계속해서 튜토리얼을 진행해도 됩니다.  
