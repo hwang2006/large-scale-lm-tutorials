@@ -214,9 +214,7 @@ fp16_model.load_state_dict(fp32_model.state_dict())
 ```
 f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} MB"
 ```
-```
 'GPU = 1.5029296875 MB'
-```
 
 ### 2) Forward
     
@@ -241,9 +239,7 @@ z2 = fp16_model(x)
 # check dtypr of output logits
 f"logits type = {z2.dtype}"
 ```
-```
 'logits type = torch.float16'
-```
 
 계산된 FP16의 출력값을 이용하여 Loss를 계산합니다.
     
@@ -258,9 +254,8 @@ L = torch.nn.functional.mse_loss(z2, y)
 
 # check dtype of loss
 f"loss type = {L.dtype}"
-```
 'loss type = torch.float16'
-
+```
 
 ### 3) Backward
 
