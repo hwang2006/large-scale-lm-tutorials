@@ -1201,13 +1201,7 @@ salloc: Nodes gpu[05] are ready for job
 # 학습은 200 스텝만 시키도록 하겠습니다. 실제 학습할 땐 더 많은 숫자로 설정해주세요.
 
 
-(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 2  pretrain_gpt.py     --tensor-model-parallel-size 
-2     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 
-1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200    
---lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --
-clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 
-949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save 
-checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
+(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 2  pretrain_gpt.py     --tensor-model-parallel-size 2     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
 ```
 
 모델을 저장할 때에 (위의 경우에 매 50스탭 마다) 에러 발생합니다. 예전 Megatron-LM 브랜치를 체크아웃해서 다시 실행해 보도록 하겠습니다.
@@ -2025,13 +2019,17 @@ Evaluating iter 10/10
 -----------------------------------------------------------------------------------------------------------
 [rank1]:[W914 07:26:45.188308016 ProcessGroupNCCL.cpp:1168] Warning: WARNING: process group has NOT been destroyed before we destruct ProcessGroupNCCL. On normal program exit, the application should call destroy_process_group to ensure that any pending NCCL operations have finished in this process. In rare cases this process can exit before this point and block the progress of another member of the process group. This constraint has always been present,  but this warning has only been added since PyTorch 2.4 (function operator())
 [rank0]:[W914 07:26:45.310999850 ProcessGroupNCCL.cpp:1168] Warning: WARNING: process group has NOT been destroyed before we destruct ProcessGroupNCCL. On normal program exit, the application should call destroy_process_group to ensure that any pending NCCL operations have finished in this process. In rare cases this process can exit before this point and block the progress of another member of the process group. This constraint has always been present,  but this warning has only been added since PyTorch 2.4 (function operator())
-``
+```
+```
+(large-scale-lm) [gpu05]$ cd ..
+/scratch/qualis/git-projects/large-scale-lm-tutorials/src
+```
 ## 3. Parallelformers
 ![](../images/parallelformers.png)
 지금까지 Megatron-LM으로 모델을 학습해봤습니다. Megatron-LM은 훌륭한 Tensor Parallelism 기능을 보유하고 있지만, 기존에 우리가 자주 쓰던 Hugging Face `transformers`로 학습된 모델을 병렬화 할 수는 없었습니다. 이러한 문제를 해결하기 위해 TUNiB은 2021년 `parallelformers`라는 오픈소스를 공개했습니다. `parallelformers`는 코드 한 두줄로 Hugging Face `transformers`로 학습된 거의 대부분의 모델에 Tensor Parallelism을 적용하여 인퍼런스 할 수 있는 도구 입니다.
 `parallelformers`를 설치해봅시다.
 ```
-[glogin01]$ pip install parallelformers
+(large-scale-lm) [gpu05]$ pip install parallelformers
 Collecting parallelformers
   Downloading parallelformers-1.0.1-py3-none-any.whl (110 kB)
      |████████████████████████████████| 110 kB 24.0 MB/s eta 0:00:01
@@ -2094,7 +2092,7 @@ if __name__ == "__main__":
 `docker run ... --shm_size=?gb` 옵션을 통해 공유메모리 사이즈를 키우거나 `docker run ... --ipc=host` 옵션을 통해 공유메모리 제한을 해제할 수 있습니다. docker에서 발생하는 거의 모든 문제는 공유메모리의 제한 때문에 일어나는 것으로 확인 되었으며 더 큰 모델을 사용하려면 더 큰 사이즈의 shared memory 할당이 요구됩니다.
 
 ```
-[glogin01]$ python ../src/parallelformers_inference.py
+(large-scale-lm) [gpu05]$ python ../src/ch6/parallelformers_inference.py
 Downloading: 100%|██████████████████████████| 1.42k/1.42k [00:00<00:00, 864kB/s]
 Downloading: 100%|█████████████████████████| 9.94G/9.94G [04:34<00:00, 38.8MB/s]
 Downloading: 100%|██████████████████████████████| 200/200 [00:00<00:00, 241kB/s]
@@ -2120,6 +2118,7 @@ Setting `pad_token_id` to `eos_token_id`:50256 for open-end generation.
 
 Output: Parallelformers is an open-source library for parallel programming in Haskell
 ```
+
 
 ### Parallelformers의 동작 원리
  
