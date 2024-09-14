@@ -167,7 +167,8 @@ Password or token: $USER    # your account name on Neuron
 <p align="center"><img src="https://user-images.githubusercontent.com/84169368/218938419-f38c356b-e682-4b1c-9add-6cfc29d53425.png"/></p> 
 
 
-2개의 레이어를 가진 뉴럴넷을 정의합니다.
+이제 주피터를 띄웠으니 `mixed_precision.ipynb` 불러서 mixed precision 하나씩 수행해보자.
+먼저 2개의 레이어를 가진 뉴럴넷을 정의합니다.
 ```
 import torch
 import torch.nn as nn
@@ -192,10 +193,11 @@ fp32_model= Net().to("cuda")
 optimizer = SGD(fp32_model.parameters(), lr=1e-2)
 ```
 ```
-f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB"
+f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} MB"
 ```
-'GPU = 1.001953125 GiB'
-
+```
+'GPU = 1.001953125 MB'
+```
 
 ### 1)  Float2Half
     
