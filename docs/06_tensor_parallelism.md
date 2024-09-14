@@ -2095,7 +2095,7 @@ if __name__ == "__main__":
 `docker run ... --shm_size=?gb` 옵션을 통해 공유메모리 사이즈를 키우거나 `docker run ... --ipc=host` 옵션을 통해 공유메모리 제한을 해제할 수 있습니다. docker에서 발생하는 거의 모든 문제는 공유메모리의 제한 때문에 일어나는 것으로 확인 되었으며 더 큰 모델을 사용하려면 더 큰 사이즈의 shared memory 할당이 요구됩니다.
 
 ```
-(large-scale-lm) [gpu05]$ python ../ch6/parallelformers_inference.py
+(large-scale-lm) [gpu05]$ python ch6/parallelformers_inference.py
 Downloading: 100%|██████████████████████████| 1.42k/1.42k [00:00<00:00, 864kB/s]
 Downloading: 100%|█████████████████████████| 9.94G/9.94G [04:34<00:00, 38.8MB/s]
 Downloading: 100%|██████████████████████████████| 200/200 [00:00<00:00, 241kB/s]
