@@ -1202,10 +1202,894 @@ salloc: Nodes gpu[05] are ready for job
 # 학습은 200 스텝만 시키도록 하겠습니다. 실제 학습할 땐 더 많은 숫자로 설정해주세요.
 
 
-(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 2  pretrain_gpt.py     --tensor-model-parallel-size 2     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
+(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 4  pretrain_gpt.py     --tensor-model-parallel-size 4     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
+W0914 19:43:58.713000 47642202304448 torch/distributed/run.py:757]
+W0914 19:43:58.713000 47642202304448 torch/distributed/run.py:757] *****************************************
+W0914 19:43:58.713000 47642202304448 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0914 19:43:58.713000 47642202304448 torch/distributed/run.py:757] *****************************************
+using world size: 4, data-parallel size: 1, context-parallel size: 1, tensor-model-parallel size: 4, encoder-tensor-model-parallel size: 0, pipeline-model-parallel size: 1, encoder-pipeline-model-parallel size: 0
+WARNING: Setting args.overlap_p2p_comm and args.align_param_gather to False since non-interleaved schedule does not support overlapping p2p communication and aligned param AG
+WARNING: Setting args.check_for_nan_in_loss_and_grad to False since dynamic loss scaling is being used
+using torch.float16 for parameters ...
+------------------------ arguments ------------------------
+  accumulate_allreduce_grads_in_fp32 .............. False
+  adam_beta1 ...................................... 0.9
+  adam_beta2 ...................................... 0.999
+  adam_eps ........................................ 1e-08
+  add_bias_linear ................................. True
+  add_position_embedding .......................... True
+  add_qkv_bias .................................... False
+  adlr_autoresume ................................. False
+  adlr_autoresume_interval ........................ 1000
+  align_grad_reduce ............................... True
+  align_param_gather .............................. False
+  app_tag_run_name ................................ None
+  app_tag_run_version ............................. 0.0.0
+  apply_layernorm_1p .............................. False
+  apply_query_key_layer_scaling ................... False
+  apply_residual_connection_post_layernorm ........ False
+  apply_rope_fusion ............................... True
+  async_save ...................................... None
+  async_tensor_model_parallel_allreduce ........... False
+  attention_dropout ............................... 0.1
+  attention_softmax_in_fp32 ....................... True
+  auto_detect_ckpt_format ......................... False
+  barrier_with_L1_time ............................ True
+  bert_binary_head ................................ True
+  bert_embedder_type .............................. megatron
+  bert_load ....................................... None
+  bf16 ............................................ False
+  bias_dropout_fusion ............................. True
+  bias_gelu_fusion ................................ True
+  bias_swiglu_fusion .............................. True
+  biencoder_projection_dim ........................ 0
+  biencoder_shared_query_context_model ............ False
+  block_data_path ................................. None
+  calculate_per_token_loss ........................ False
+  check_for_nan_in_loss_and_grad .................. False
+  check_weight_hash_across_dp_replicas_interval ... None
+  ckpt_assume_constant_structure .................. False
+  ckpt_convert_format ............................. None
+  ckpt_convert_save ............................... None
+  ckpt_convert_update_legacy_dist_opt_format ...... False
+  ckpt_format ..................................... torch_dist
+  ckpt_fully_parallel_load ........................ False
+  ckpt_fully_parallel_save ........................ True
+  ckpt_fully_parallel_save_deprecated ............. False
+  ckpt_step ....................................... None
+  classes_fraction ................................ 1.0
+  clip_grad ....................................... 1.0
+  clone_scatter_output_in_embedding ............... True
+  config_logger_dir ...............................
+  consumed_train_samples .......................... 0
+  consumed_valid_samples .......................... 0
+  context_parallel_size ........................... 1
+  create_attention_mask_in_dataloader ............. True
+  cross_entropy_loss_fusion ....................... False
+  data_cache_path ................................. None
+  data_parallel_random_init ....................... False
+  data_parallel_size .............................. 1
+  data_path ....................................... ['my-gpt2_text_document']
+  data_per_class_fraction ......................... 1.0
+  data_sharding ................................... True
+  dataloader_type ................................. single
+  ddp_average_in_collective ....................... False
+  ddp_bucket_size ................................. None
+  decoder_first_pipeline_num_layers ............... None
+  decoder_last_pipeline_num_layers ................ None
+  decoder_num_layers .............................. None
+  decoder_seq_length .............................. None
+  decoupled_lr .................................... None
+  decoupled_min_lr ................................ None
+  decrease_batch_size_if_needed ................... False
+  defer_embedding_wgrad_compute ................... False
+  deprecated_use_mcore_models ..................... False
+  deterministic_mode .............................. False
+  dino_bottleneck_size ............................ 256
+  dino_freeze_last_layer .......................... 1
+  dino_head_hidden_size ........................... 2048
+  dino_local_crops_number ......................... 10
+  dino_local_img_size ............................. 96
+  dino_norm_last_layer ............................ False
+  dino_teacher_temp ............................... 0.07
+  dino_warmup_teacher_temp ........................ 0.04
+  dino_warmup_teacher_temp_epochs ................. 30
+  disable_straggler_on_startup .................... False
+  dist_ckpt_format_deprecated ..................... None
+  dist_ckpt_strictness ............................ assume_ok_unexpected
+  distribute_saved_activations .................... False
+  distributed_backend ............................. nccl
+  distributed_timeout_minutes ..................... 10
+  embedding_path .................................. None
+  empty_unused_memory_level ....................... 0
+  enable_ft_package ............................... False
+  enable_one_logger ............................... True
+  encoder_num_layers .............................. 24
+  encoder_pipeline_model_parallel_size ............ 0
+  encoder_seq_length .............................. 1024
+  encoder_tensor_model_parallel_size .............. 0
+  end_weight_decay ................................ 0.01
+  eod_mask_loss ................................... False
+  eval_interval ................................... 100
+  eval_iters ...................................... 10
+  evidence_data_path .............................. None
+  exit_duration_in_mins ........................... None
+  exit_interval ................................... None
+  exit_on_missing_checkpoint ...................... False
+  exit_signal_handler ............................. False
+  expert_model_parallel_size ...................... 1
+  ffn_hidden_size ................................. 4096
+  finetune ........................................ False
+  fp16 ............................................ True
+  fp16_lm_cross_entropy ........................... False
+  fp32_residual_connection ........................ False
+  fp8 ............................................. None
+  fp8_amax_compute_algo ........................... most_recent
+  fp8_amax_history_len ............................ 1
+  fp8_interval .................................... 1
+  fp8_margin ...................................... 0
+  fp8_param_gather ................................ False
+  fp8_wgrad ....................................... True
+  global_batch_size ............................... 16
+  gradient_accumulation_fusion .................... True
+  group_query_attention ........................... False
+  head_lr_mult .................................... 1.0
+  hidden_dropout .................................. 0.1
+  hidden_size ..................................... 1024
+  hybrid_attention_ratio .......................... 0.0
+  hybrid_mlp_ratio ................................ 0.0
+  hybrid_override_pattern ......................... None
+  hysteresis ...................................... 2
+  ict_head_size ................................... None
+  ict_load ........................................ None
+  img_h ........................................... 224
+  img_w ........................................... 224
+  indexer_batch_size .............................. 128
+  indexer_log_interval ............................ 1000
+  inference_batch_times_seqlen_threshold .......... 512
+  init_method_std ................................. 0.02
+  init_method_xavier_uniform ...................... False
+  initial_loss_scale .............................. 4294967296
+  iter_per_epoch .................................. 1250
+  kv_channels ..................................... 64
+  lazy_mpu_init ................................... None
+  load ............................................ checkpoints/gpt2_345m_dist_mp
+  local_rank ...................................... 0
+  log_interval .................................... 10
+  log_loss_scale_to_tensorboard ................... True
+  log_memory_to_tensorboard ....................... False
+  log_num_zeros_in_grad ........................... False
+  log_params_norm ................................. False
+  log_progress .................................... False
+  log_straggler ................................... False
+  log_throughput .................................. False
+  log_timers_to_tensorboard ....................... False
+  log_validation_ppl_to_tensorboard ............... False
+  log_world_size_to_tensorboard ................... False
+  logging_level ................................... None
+  loss_scale ...................................... None
+  loss_scale_window ............................... 1000
+  lr .............................................. 0.00015
+  lr_decay_iters .................................. 320000
+  lr_decay_samples ................................ None
+  lr_decay_style .................................. cosine
+  lr_warmup_fraction .............................. 0.01
+  lr_warmup_init .................................. 0.0
+  lr_warmup_iters ................................. 0
+  lr_warmup_samples ............................... 0
+  lr_wsd_decay_iters .............................. None
+  lr_wsd_decay_samples ............................ None
+  lr_wsd_decay_style .............................. exponential
+  make_vocab_size_divisible_by .................... 128
+  manual_gc ....................................... False
+  manual_gc_eval .................................. True
+  manual_gc_interval .............................. 0
+  mask_factor ..................................... 1.0
+  mask_prob ....................................... 0.15
+  mask_type ....................................... random
+  masked_softmax_fusion ........................... True
+  max_position_embeddings ......................... 1024
+  max_tokens_to_oom ............................... 12000
+  merge_file ...................................... merges.txt
+  micro_batch_size ................................ 4
+  min_loss_scale .................................. 1.0
+  min_lr .......................................... 1e-05
+  mmap_bin_files .................................. True
+  mock_data ....................................... False
+  moe_aux_loss_coeff .............................. 0.0
+  moe_expert_capacity_factor ...................... None
+  moe_extended_tp ................................. False
+  moe_grouped_gemm ................................ False
+  moe_input_jitter_eps ............................ None
+  moe_layer_recompute ............................. False
+  moe_pad_expert_input_to_capacity ................ False
+  moe_per_layer_logging ........................... False
+  moe_router_load_balancing_type .................. aux_loss
+  moe_router_pre_softmax .......................... False
+  moe_router_topk ................................. 2
+  moe_shared_expert_intermediate_size ............. None
+  moe_shared_expert_overlap ....................... False
+  moe_token_dispatcher_type ....................... allgather
+  moe_token_drop_policy ........................... probs
+  moe_use_upcycling ............................... False
+  moe_z_loss_coeff ................................ None
+  nccl_communicator_config_path ................... None
+  no_load_optim ................................... None
+  no_load_rng ..................................... None
+  no_persist_layer_norm ........................... False
+  no_save_optim ................................... None
+  no_save_rng ..................................... None
+  non_persistent_ckpt_type ........................ None
+  non_persistent_global_ckpt_dir .................. None
+  non_persistent_local_ckpt_algo .................. fully_parallel
+  non_persistent_local_ckpt_dir ................... None
+  non_persistent_save_interval .................... None
+  norm_epsilon .................................... 1e-05
+  normalization ................................... LayerNorm
+  num_attention_heads ............................. 16
+  num_channels .................................... 3
+  num_classes ..................................... 1000
+  num_dataset_builder_threads ..................... 1
+  num_experts ..................................... None
+  num_layers ...................................... 24
+  num_layers_per_virtual_pipeline_stage ........... None
+  num_query_groups ................................ 1
+  num_workers ..................................... 2
+  one_logger_async ................................ False
+  one_logger_project .............................. megatron-lm
+  one_logger_run_name ............................. None
+  onnx_safe ....................................... None
+  openai_gelu ..................................... False
+  optimizer ....................................... adam
+  output_bert_embeddings .......................... False
+  overlap_grad_reduce ............................. False
+  overlap_p2p_comm ................................ False
+  overlap_param_gather ............................ False
+  overlap_param_gather_with_optimizer_step ........ False
+  override_opt_param_scheduler .................... False
+  params_dtype .................................... torch.float16
+  patch_dim ....................................... 16
+  perform_initialization .......................... True
+  pipeline_model_parallel_size .................... 1
+  pipeline_model_parallel_split_rank .............. None
+  position_embedding_type ......................... learned_absolute
+  pretrained_checkpoint ........................... None
+  profile ......................................... False
+  profile_ranks ................................... [0]
+  profile_step_end ................................ 12
+  profile_step_start .............................. 10
+  qk_layernorm .................................... False
+  query_in_block_prob ............................. 0.1
+  rampup_batch_size ............................... None
+  rank ............................................ 0
+  recompute_granularity ........................... None
+  recompute_method ................................ None
+  recompute_num_layers ............................ None
+  renormalize_blend_weights ....................... False
+  reset_attention_mask ............................ False
+  reset_position_ids .............................. False
+  retriever_report_topk_accuracies ................ []
+  retriever_score_scaling ......................... False
+  retriever_seq_length ............................ 256
+  retro_add_retriever ............................. False
+  retro_attention_gate ............................ 1
+  retro_cyclic_train_iters ........................ None
+  retro_encoder_attention_dropout ................. 0.1
+  retro_encoder_hidden_dropout .................... 0.1
+  retro_encoder_layers ............................ 2
+  retro_num_neighbors ............................. 2
+  retro_num_retrieved_chunks ...................... 2
+  retro_project_dir ............................... None
+  retro_verify_neighbor_count ..................... True
+  rotary_base ..................................... 10000
+  rotary_interleaved .............................. False
+  rotary_percent .................................. 1.0
+  rotary_seq_len_interpolation_factor ............. None
+  s3_cache_path ................................... None
+  sample_rate ..................................... 1.0
+  save ............................................ checkpoints/gpt2_345m_dist_mp
+  save_interval ................................... 50
+  scatter_gather_tensors_in_pipeline .............. True
+  seed ............................................ 1234
+  seq_length ...................................... 1024
+  sequence_parallel ............................... True
+  sgd_momentum .................................... 0.9
+  short_seq_prob .................................. 0.1
+  skip_train ...................................... False
+  skipped_train_samples ........................... 0
+  spec ............................................ None
+  split ........................................... 949,50,1
+  squared_relu .................................... False
+  standalone_embedding_stage ...................... False
+  start_weight_decay .............................. 0.01
+  straggler_ctrlr_port ............................ 65535
+  straggler_minmax_count .......................... 1
+  swiglu .......................................... False
+  swin_backbone_type .............................. tiny
+  tensor_model_parallel_size ...................... 4
+  tensorboard_dir ................................. None
+  tensorboard_log_interval ........................ 1
+  tensorboard_queue_size .......................... 1000
+  test_data_path .................................. None
+  test_mode ....................................... False
+  tiktoken_num_special_tokens ..................... 1000
+  tiktoken_pattern ................................ None
+  tiktoken_special_tokens ......................... None
+  timing_log_level ................................ 0
+  timing_log_option ............................... minmax
+  titles_data_path ................................ None
+  tokenizer_model ................................. None
+  tokenizer_type .................................. GPT2BPETokenizer
+  tp_comm_bulk_dgrad .............................. True
+  tp_comm_bulk_wgrad .............................. True
+  tp_comm_overlap ................................. False
+  tp_comm_overlap_ag .............................. True
+  tp_comm_overlap_cfg ............................. None
+  tp_comm_overlap_rs .............................. True
+  tp_comm_overlap_rs_dgrad ........................ False
+  tp_comm_split_ag ................................ True
+  tp_comm_split_rs ................................ True
+  train_data_path ................................. None
+  train_iters ..................................... 200
+  train_samples ................................... None
+  train_sync_interval ............................. None
+  transformer_impl ................................ transformer_engine
+  transformer_pipeline_model_parallel_size ........ 1
+  untie_embeddings_and_output_weights ............. False
+  use_checkpoint_args ............................. False
+  use_checkpoint_opt_param_scheduler .............. False
+  use_cpu_initialization .......................... None
+  use_dist_ckpt ................................... True
+  use_dist_ckpt_deprecated ........................ False
+  use_distributed_optimizer ....................... False
+  use_flash_attn .................................. False
+  use_legacy_models ............................... False
+  use_one_sent_docs ............................... False
+  use_pytorch_profiler ............................ False
+  use_ring_exchange_p2p ........................... False
+  use_rotary_position_embeddings .................. False
+  use_tp_pp_dp_mapping ............................ False
+  valid_data_path ................................. None
+  variable_seq_lengths ............................ False
+  virtual_pipeline_model_parallel_size ............ None
+  vision_backbone_type ............................ vit
+  vision_pretraining .............................. False
+  vision_pretraining_type ......................... classify
+  vocab_extra_ids ................................. 0
+  vocab_file ...................................... vocab.json
+  vocab_size ...................................... None
+  wandb_exp_name ..................................
+  wandb_project ...................................
+  wandb_save_dir ..................................
+  weight_decay .................................... 0.01
+  weight_decay_incr_style ......................... constant
+  wgrad_deferral_limit ............................ 0
+  world_size ...................................... 4
+  yaml_cfg ........................................ None
+-------------------- end of arguments ---------------------
+INFO:megatron.core.num_microbatches_calculator:setting number of microbatches to constant 4
+> building GPT2BPETokenizer tokenizer ...
+ > padded vocab (size: 50257) with 431 dummy tokens (new size: 50688)
+> initializing torch distributed ...
+WARNING: one_logger package is required to enable e2e metrics tracking. please go to https://confluence.nvidia.com/display/MLWFO/Package+Repositories for details to install it
+> initialized tensor model parallel with size 4
+> initialized pipeline model parallel with size 1
+> setting random seeds to 1234 ...
+> compiling dataset index builder ...
+make: Entering directory `/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/datasets'
+make: Nothing to be done for `default'.
+make: Leaving directory `/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/datasets'
+>>> done with dataset index builder. Compilation time: 0.044 seconds
+> compiling and loading fused kernels ...
+>>> done with compiling and loading fused kernels. Compilation time: 1.855 seconds
+[rank1]:[W init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+[rank3]:[W init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+[rank2]:[W init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+[rank0]:[W init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+time to initialize megatron (seconds): 4.541
+[after megatron is initialized] datetime: 2024-09-14 19:44:09
+building GPT model ...
+ > number of parameters on (tensor, pipeline) model parallel rank (2, 0): 89714688
+ > number of parameters on (tensor, pipeline) model parallel rank (0, 0): 89714688
+ > number of parameters on (tensor, pipeline) model parallel rank (1, 0): 89714688
+ > number of parameters on (tensor, pipeline) model parallel rank (3, 0): 89714688
+INFO:megatron.core.distributed.distributed_data_parallel:Setting up DistributedDataParallel with config DistributedDataParallelConfig(grad_reduce_in_fp32=False, overlap_grad_reduce=False, overlap_param_gather=False, align_param_gather=False, use_distributed_optimizer=False, check_for_nan_in_grad=False, bucket_size=None, average_in_collective=False, fp8_param_gather=False)
+INFO:megatron.core.distributed.param_and_grad_buffer:Number of buckets for gradient all-reduce / reduce-scatter: 1
+Params for bucket 1 (89714688 elements):
+        module.decoder.layers.14.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.6.mlp.linear_fc1.weight
+        module.decoder.layers.5.mlp.linear_fc1.weight
+        module.decoder.layers.3.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.0.mlp.linear_fc2.weight
+        module.decoder.layers.12.mlp.linear_fc1.layer_norm_weight
+        module.decoder.final_layernorm.weight
+        module.decoder.layers.13.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.4.mlp.linear_fc1.bias
+        module.decoder.layers.4.mlp.linear_fc1.weight
+        module.decoder.layers.1.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.0.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.9.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.0.self_attention.linear_qkv.bias
+        module.decoder.layers.1.self_attention.linear_qkv.weight
+        module.decoder.layers.6.mlp.linear_fc2.bias
+        module.decoder.layers.5.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.3.mlp.linear_fc1.weight
+        module.decoder.layers.2.mlp.linear_fc2.bias
+        module.decoder.layers.0.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.3.self_attention.linear_proj.bias
+        module.decoder.layers.18.mlp.linear_fc2.weight
+        module.decoder.layers.23.mlp.linear_fc2.weight
+        module.decoder.layers.22.mlp.linear_fc2.weight
+        module.decoder.layers.21.mlp.linear_fc2.weight
+        module.decoder.layers.20.mlp.linear_fc2.weight
+        module.decoder.layers.19.mlp.linear_fc2.weight
+        module.decoder.layers.12.mlp.linear_fc2.weight
+        module.decoder.layers.11.mlp.linear_fc2.weight
+        module.decoder.layers.5.self_attention.linear_qkv.bias
+        module.decoder.layers.8.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.1.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.8.mlp.linear_fc1.bias
+        module.decoder.layers.3.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.9.mlp.linear_fc2.weight
+        module.decoder.layers.8.mlp.linear_fc2.weight
+        module.decoder.layers.7.mlp.linear_fc2.weight
+        module.decoder.layers.6.self_attention.linear_qkv.weight
+        module.decoder.layers.2.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.5.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.0.mlp.linear_fc1.weight
+        module.decoder.layers.13.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.5.self_attention.linear_proj.bias
+        module.decoder.layers.4.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.3.self_attention.linear_qkv.bias
+        module.decoder.layers.1.mlp.linear_fc2.bias
+        module.decoder.layers.1.mlp.linear_fc1.bias
+        module.decoder.layers.3.mlp.linear_fc2.weight
+        module.decoder.layers.1.self_attention.linear_qkv.bias
+        module.embedding.position_embeddings.weight
+        module.decoder.layers.0.self_attention.linear_qkv.weight
+        module.decoder.layers.13.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.4.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.10.self_attention.linear_qkv.bias
+        module.decoder.layers.11.mlp.linear_fc1.weight
+        module.decoder.layers.17.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.16.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.15.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.14.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.10.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.5.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.2.self_attention.linear_qkv.bias
+        module.decoder.final_layernorm.bias
+        module.decoder.layers.6.self_attention.linear_proj.weight
+        module.decoder.layers.5.self_attention.linear_qkv.weight
+        module.decoder.layers.4.self_attention.linear_proj.bias
+        module.decoder.layers.3.mlp.linear_fc1.bias
+        module.decoder.layers.1.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.0.self_attention.linear_qkv.layer_norm_weight
+        module.embedding.word_embeddings.weight
+        module.decoder.layers.9.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.1.self_attention.linear_proj.weight
+        module.decoder.layers.9.mlp.linear_fc1.bias
+        module.decoder.layers.2.self_attention.linear_qkv.weight
+        module.decoder.layers.2.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.6.mlp.linear_fc2.weight
+        module.decoder.layers.3.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.2.self_attention.linear_proj.weight
+        module.decoder.layers.0.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.14.self_attention.linear_proj.weight
+        module.decoder.layers.13.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.3.self_attention.linear_proj.weight
+        module.decoder.layers.2.mlp.linear_fc1.weight
+        module.decoder.layers.2.mlp.linear_fc1.bias
+        module.decoder.layers.1.mlp.linear_fc1.weight
+        module.decoder.layers.1.mlp.linear_fc2.weight
+        module.decoder.layers.19.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.23.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.22.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.21.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.18.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.20.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.17.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.16.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.15.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.13.mlp.linear_fc1.bias
+        module.decoder.layers.6.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.17.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.16.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.15.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.14.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.14.self_attention.linear_qkv.weight
+        module.decoder.layers.13.self_attention.linear_proj.bias
+        module.decoder.layers.10.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.9.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.8.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.7.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.5.mlp.linear_fc2.weight
+        module.decoder.layers.4.self_attention.linear_qkv.weight
+        module.decoder.layers.4.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.2.self_attention.linear_proj.bias
+        module.decoder.layers.10.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.11.mlp.linear_fc1.bias
+        module.decoder.layers.10.mlp.linear_fc1.weight
+        module.decoder.layers.4.mlp.linear_fc2.weight
+        module.decoder.layers.23.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.22.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.21.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.20.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.19.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.18.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.13.self_attention.linear_qkv.bias
+        module.decoder.layers.12.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.11.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.4.mlp.linear_fc2.bias
+        module.decoder.layers.2.mlp.linear_fc2.weight
+        module.decoder.layers.11.self_attention.linear_proj.bias
+        module.decoder.layers.6.self_attention.linear_proj.bias
+        module.decoder.layers.23.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.22.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.21.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.20.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.19.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.18.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.17.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.16.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.15.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.13.mlp.linear_fc1.weight
+        module.decoder.layers.7.self_attention.linear_qkv.bias
+        module.decoder.layers.17.mlp.linear_fc1.bias
+        module.decoder.layers.16.mlp.linear_fc1.bias
+        module.decoder.layers.15.mlp.linear_fc1.bias
+        module.decoder.layers.14.mlp.linear_fc1.bias
+        module.decoder.layers.13.self_attention.linear_proj.weight
+        module.decoder.layers.10.mlp.linear_fc1.bias
+        module.decoder.layers.9.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.8.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.7.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.6.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.17.self_attention.linear_proj.bias
+        module.decoder.layers.16.self_attention.linear_proj.bias
+        module.decoder.layers.15.self_attention.linear_proj.bias
+        module.decoder.layers.13.mlp.linear_fc2.bias
+        module.decoder.layers.10.self_attention.linear_proj.bias
+        module.decoder.layers.4.self_attention.linear_proj.weight
+        module.decoder.layers.3.mlp.linear_fc2.bias
+        module.decoder.layers.6.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.6.mlp.linear_fc1.bias
+        module.decoder.layers.14.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.5.mlp.linear_fc2.bias
+        module.decoder.layers.4.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.23.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.22.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.21.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.20.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.19.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.18.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.13.self_attention.linear_qkv.weight
+        module.decoder.layers.12.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.11.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.11.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.10.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.0.mlp.linear_fc2.bias
+        module.decoder.layers.12.self_attention.linear_proj.bias
+        module.decoder.layers.5.self_attention.linear_proj.weight
+        module.decoder.layers.23.mlp.linear_fc1.bias
+        module.decoder.layers.22.mlp.linear_fc1.bias
+        module.decoder.layers.21.mlp.linear_fc1.bias
+        module.decoder.layers.20.mlp.linear_fc1.bias
+        module.decoder.layers.19.mlp.linear_fc1.bias
+        module.decoder.layers.18.mlp.linear_fc1.bias
+        module.decoder.layers.17.self_attention.linear_qkv.bias
+        module.decoder.layers.16.self_attention.linear_qkv.bias
+        module.decoder.layers.15.self_attention.linear_qkv.bias
+        module.decoder.layers.12.mlp.linear_fc1.bias
+        module.decoder.layers.1.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.8.self_attention.linear_qkv.bias
+        module.decoder.layers.23.self_attention.linear_proj.bias
+        module.decoder.layers.22.self_attention.linear_proj.bias
+        module.decoder.layers.21.self_attention.linear_proj.bias
+        module.decoder.layers.20.self_attention.linear_proj.bias
+        module.decoder.layers.19.self_attention.linear_proj.bias
+        module.decoder.layers.18.self_attention.linear_proj.bias
+        module.decoder.layers.17.mlp.linear_fc1.weight
+        module.decoder.layers.16.mlp.linear_fc1.weight
+        module.decoder.layers.15.mlp.linear_fc1.weight
+        module.decoder.layers.14.mlp.linear_fc1.weight
+        module.decoder.layers.5.mlp.linear_fc1.bias
+        module.decoder.layers.17.self_attention.linear_proj.weight
+        module.decoder.layers.16.self_attention.linear_proj.weight
+        module.decoder.layers.15.self_attention.linear_proj.weight
+        module.decoder.layers.14.self_attention.linear_qkv.bias
+        module.decoder.layers.10.self_attention.linear_proj.weight
+        module.decoder.layers.9.self_attention.linear_proj.bias
+        module.decoder.layers.8.self_attention.linear_proj.bias
+        module.decoder.layers.7.self_attention.linear_proj.bias
+        module.decoder.layers.3.self_attention.linear_qkv.weight
+        module.decoder.layers.2.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.0.mlp.linear_fc1.bias
+        module.decoder.layers.7.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.3.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.7.mlp.linear_fc1.weight
+        module.decoder.layers.17.mlp.linear_fc2.bias
+        module.decoder.layers.16.mlp.linear_fc2.bias
+        module.decoder.layers.15.mlp.linear_fc2.bias
+        module.decoder.layers.14.mlp.linear_fc2.bias
+        module.decoder.layers.14.self_attention.linear_proj.bias
+        module.decoder.layers.10.mlp.linear_fc2.bias
+        module.decoder.layers.2.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.1.self_attention.linear_proj.bias
+        module.decoder.layers.23.self_attention.linear_qkv.bias
+        module.decoder.layers.22.self_attention.linear_qkv.bias
+        module.decoder.layers.21.self_attention.linear_qkv.bias
+        module.decoder.layers.20.self_attention.linear_qkv.bias
+        module.decoder.layers.19.self_attention.linear_qkv.bias
+        module.decoder.layers.18.self_attention.linear_qkv.bias
+        module.decoder.layers.13.mlp.linear_fc2.weight
+        module.decoder.layers.12.self_attention.linear_qkv.bias
+        module.decoder.layers.11.self_attention.linear_qkv.bias
+        module.decoder.layers.12.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.6.mlp.linear_fc1.layer_norm_bias
+        module.decoder.layers.7.self_attention.linear_proj.weight
+        module.decoder.layers.23.mlp.linear_fc1.weight
+        module.decoder.layers.22.mlp.linear_fc1.weight
+        module.decoder.layers.21.mlp.linear_fc1.weight
+        module.decoder.layers.20.mlp.linear_fc1.weight
+        module.decoder.layers.19.mlp.linear_fc1.weight
+        module.decoder.layers.18.mlp.linear_fc1.weight
+        module.decoder.layers.17.self_attention.linear_qkv.weight
+        module.decoder.layers.16.self_attention.linear_qkv.weight
+        module.decoder.layers.15.self_attention.linear_qkv.weight
+        module.decoder.layers.12.mlp.linear_fc1.weight
+        module.decoder.layers.9.self_attention.linear_qkv.bias
+        module.decoder.layers.18.self_attention.linear_proj.weight
+        module.decoder.layers.20.self_attention.linear_proj.weight
+        module.decoder.layers.23.self_attention.linear_proj.weight
+        module.decoder.layers.22.self_attention.linear_proj.weight
+        module.decoder.layers.21.self_attention.linear_proj.weight
+        module.decoder.layers.19.self_attention.linear_proj.weight
+        module.decoder.layers.12.self_attention.linear_proj.weight
+        module.decoder.layers.11.mlp.linear_fc1.layer_norm_weight
+        module.decoder.layers.11.self_attention.linear_proj.weight
+        module.decoder.layers.9.mlp.linear_fc1.weight
+        module.decoder.layers.23.mlp.linear_fc2.bias
+        module.decoder.layers.22.mlp.linear_fc2.bias
+        module.decoder.layers.21.mlp.linear_fc2.bias
+        module.decoder.layers.20.mlp.linear_fc2.bias
+        module.decoder.layers.19.mlp.linear_fc2.bias
+        module.decoder.layers.18.mlp.linear_fc2.bias
+        module.decoder.layers.12.mlp.linear_fc2.bias
+        module.decoder.layers.11.mlp.linear_fc2.bias
+        module.decoder.layers.9.self_attention.linear_proj.weight
+        module.decoder.layers.8.self_attention.linear_proj.weight
+        module.decoder.layers.8.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.8.mlp.linear_fc1.weight
+        module.decoder.layers.9.mlp.linear_fc2.bias
+        module.decoder.layers.8.mlp.linear_fc2.bias
+        module.decoder.layers.7.mlp.linear_fc2.bias
+        module.decoder.layers.18.self_attention.linear_qkv.weight
+        module.decoder.layers.23.self_attention.linear_qkv.weight
+        module.decoder.layers.22.self_attention.linear_qkv.weight
+        module.decoder.layers.21.self_attention.linear_qkv.weight
+        module.decoder.layers.20.self_attention.linear_qkv.weight
+        module.decoder.layers.19.self_attention.linear_qkv.weight
+        module.decoder.layers.12.self_attention.linear_qkv.weight
+        module.decoder.layers.11.self_attention.linear_qkv.weight
+        module.decoder.layers.5.self_attention.linear_qkv.layer_norm_bias
+        module.decoder.layers.7.self_attention.linear_qkv.layer_norm_weight
+        module.decoder.layers.7.mlp.linear_fc1.bias
+        module.decoder.layers.4.self_attention.linear_qkv.bias
+        module.decoder.layers.17.mlp.linear_fc2.weight
+        module.decoder.layers.16.mlp.linear_fc2.weight
+        module.decoder.layers.15.mlp.linear_fc2.weight
+        module.decoder.layers.14.mlp.linear_fc2.weight
+        module.decoder.layers.10.mlp.linear_fc2.weight
+        module.decoder.layers.9.self_attention.linear_qkv.weight
+        module.decoder.layers.8.self_attention.linear_qkv.weight
+        module.decoder.layers.7.self_attention.linear_qkv.weight
+        module.decoder.layers.6.self_attention.linear_qkv.bias
+        module.decoder.layers.0.self_attention.linear_proj.weight
+        module.decoder.layers.0.self_attention.linear_proj.bias
+        module.decoder.layers.10.self_attention.linear_qkv.weight
+INFO:megatron.core.optimizer:Setting up optimizer with config OptimizerConfig(optimizer='adam', lr=0.00015, min_lr=1e-05, decoupled_lr=None, decoupled_min_lr=None, weight_decay=0.01, fp16=True, bf16=False, params_dtype=torch.float16, loss_scale=None, initial_loss_scale=4294967296, min_loss_scale=1.0, loss_scale_window=1000, hysteresis=2, adam_beta1=0.9, adam_beta2=0.999, adam_eps=1e-08, sgd_momentum=0.9, use_distributed_optimizer=False, overlap_param_gather_with_optimizer_step=False, clip_grad=1.0, log_num_zeros_in_grad=False, barrier_with_L1_time=True, timers=<megatron.core.timers.Timers object at 0x2b229c6a7dc0>, config_logger_dir='')
+INFO:megatron.core.optimizer_param_scheduler:> learning rate decay style: cosine
+WARNING: could not find the metadata file checkpoints/gpt2_345m_dist_mp/latest_checkpointed_iteration.txt
+    will not load any checkpoints and will start from random
+(min, max) time across ranks (ms):
+    load-checkpoint ................................: (0.83, 0.85)
+[after model, optimizer, and learning rate scheduler are built] datetime: 2024-09-14 19:44:09
+> building train, validation, and test datasets ...
+ > datasets target sizes (minimum size):
+    train:      3200
+    validation: 480
+    test:       160
+INFO:megatron.core.datasets.blended_megatron_dataset_config:Let split_matrix = [(0, 0.949), (0.949, 0.999), (0.999, 1.0)]
+> building train, validation, and test datasets for GPT ...
+INFO:megatron.core.datasets.blended_megatron_dataset_builder:Building dataset splits with cls=GPTDataset, sizes=(3200, 480, 160), and config=GPTDatasetConfig(random_seed=1234, sequence_length=1024, blend=(['my-gpt2_text_document'], None), blend_per_split=[None, None, None], renormalize_blend_weights=False, split='949,50,1', split_matrix=[(0, 0.949), (0.949, 0.999), (0.999, 1.0)], num_dataset_builder_threads=1, path_to_cache=None, mmap_bin_files=True, mock=False, tokenizer=<megatron.training.tokenizer.tokenizer._GPT2BPETokenizer object at 0x2b229c6a74f0>, reset_position_ids=False, reset_attention_mask=False, eod_mask_loss=False, create_attention_mask=True, drop_last_partial_validation_sequence=True, add_extra_token_to_sequence=True, s3_cache_path=None)
+INFO:megatron.core.datasets.indexed_dataset:Load the _IndexReader from my-gpt2_text_document.idx
+INFO:megatron.core.datasets.indexed_dataset:    Extract the sequence lengths
+INFO:megatron.core.datasets.indexed_dataset:    Extract the sequence pointers
+INFO:megatron.core.datasets.indexed_dataset:    Extract the document indices
+INFO:megatron.core.datasets.indexed_dataset:> total number of sequences: 10000
+INFO:megatron.core.datasets.indexed_dataset:> total number of documents: 10000
+INFO:megatron.core.datasets.gpt_dataset:Load the GPTDataset train indices
+INFO:megatron.core.datasets.gpt_dataset:        Load the document index from a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-train-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the sample index from a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-train-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the shuffle index from a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-train-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 3570
+INFO:megatron.core.datasets.gpt_dataset:Load the GPTDataset valid indices
+INFO:megatron.core.datasets.gpt_dataset:        Load the document index from e9d835bb86bcaca4cd08b4977794f406-GPTDataset-valid-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the sample index from e9d835bb86bcaca4cd08b4977794f406-GPTDataset-valid-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the shuffle index from e9d835bb86bcaca4cd08b4977794f406-GPTDataset-valid-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 530
+INFO:megatron.core.datasets.gpt_dataset:Load the GPTDataset test indices
+INFO:megatron.core.datasets.gpt_dataset:        Load the document index from fceb23beb87bf7aa15e27415203c9636-GPTDataset-test-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the sample index from fceb23beb87bf7aa15e27415203c9636-GPTDataset-test-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the shuffle index from fceb23beb87bf7aa15e27415203c9636-GPTDataset-test-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 161
+> finished creating GPT datasets ...
+[after dataloaders are built] datetime: 2024-09-14 19:44:09
+done with setup ...
+(min, max) time across ranks (ms):
+    model-and-optimizer-setup ......................: (129.73, 136.12)
+    train/valid/test-data-iterators-setup ..........: (7.84, 159.33)
+training ...
+[before the start of training step] datetime: 2024-09-14 19:44:10
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/tensor_parallel/layers.py:609: UserWarning: async_grad_allreduce is deprecated, not in use anymore and will be fully removed with 0.10.0. Please use allreduce_dgrad instead.
+  warnings.warn(
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/tensor_parallel/layers.py:609: UserWarning: async_grad_allreduce is deprecated, not in use anymore and will be fully removed with 0.10.0. Please use allreduce_dgrad instead.
+  warnings.warn(
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/tensor_parallel/layers.py:609: UserWarning: async_grad_allreduce is deprecated, not in use anymore and will be fully removed with 0.10.0. Please use allreduce_dgrad instead.
+  warnings.warn(
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/tensor_parallel/layers.py:609: UserWarning: async_grad_allreduce is deprecated, not in use anymore and will be fully removed with 0.10.0. Please use allreduce_dgrad instead.
+  warnings.warn(
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/tensor_parallel/layers.py:609: UserWarning: async_grad_allreduce is deprecated, not in use anymore and will be fully removed with 0.10.0. Please use allreduce_dgrad instead.
+  warnings.warn(
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/tensor_parallel/layers.py:609: UserWarning: async_grad_allreduce is deprecated, not in use anymore and will be fully removed with 0.10.0. Please use allreduce_dgrad instead.
+  warnings.warn(
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/tensor_parallel/layers.py:609: UserWarning: async_grad_allreduce is deprecated, not in use anymore and will be fully removed with 0.10.0. Please use allreduce_dgrad instead.
+  warnings.warn(
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/tensor_parallel/layers.py:609: UserWarning: async_grad_allreduce is deprecated, not in use anymore and will be fully removed with 0.10.0. Please use allreduce_dgrad instead.
+  warnings.warn(
+ [2024-09-14 19:44:19] iteration       10/     200 | consumed samples:          160 | elapsed time per iteration (ms): 995.3 | learning rate: 0.000000E+00 | global batch size:    16 | loss scale: 8388608.0 | number of skipped iterations:  10 | number of nan iterations:   0 |
+ [2024-09-14 19:44:24] iteration       20/     200 | consumed samples:          320 | elapsed time per iteration (ms): 457.6 | learning rate: 2.343750E-07 | global batch size:    16 | lm loss: 1.105231E+01 | loss scale: 262144.0 | grad norm: 23.668 | number of skipped iterations:   5 | number of nan iterations:   0 |
+Number of parameters in transformer layers in billions:  0.30
+Number of parameters in embedding layers in billions: 0.05
+Total number of parameters in billions: 0.35
+Number of parameters in most loaded shard in billions: 0.0885
+Theoretical memory footprints: weight and optimizer=1519.18 MB
+[Rank 2] (after 20 iterations) memory (MB) | allocated: 1761.685546875 | max allocated: 2589.13525390625 | reserved: 2608.0 | max reserved: 2608.0
+[Rank 3] (after 20 iterations) memory (MB) | allocated: 1761.685546875 | max allocated: 2589.13525390625 | reserved: 2608.0 | max reserved: 2608.0
+[Rank 1] (after 20 iterations) memory (MB) | allocated: 1761.685546875 | max allocated: 2589.13525390625 | reserved: 2608.0 | max reserved: 2608.0
+[Rank 0] (after 20 iterations) memory (MB) | allocated: 1761.685546875 | max allocated: 2589.13525390625 | reserved: 2608.0 | max reserved: 2608.0
+ [2024-09-14 19:44:29] iteration       30/     200 | consumed samples:          480 | elapsed time per iteration (ms): 464.2 | learning rate: 7.031250E-07 | global batch size:    16 | lm loss: 1.077634E+01 | loss scale: 262144.0 | grad norm: 17.701 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ [2024-09-14 19:44:33] iteration       40/     200 | consumed samples:          640 | elapsed time per iteration (ms): 437.8 | learning rate: 1.171875E-06 | global batch size:    16 | lm loss: 1.010798E+01 | loss scale: 262144.0 | grad norm: 8.279 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ [2024-09-14 19:44:37] iteration       50/     200 | consumed samples:          800 | elapsed time per iteration (ms): 436.9 | learning rate: 1.640625E-06 | global batch size:    16 | lm loss: 9.606478E+00 | loss scale: 262144.0 | grad norm: 4.420 | number of skipped iterations:   0 | number of nan iterations:   0 |
+saving checkpoint at iteration      50 to checkpoints/gpt2_345m_dist_mp in torch_dist format
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/pretrain_gpt.py", line 264, in <module>
+[rank2]:     pretrain(
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 355, in pretrain
+[rank2]:     iteration, num_floating_point_operations_so_far = train(
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 1368, in train
+[rank2]:     save_checkpoint_and_time(iteration, model, optimizer,
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 1072, in save_checkpoint_and_time
+[rank2]:     save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/checkpointing.py", line 401, in save_checkpoint
+[rank2]:     state_dict = generate_state_dict(
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/checkpointing.py", line 613, in generate_state_dict
+[rank2]:     state_dict['optimizer'] = (optimizer.sharded_state_dict(state_dict, **(optim_sd_kwargs or {}))
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/optimizer/optimizer.py", line 654, in sharded_state_dict
+[rank2]:     optim_state_to_sharding_state(
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/dist_checkpointing/optimizer.py", line 120, in optim_state_to_sharding_state
+[rank2]:     sharded_state[param_id][state_key] = make_sharded_optimizer_tensor(
+[rank2]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/dist_checkpointing/optimizer.py", line 83, in make_sharded_optimizer_tensor
+[rank2]:     tuple(optim_param.shape) == model_param.local_shape
+[rank2]: AttributeError: 'NoneType' object has no attribute 'shape'
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/pretrain_gpt.py", line 264, in <module>
+[rank3]:     pretrain(
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 355, in pretrain
+[rank3]:     iteration, num_floating_point_operations_so_far = train(
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 1368, in train
+[rank3]:     save_checkpoint_and_time(iteration, model, optimizer,
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 1072, in save_checkpoint_and_time
+[rank3]:     save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/checkpointing.py", line 401, in save_checkpoint
+[rank3]:     state_dict = generate_state_dict(
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/checkpointing.py", line 613, in generate_state_dict
+[rank3]:     state_dict['optimizer'] = (optimizer.sharded_state_dict(state_dict, **(optim_sd_kwargs or {}))
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/optimizer/optimizer.py", line 654, in sharded_state_dict
+[rank3]:     optim_state_to_sharding_state(
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/dist_checkpointing/optimizer.py", line 120, in optim_state_to_sharding_state
+[rank3]:     sharded_state[param_id][state_key] = make_sharded_optimizer_tensor(
+[rank3]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/dist_checkpointing/optimizer.py", line 83, in make_sharded_optimizer_tensor
+[rank3]:     tuple(optim_param.shape) == model_param.local_shape
+[rank3]: AttributeError: 'NoneType' object has no attribute 'shape'
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/pretrain_gpt.py", line 264, in <module>
+[rank0]:     pretrain(
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 355, in pretrain
+[rank0]:     iteration, num_floating_point_operations_so_far = train(
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 1368, in train
+[rank0]:     save_checkpoint_and_time(iteration, model, optimizer,
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 1072, in save_checkpoint_and_time
+[rank0]:     save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/checkpointing.py", line 401, in save_checkpoint
+[rank0]:     state_dict = generate_state_dict(
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/checkpointing.py", line 613, in generate_state_dict
+[rank0]:     state_dict['optimizer'] = (optimizer.sharded_state_dict(state_dict, **(optim_sd_kwargs or {}))
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/optimizer/optimizer.py", line 654, in sharded_state_dict
+[rank0]:     optim_state_to_sharding_state(
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/dist_checkpointing/optimizer.py", line 120, in optim_state_to_sharding_state
+[rank0]:     sharded_state[param_id][state_key] = make_sharded_optimizer_tensor(
+[rank0]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/dist_checkpointing/optimizer.py", line 83, in make_sharded_optimizer_tensor
+[rank0]:     tuple(optim_param.shape) == model_param.local_shape
+[rank0]: AttributeError: 'NoneType' object has no attribute 'shape'
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/pretrain_gpt.py", line 264, in <module>
+[rank1]:     pretrain(
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 355, in pretrain
+[rank1]:     iteration, num_floating_point_operations_so_far = train(
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 1368, in train
+[rank1]:     save_checkpoint_and_time(iteration, model, optimizer,
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/training.py", line 1072, in save_checkpoint_and_time
+[rank1]:     save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/checkpointing.py", line 401, in save_checkpoint
+[rank1]:     state_dict = generate_state_dict(
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/training/checkpointing.py", line 613, in generate_state_dict
+[rank1]:     state_dict['optimizer'] = (optimizer.sharded_state_dict(state_dict, **(optim_sd_kwargs or {}))
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/optimizer/optimizer.py", line 654, in sharded_state_dict
+[rank1]:     optim_state_to_sharding_state(
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/dist_checkpointing/optimizer.py", line 120, in optim_state_to_sharding_state
+[rank1]:     sharded_state[param_id][state_key] = make_sharded_optimizer_tensor(
+[rank1]:   File "/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/dist_checkpointing/optimizer.py", line 83, in make_sharded_optimizer_tensor
+[rank1]:     tuple(optim_param.shape) == model_param.local_shape
+[rank1]: AttributeError: 'NoneType' object has no attribute 'shape'
+W0914 19:44:43.761000 47642202304448 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 11158 closing signal SIGTERM
+E0914 19:44:44.276000 47642202304448 torch/distributed/elastic/multiprocessing/api.py:826] failed (exitcode: 1) local_rank: 1 (pid: 11159) of binary: /scratch/qualis/miniconda3/envs/large-scale-lm/bin/python
+Traceback (most recent call last):
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/bin/torchrun", line 33, in <module>
+    sys.exit(load_entry_point('torch==2.3.0', 'console_scripts', 'torchrun')())
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 263, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError:
+============================================================
+pretrain_gpt.py FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2024-09-14_19:44:43
+  host      : gpu32.eth
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 11160)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2024-09-14_19:44:43
+  host      : gpu32.eth
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 11161)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2024-09-14_19:44:43
+  host      : gpu32.eth
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 11159)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
 ```
 
-모델을 저장할 때에 (위의 경우에 매 50스탭 마다) 에러 발생합니다. 예전 Megatron-LM 브랜치를 체크아웃해서 다시 실행해 보도록 하겠습니다.
+모델을 저장할 때에 (위의 경우에 50스탭 후에) 에러가 발생합니다. 예전 Megatron-LM 브랜치(`core_r0.5.0`)를 체크아웃해서 다시 실행해 보도록 하겠습니다.
 
 ```
 (large-scale-lm) [gpu05]$ pwd
@@ -1227,29 +2111,13 @@ docs/            megatron/                  pretrain_retro.py              tests
 examples/        megatron_datasets.jsonl    pretrain_t5.py                 tools/
 .git/            merges.txt                 pretrain_vision_classify.py    vocab.json
 .github/         my-gpt2_text_document.bin  pretrain_vision_dino.py
-(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 2  pretrain_gpt.py     --tensor-model-parallel-size 2     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
-W0914 07:23:27.651000 47540863811520 torch/distributed/run.py:779]
-W0914 07:23:27.651000 47540863811520 torch/distributed/run.py:779] *****************************************
-W0914 07:23:27.651000 47540863811520 torch/distributed/run.py:779] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
-W0914 07:23:27.651000 47540863811520 torch/distributed/run.py:779] *****************************************
+(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 4  pretrain_gpt.py     --tensor-model-parallel-size 4     --pipeline-model-parallel-size 8         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
+W0914 19:37:31.953000 47780312846272 torch/distributed/run.py:757]
+W0914 19:37:31.953000 47780312846272 torch/distributed/run.py:757] *****************************************
+W0914 19:37:31.953000 47780312846272 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
+W0914 19:37:31.953000 47780312846272 torch/distributed/run.py:757] *****************************************
 Zarr-based strategies will not be registered because of missing packages
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:254: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
-  def forward(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:265: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
-  def backward(ctx, grad_output):
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:325: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
-  def forward(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:360: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
-  def backward(ctx, grad_output):
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:254: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
-  def forward(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:265: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
-  def backward(ctx, grad_output):
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:325: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
-  def forward(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:360: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
-  def backward(ctx, grad_output):
-using world size: 2, data-parallel size: 1, context-parallel size: 1 tensor-model-parallel size: 2, pipeline-model-parallel size: 1
+using world size: 4, data-parallel size: 1, context-parallel size: 1 tensor-model-parallel size: 4, pipeline-model-parallel size: 1
 WARNING: Setting args.overlap_p2p_comm to False since non-interleaved schedule does not support overlapping p2p communication
 using torch.float16 for parameters ...
 ------------------------ arguments ------------------------
@@ -1481,7 +2349,7 @@ using torch.float16 for parameters ...
   start_weight_decay .............................. 0.01
   swiglu .......................................... False
   swin_backbone_type .............................. tiny
-  tensor_model_parallel_size ...................... 2
+  tensor_model_parallel_size ...................... 4
   tensorboard_dir ................................. None
   tensorboard_log_interval ........................ 1
   tensorboard_queue_size .......................... 1000
@@ -1526,333 +2394,333 @@ using torch.float16 for parameters ...
   wandb_save_dir ..................................
   weight_decay .................................... 0.01
   weight_decay_incr_style ......................... constant
-  world_size ...................................... 2
+  world_size ...................................... 4
 -------------------- end of arguments ---------------------
 setting number of micro-batches to constant 4
 > building GPT2BPETokenizer tokenizer ...
- > padded vocab (size: 50257) with 175 dummy tokens (new size: 50432)
+ > padded vocab (size: 50257) with 431 dummy tokens (new size: 50688)
 > initializing torch distributed ...
-> initialized tensor model parallel with size 2
+> initialized tensor model parallel with size 4
 > initialized pipeline model parallel with size 1
 > setting random seeds to 1234 ...
 > compiling dataset index builder ...
-make: Entering directory `/scratch/qualis/work/Megatron-LM/megatron/core/datasets'
-g++ -O3 -Wall -shared -std=c++11 -fPIC -fdiagnostics-color -I/scratch/qualis/miniconda3/envs/megatron/include/python3.10 -I/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/pybind11/include helpers.cpp -o helpers.cpython-310-x86_64-linux-gnu.so
-make: Leaving directory `/scratch/qualis/work/Megatron-LM/megatron/core/datasets'
->>> done with dataset index builder. Compilation time: 6.201 seconds
+make: Entering directory `/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/datasets'
+make: Nothing to be done for `default'.
+make: Leaving directory `/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM/megatron/core/datasets'
+>>> done with dataset index builder. Compilation time: 0.048 seconds
 > compiling and loading fused kernels ...
->>> done with compiling and loading fused kernels. Compilation time: 0.367 seconds
-[rank1]:[W914 07:23:41.174438216 init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
-[rank0]:[W914 07:23:41.174582000 init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
-time to initialize megatron (seconds): 9.962
-[after megatron is initialized] datetime: 2024-09-14 07:23:44
+>>> done with compiling and loading fused kernels. Compilation time: 1.908 seconds
+[rank2]:[W init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+[rank1]:[W init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+[rank0]:[W init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+[rank3]:[W init.cpp:767] Warning: nvfuser is no longer supported in torch script, use _jit_set_nvfuser_enabled is deprecated and a no-op (function operator())
+time to initialize megatron (seconds): 4.743
+[after megatron is initialized] datetime: 2024-09-14 19:37:42
 building GPT model ...
- > number of parameters on (tensor, pipeline) model parallel rank (0, 0): 178100224
- > number of parameters on (tensor, pipeline) model parallel rank (1, 0): 178100224
+ > number of parameters on (tensor, pipeline) model parallel rank (1, 0): 89714688
+ > number of parameters on (tensor, pipeline) model parallel rank (0, 0): 89714688
+ > number of parameters on (tensor, pipeline) model parallel rank (3, 0): 89714688
+ > number of parameters on (tensor, pipeline) model parallel rank (2, 0): 89714688
 INFO:megatron.core.distributed.grad_buffer:Number of buckets for gradient all-reduce / reduce-scatter: 1
-INFO:megatron.core.distributed.grad_buffer:Params for bucket 1 (178100224 elements):
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.final_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:Params for bucket 1 (89714688 elements):
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.query_key_value.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.post_attention_norm.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.final_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.post_attention_norm.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_h_to_4h.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.dense.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.dense.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_h_to_4h.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_h_to_4h.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.input_norm.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.query_key_value.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.input_norm.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.embedding.word_embeddings.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_4h_to_h.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.post_attention_norm.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_4h_to_h.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.dense.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_4h_to_h.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.post_attention_norm.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.post_attention_norm.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.dense.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_4h_to_h.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_h_to_4h.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.post_attention_norm.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.post_attention_norm.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.embedding.word_embeddings.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.query_key_value.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_4h_to_h.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.embedding.position_embeddings.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.dense.bias
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.input_norm.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.query_key_value.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.dense.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.query_key_value.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_h_to_4h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.post_attention_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.dense.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.post_attention_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.dense.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_4h_to_h.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.input_norm.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.input_norm.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_h_to_4h.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.self_attention.dense.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.query_key_value.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_4h_to_h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.query_key_value.weight
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_h_to_4h.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_h_to_4h.bias
-INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.embedding.position_embeddings.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.final_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.4.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.final_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.20.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.input_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.17.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.15.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.9.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.1.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.3.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.2.input_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.11.self_attention.query_key_value.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.10.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.5.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.6.self_attention.query_key_value.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.22.mlp.dense_h_to_4h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.post_attention_norm.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.8.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.23.self_attention.dense.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.16.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.14.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.7.input_norm.weight
 INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.12.post_attention_norm.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.0.mlp.dense_4h_to_h.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.21.self_attention.dense.weight
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.19.mlp.dense_4h_to_h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.18.mlp.dense_h_to_4h.bias
+INFO:megatron.core.distributed.grad_buffer:    module.language_model.encoder.layers.13.input_norm.bias
 > learning rate decay style: cosine
 WARNING: could not find the metadata file checkpoints/gpt2_345m_dist_mp/latest_checkpointed_iteration.txt
     will not load any checkpoints and will start from random
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
 (min, max) time across ranks (ms):
-    load-checkpoint ................................: (0.42, 0.47)
-[after model, optimizer, and learning rate scheduler are built] datetime: 2024-09-14 07:23:45
+    load-checkpoint ................................: (0.42, 0.44)
+[after model, optimizer, and learning rate scheduler are built] datetime: 2024-09-14 19:37:43
 > building train, validation, and test datasets ...
  > datasets target sizes (minimum size):
     train:      3200
@@ -1867,125 +2735,83 @@ INFO:megatron.core.datasets.indexed_dataset:    Extract the sequence pointers
 INFO:megatron.core.datasets.indexed_dataset:    Extract the document indices
 INFO:megatron.core.datasets.indexed_dataset:> total number of sequences: 10000
 INFO:megatron.core.datasets.indexed_dataset:> total number of documents: 10000
-INFO:megatron.core.datasets.gpt_dataset:Build and save the GPTDataset train indices
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the document index to a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-document_index.npy
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the sample index to a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-sample_index.npy
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the shuffle index to a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:Load the GPTDataset train indices
+INFO:megatron.core.datasets.gpt_dataset:        Load the document index from a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the sample index from a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the shuffle index from a375193ee7bd0ffbfa0d131aff630f11-GPTDataset-shuffle_index.npy
 INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 3570
 INFO:megatron.core.datasets.gpt_dataset:> total number of epochs: 2
-INFO:megatron.core.datasets.gpt_dataset:Build and save the GPTDataset valid indices
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the document index to e9d835bb86bcaca4cd08b4977794f406-GPTDataset-document_index.npy
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the sample index to e9d835bb86bcaca4cd08b4977794f406-GPTDataset-sample_index.npy
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the shuffle index to e9d835bb86bcaca4cd08b4977794f406-GPTDataset-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:Load the GPTDataset valid indices
+INFO:megatron.core.datasets.gpt_dataset:        Load the document index from e9d835bb86bcaca4cd08b4977794f406-GPTDataset-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the sample index from e9d835bb86bcaca4cd08b4977794f406-GPTDataset-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the shuffle index from e9d835bb86bcaca4cd08b4977794f406-GPTDataset-shuffle_index.npy
 INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 530
 INFO:megatron.core.datasets.gpt_dataset:> total number of epochs: 6
-INFO:megatron.core.datasets.gpt_dataset:Build and save the GPTDataset test indices
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the document index to fceb23beb87bf7aa15e27415203c9636-GPTDataset-document_index.npy
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the sample index to fceb23beb87bf7aa15e27415203c9636-GPTDataset-sample_index.npy
-INFO:megatron.core.datasets.gpt_dataset:        Build and save the shuffle index to fceb23beb87bf7aa15e27415203c9636-GPTDataset-shuffle_index.npy
+INFO:megatron.core.datasets.gpt_dataset:Load the GPTDataset test indices
+INFO:megatron.core.datasets.gpt_dataset:        Load the document index from fceb23beb87bf7aa15e27415203c9636-GPTDataset-document_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the sample index from fceb23beb87bf7aa15e27415203c9636-GPTDataset-sample_index.npy
+INFO:megatron.core.datasets.gpt_dataset:        Load the shuffle index from fceb23beb87bf7aa15e27415203c9636-GPTDataset-shuffle_index.npy
 INFO:megatron.core.datasets.gpt_dataset:> total number of samples: 161
 INFO:megatron.core.datasets.gpt_dataset:> total number of epochs: 106
 > finished creating GPT datasets ...
-[after dataloaders are built] datetime: 2024-09-14 07:23:45
+[after dataloaders are built] datetime: 2024-09-14 19:37:43
 done with setup ...
 (min, max) time across ranks (ms):
-    model-and-optimizer-setup ......................: (151.32, 450.99)
-    train/valid/test-data-iterators-setup ..........: (169.26, 364.59)
+    model-and-optimizer-setup ......................: (108.83, 126.89)
+    train/valid/test-data-iterators-setup ..........: (6.98, 158.54)
 training ...
-[before the start of training step] datetime: 2024-09-14 07:23:45
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  torch.distributed._reduce_scatter_base(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  torch.distributed._reduce_scatter_base(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  torch.distributed._reduce_scatter_base(
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  torch.distributed._reduce_scatter_base(
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  handle = torch.distributed._reduce_scatter_base(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  handle = torch.distributed._reduce_scatter_base(
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  handle = torch.distributed._reduce_scatter_base(
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  handle = torch.distributed._reduce_scatter_base(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  torch.distributed._reduce_scatter_base(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  torch.distributed._reduce_scatter_base(
- iteration       10/     200 | consumed samples:          160 | elapsed time per iteration (ms): 859.9 | learning rate: 0.000E+00 | global batch size:    16 | loss scale: 8388608.0 | number of skipped iterations:  10 | number of nan iterations:   0 |
- iteration       20/     200 | consumed samples:          320 | elapsed time per iteration (ms): 746.5 | learning rate: 2.344E-07 | global batch size:    16 | lm loss: 1.103711E+01 | loss scale: 262144.0 | grad norm: 23.812 | number of skipped iterations:   5 | number of nan iterations:   0 |
-[Rank 1] (after 20 iterations) memory (MB) | allocated: 3483.29833984375 | max allocated: 9277.48583984375 | reserved: 9710.0 | max reserved: 9710.0
-[Rank 0] (after 20 iterations) memory (MB) | allocated: 3483.29833984375 | max allocated: 9277.48583984375 | reserved: 9710.0 | max reserved: 9710.0
- iteration       30/     200 | consumed samples:          480 | elapsed time per iteration (ms): 749.7 | learning rate: 7.031E-07 | global batch size:    16 | lm loss: 1.075573E+01 | loss scale: 262144.0 | grad norm: 18.487 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration       40/     200 | consumed samples:          640 | elapsed time per iteration (ms): 748.7 | learning rate: 1.172E-06 | global batch size:    16 | lm loss: 1.005369E+01 | loss scale: 262144.0 | grad norm: 8.084 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration       50/     200 | consumed samples:          800 | elapsed time per iteration (ms): 755.4 | learning rate: 1.641E-06 | global batch size:    16 | lm loss: 9.577724E+00 | loss scale: 262144.0 | grad norm: 4.090 | number of skipped iterations:   0 | number of nan iterations:   0 |
+[before the start of training step] datetime: 2024-09-14 19:37:43
+ iteration       10/     200 | consumed samples:          160 | elapsed time per iteration (ms): 1011.8 | learning rate: 0.000E+00 | global batch size:    16 | loss scale: 8388608.0 | number of skipped iterations:  10 | number of nan iterations:   0 |
+ iteration       20/     200 | consumed samples:          320 | elapsed time per iteration (ms): 388.3 | learning rate: 2.344E-07 | global batch size:    16 | lm loss: 1.096171E+01 | loss scale: 262144.0 | grad norm: 25.472 | number of skipped iterations:   5 | number of nan iterations:   0 |
+[Rank 2] (after 20 iterations) memory (MB) | allocated: 1786.68505859375 | max allocated: 4673.77880859375 | reserved: 4746.0 | max reserved: 4746.0[Rank 1] (after 20 iterations) memory (MB) | allocated: 1786.68505859375 | max allocated: 4673.77880859375 | reserved: 4746.0 | max reserved: 4746.0
+
+[Rank 3] (after 20 iterations) memory (MB) | allocated: 1786.68505859375 | max allocated: 4673.77880859375 | reserved: 4746.0 | max reserved: 4746.0[Rank 0] (after 20 iterations) memory (MB) | allocated: 1786.68505859375 | max allocated: 4673.77880859375 | reserved: 4746.0 | max reserved: 4746.0
+
+ iteration       30/     200 | consumed samples:          480 | elapsed time per iteration (ms): 385.1 | learning rate: 7.031E-07 | global batch size:    16 | lm loss: 1.067098E+01 | loss scale: 262144.0 | grad norm: 17.569 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       40/     200 | consumed samples:          640 | elapsed time per iteration (ms): 392.6 | learning rate: 1.172E-06 | global batch size:    16 | lm loss: 1.001153E+01 | loss scale: 262144.0 | grad norm: 7.634 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       50/     200 | consumed samples:          800 | elapsed time per iteration (ms): 384.9 | learning rate: 1.641E-06 | global batch size:    16 | lm loss: 9.559246E+00 | loss scale: 262144.0 | grad norm: 4.010 | number of skipped iterations:   0 | number of nan iterations:   0 |
 saving checkpoint at iteration      50 to checkpoints/gpt2_345m_dist_mp
   successfully saved checkpoint at iteration      50 to checkpoints/gpt2_345m_dist_mp
 (min, max) time across ranks (ms):
-    save-checkpoint ................................: (3137.64, 3137.87)
- iteration       60/     200 | consumed samples:          960 | elapsed time per iteration (ms): 753.3 | learning rate: 2.109E-06 | global batch size:    16 | lm loss: 9.351546E+00 | loss scale: 262144.0 | grad norm: 3.010 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration       70/     200 | consumed samples:         1120 | elapsed time per iteration (ms): 755.0 | learning rate: 2.578E-06 | global batch size:    16 | lm loss: 9.235643E+00 | loss scale: 262144.0 | grad norm: 2.778 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration       80/     200 | consumed samples:         1280 | elapsed time per iteration (ms): 778.9 | learning rate: 3.047E-06 | global batch size:    16 | lm loss: 9.091523E+00 | loss scale: 262144.0 | grad norm: 3.415 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration       90/     200 | consumed samples:         1440 | elapsed time per iteration (ms): 754.2 | learning rate: 3.516E-06 | global batch size:    16 | lm loss: 8.887043E+00 | loss scale: 262144.0 | grad norm: 3.890 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      100/     200 | consumed samples:         1600 | elapsed time per iteration (ms): 765.1 | learning rate: 3.984E-06 | global batch size:    16 | lm loss: 8.740536E+00 | loss scale: 262144.0 | grad norm: 2.530 | number of skipped iterations:   0 | number of nan iterations:   0 |
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  torch.distributed._reduce_scatter_base(
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/mappings.py:126: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  torch.distributed._reduce_scatter_base(
-/scratch/qualis/miniconda3/envs/megatron/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:79: FutureWarning: `torch.distributed._all_gather_base` is a private function and will be deprecated. Please use `torch.distributed.all_gather_into_tensor` instead.
-  return func(*args, **kwargs)
+    save-checkpoint ................................: (1796.45, 1796.45)
+ iteration       60/     200 | consumed samples:          960 | elapsed time per iteration (ms): 385.6 | learning rate: 2.109E-06 | global batch size:    16 | lm loss: 9.356075E+00 | loss scale: 262144.0 | grad norm: 2.978 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       70/     200 | consumed samples:         1120 | elapsed time per iteration (ms): 384.4 | learning rate: 2.578E-06 | global batch size:    16 | lm loss: 9.246494E+00 | loss scale: 262144.0 | grad norm: 2.805 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       80/     200 | consumed samples:         1280 | elapsed time per iteration (ms): 385.1 | learning rate: 3.047E-06 | global batch size:    16 | lm loss: 9.104178E+00 | loss scale: 262144.0 | grad norm: 3.359 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration       90/     200 | consumed samples:         1440 | elapsed time per iteration (ms): 385.6 | learning rate: 3.516E-06 | global batch size:    16 | lm loss: 8.897788E+00 | loss scale: 262144.0 | grad norm: 3.078 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      100/     200 | consumed samples:         1600 | elapsed time per iteration (ms): 395.7 | learning rate: 3.984E-06 | global batch size:    16 | lm loss: 8.766370E+00 | loss scale: 262144.0 | grad norm: 2.635 | number of skipped iterations:   0 | number of nan iterations:   0 |
 (min, max) time across ranks (ms):
-    evaluate .......................................: (3215.86, 3216.06)
+    evaluate .......................................: (1970.23, 1970.28)
 -----------------------------------------------------------------------------------------------
- validation loss at iteration 100 | lm loss value: 8.661982E+00 | lm loss PPL: 5.778975E+03 |
+ validation loss at iteration 100 | lm loss value: 8.687662E+00 | lm loss PPL: 5.929304E+03 |
 -----------------------------------------------------------------------------------------------
 saving checkpoint at iteration     100 to checkpoints/gpt2_345m_dist_mp
   successfully saved checkpoint at iteration     100 to checkpoints/gpt2_345m_dist_mp
 (min, max) time across ranks (ms):
-    save-checkpoint ................................: (3191.42, 3191.63)
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  handle = torch.distributed._reduce_scatter_base(
-/scratch/qualis/work/Megatron-LM/megatron/core/tensor_parallel/layers.py:413: FutureWarning: `torch.distributed._reduce_scatter_base` is a private function and will be deprecated. Please use `torch.distributed.reduce_scatter_tensor` instead.
-  handle = torch.distributed._reduce_scatter_base(
- iteration      110/     200 | consumed samples:         1760 | elapsed time per iteration (ms): 749.0 | learning rate: 4.453E-06 | global batch size:    16 | lm loss: 8.607948E+00 | loss scale: 262144.0 | grad norm: 2.465 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      120/     200 | consumed samples:         1920 | elapsed time per iteration (ms): 748.0 | learning rate: 4.922E-06 | global batch size:    16 | lm loss: 8.517817E+00 | loss scale: 262144.0 | grad norm: 2.223 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      130/     200 | consumed samples:         2080 | elapsed time per iteration (ms): 748.3 | learning rate: 5.391E-06 | global batch size:    16 | lm loss: 8.443025E+00 | loss scale: 262144.0 | grad norm: 2.529 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      140/     200 | consumed samples:         2240 | elapsed time per iteration (ms): 748.5 | learning rate: 5.859E-06 | global batch size:    16 | lm loss: 8.364165E+00 | loss scale: 262144.0 | grad norm: 2.909 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      150/     200 | consumed samples:         2400 | elapsed time per iteration (ms): 749.4 | learning rate: 6.328E-06 | global batch size:    16 | lm loss: 8.302343E+00 | loss scale: 262144.0 | grad norm: 3.281 | number of skipped iterations:   0 | number of nan iterations:   0 |
+    save-checkpoint ................................: (1616.24, 1616.25)
+ iteration      110/     200 | consumed samples:         1760 | elapsed time per iteration (ms): 385.2 | learning rate: 4.453E-06 | global batch size:    16 | lm loss: 8.635515E+00 | loss scale: 262144.0 | grad norm: 2.624 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      120/     200 | consumed samples:         1920 | elapsed time per iteration (ms): 384.3 | learning rate: 4.922E-06 | global batch size:    16 | lm loss: 8.545827E+00 | loss scale: 262144.0 | grad norm: 2.270 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      130/     200 | consumed samples:         2080 | elapsed time per iteration (ms): 383.3 | learning rate: 5.391E-06 | global batch size:    16 | lm loss: 8.472692E+00 | loss scale: 262144.0 | grad norm: 2.226 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      140/     200 | consumed samples:         2240 | elapsed time per iteration (ms): 384.5 | learning rate: 5.859E-06 | global batch size:    16 | lm loss: 8.391251E+00 | loss scale: 262144.0 | grad norm: 2.068 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      150/     200 | consumed samples:         2400 | elapsed time per iteration (ms): 382.2 | learning rate: 6.328E-06 | global batch size:    16 | lm loss: 8.315047E+00 | loss scale: 262144.0 | grad norm: 2.387 | number of skipped iterations:   0 | number of nan iterations:   0 |
 saving checkpoint at iteration     150 to checkpoints/gpt2_345m_dist_mp
   successfully saved checkpoint at iteration     150 to checkpoints/gpt2_345m_dist_mp
 (min, max) time across ranks (ms):
-    save-checkpoint ................................: (3261.72, 3261.77)
- iteration      160/     200 | consumed samples:         2560 | elapsed time per iteration (ms): 749.3 | learning rate: 6.797E-06 | global batch size:    16 | lm loss: 8.218843E+00 | loss scale: 262144.0 | grad norm: 2.577 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      170/     200 | consumed samples:         2720 | elapsed time per iteration (ms): 748.7 | learning rate: 7.266E-06 | global batch size:    16 | lm loss: 8.157039E+00 | loss scale: 262144.0 | grad norm: 2.724 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      180/     200 | consumed samples:         2880 | elapsed time per iteration (ms): 749.2 | learning rate: 7.734E-06 | global batch size:    16 | lm loss: 8.062502E+00 | loss scale: 262144.0 | grad norm: 1.932 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      190/     200 | consumed samples:         3040 | elapsed time per iteration (ms): 748.3 | learning rate: 8.203E-06 | global batch size:    16 | lm loss: 8.000146E+00 | loss scale: 262144.0 | grad norm: 1.853 | number of skipped iterations:   0 | number of nan iterations:   0 |
- iteration      200/     200 | consumed samples:         3200 | elapsed time per iteration (ms): 747.9 | learning rate: 8.672E-06 | global batch size:    16 | lm loss: 7.894510E+00 | loss scale: 262144.0 | grad norm: 2.182 | number of skipped iterations:   0 | number of nan iterations:   0 |
+    save-checkpoint ................................: (1490.23, 1490.23)
+ iteration      160/     200 | consumed samples:         2560 | elapsed time per iteration (ms): 382.8 | learning rate: 6.797E-06 | global batch size:    16 | lm loss: 8.226217E+00 | loss scale: 262144.0 | grad norm: 2.053 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      170/     200 | consumed samples:         2720 | elapsed time per iteration (ms): 383.6 | learning rate: 7.266E-06 | global batch size:    16 | lm loss: 8.159902E+00 | loss scale: 262144.0 | grad norm: 2.645 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      180/     200 | consumed samples:         2880 | elapsed time per iteration (ms): 389.7 | learning rate: 7.734E-06 | global batch size:    16 | lm loss: 8.071524E+00 | loss scale: 262144.0 | grad norm: 2.367 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      190/     200 | consumed samples:         3040 | elapsed time per iteration (ms): 386.0 | learning rate: 8.203E-06 | global batch size:    16 | lm loss: 8.010191E+00 | loss scale: 262144.0 | grad norm: 2.396 | number of skipped iterations:   0 | number of nan iterations:   0 |
+ iteration      200/     200 | consumed samples:         3200 | elapsed time per iteration (ms): 384.4 | learning rate: 8.672E-06 | global batch size:    16 | lm loss: 7.913759E+00 | loss scale: 262144.0 | grad norm: 1.925 | number of skipped iterations:   0 | number of nan iterations:   0 |
 (min, max) time across ranks (ms):
-    evaluate .......................................: (2951.78, 2951.85)
+    evaluate .......................................: (1455.35, 1455.46)
 -----------------------------------------------------------------------------------------------
- validation loss at iteration 200 | lm loss value: 7.874336E+00 | lm loss PPL: 2.628941E+03 |
+ validation loss at iteration 200 | lm loss value: 7.900960E+00 | lm loss PPL: 2.699873E+03 |
 -----------------------------------------------------------------------------------------------
 saving checkpoint at iteration     200 to checkpoints/gpt2_345m_dist_mp
   successfully saved checkpoint at iteration     200 to checkpoints/gpt2_345m_dist_mp
 (min, max) time across ranks (ms):
-    save-checkpoint ................................: (3112.00, 3112.12)
-[after training is done] datetime: 2024-09-14 07:26:35
+    save-checkpoint ................................: (1592.99, 1593.01)
+[after training is done] datetime: 2024-09-14 19:39:16
 saving checkpoint at iteration     200 to checkpoints/gpt2_345m_dist_mp
   successfully saved checkpoint at iteration     200 to checkpoints/gpt2_345m_dist_mp
 Evaluating on 160 samples
@@ -2000,9 +2826,9 @@ Evaluating iter 8/10
 Evaluating iter 9/10
 Evaluating iter 10/10
 (min, max) time across ranks (ms):
-    evaluate .......................................: (2970.63, 2971.05)
+    evaluate .......................................: (1460.59, 1460.86)
 -----------------------------------------------------------------------------------------------------------------
- validation loss at iteration 200 on validation set | lm loss value: 7.873083E+00 | lm loss PPL: 2.625647E+03 |
+ validation loss at iteration 200 on validation set | lm loss value: 7.900509E+00 | lm loss PPL: 2.698655E+03 |
 -----------------------------------------------------------------------------------------------------------------
 Evaluating on 160 samples
 Evaluating iter 1/10
@@ -2016,13 +2842,12 @@ Evaluating iter 8/10
 Evaluating iter 9/10
 Evaluating iter 10/10
 (min, max) time across ranks (ms):
-    evaluate .......................................: (2953.31, 2953.41)
+    evaluate .......................................: (1454.27, 1454.35)
 -----------------------------------------------------------------------------------------------------------
- validation loss at iteration 200 on test set | lm loss value: 7.644718E+00 | lm loss PPL: 2.089580E+03 |
+ validation loss at iteration 200 on test set | lm loss value: 7.693538E+00 | lm loss PPL: 2.194124E+03 |
 -----------------------------------------------------------------------------------------------------------
-[rank1]:[W914 07:26:45.188308016 ProcessGroupNCCL.cpp:1168] Warning: WARNING: process group has NOT been destroyed before we destruct ProcessGroupNCCL. On normal program exit, the application should call destroy_process_group to ensure that any pending NCCL operations have finished in this process. In rare cases this process can exit before this point and block the progress of another member of the process group. This constraint has always been present,  but this warning has only been added since PyTorch 2.4 (function operator())
-[rank0]:[W914 07:26:45.310999850 ProcessGroupNCCL.cpp:1168] Warning: WARNING: process group has NOT been destroyed before we destruct ProcessGroupNCCL. On normal program exit, the application should call destroy_process_group to ensure that any pending NCCL operations have finished in this process. In rare cases this process can exit before this point and block the progress of another member of the process group. This constraint has always been present,  but this warning has only been added since PyTorch 2.4 (function operator())
 ```
+
 ```
 (large-scale-lm) [gpu05]$ cd ..
 /scratch/qualis/git-projects/large-scale-lm-tutorials/src
@@ -2078,7 +2903,9 @@ if __name__ == "__main__":
     inputs = tokenizer(
         "Parallelformers is",
         return_tensors="pt",
-    )
+    ).to("cuda")
+
+    model = model.to("cuda")
 
     outputs = model.generate(
         **inputs,
@@ -2096,27 +2923,20 @@ if __name__ == "__main__":
 
 ```
 (large-scale-lm) [gpu05]$ python ch6/parallelformers_inference.py
-Downloading: 100%|██████████████████████████| 1.42k/1.42k [00:00<00:00, 864kB/s]
-Downloading: 100%|█████████████████████████| 9.94G/9.94G [04:34<00:00, 38.8MB/s]
-Downloading: 100%|██████████████████████████████| 200/200 [00:00<00:00, 241kB/s]
-Downloading: 100%|████████████████████████████| 779k/779k [00:01<00:00, 721kB/s]
-Downloading: 100%|████████████████████████████| 446k/446k [00:01<00:00, 413kB/s]
-Downloading: 100%|███████████████████████████| 90.0/90.0 [00:00<00:00, 66.3kB/s]
-GPU 2 alloc: 1662117888
-GPU 2 cached: 2051014656
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+GPU 1 alloc: 1527883776
+GPU 1 cached: 1904214016
 
-GPU 1 alloc: 1662117888
-GPU 1 cached: 2051014656
+GPU 2 alloc: 1527883776
+GPU 2 cached: 1904214016
 
-GPU 3 alloc: 1662117888
-GPU 3 cached: 2051014656
+GPU 0 alloc: 1527883776
+GPU 0 cached: 1904214016
 
-GPU 0 alloc: 1662117888
-GPU 0 cached: 2051014656
+GPU 3 alloc: 1527883776
+GPU 3 cached: 1904214016
 
-Setting `pad_token_id` to `eos_token_id`:50256 for open-end generation.
-Setting `pad_token_id` to `eos_token_id`:50256 for open-end generation.
-Setting `pad_token_id` to `eos_token_id`:50256 for open-end generation.
 Setting `pad_token_id` to `eos_token_id`:50256 for open-end generation.
 
 Output: Parallelformers is an open-source library for parallel programming in Haskell
