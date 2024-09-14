@@ -712,6 +712,9 @@ wget is already the newest version (1.19.4-1ubuntu2.2).
 -->
 ```
 # Megatron-LM을 clone 합니다.
+[glogin01]$ cd ..
+[glogin01]$ pwd
+/scratch/qualis/large-scale-lm-tutorials/src
 [glogin01]$ git clone https://github.com/NVIDIA/Megatron-LM
 Cloning into 'Megatron-LM'...
 remote: Enumerating objects: 6281, done.
@@ -723,7 +726,7 @@ Resolving deltas: 100% (4648/4648), done.
 ```
 ```
 [glogin01]$ cd Megatron-LM
-/home/ubuntu/kevin/jupyter/notebooks/Megatron-LM
+
 ```
 
 이제 필요한 몇가지 패키지를 설치해보도록 하겠습니다. Megatron-LM에는 `nltk`로 데이터를 문장단위로 분할해서 전처리 하는 기능이 있습니다. 저는 지금 이 기능을 사용하진 않을것이지만 설치되어 있지 않으면 에러가 발생하기 때문에 `nltk`를 설치하겠습니다.
@@ -764,6 +767,8 @@ MIG (Multi-Instance GPU)에서 빌딩하면 위와 같이 런타임 에러가 �
 [globin02]$ cd apex
 [glogin02]$ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
 [glogin02]$ cd ..
+[glogin02]$ pwd
+/scratch/qualis/large-scale-lm-tutorials/src
 ```
 Apex를 성공적으로 빌당되면 로그인 노드 1 - 3번 중에 아무 노드에서 계속해서 튜토리얼을 진행해도 됩니다.  
 이제 데이터셋을 만들어보도록 하겠습니다. Megatron-LM으로 모델을 Pre-training을 할 때는 `{\"text\": \"샘플\"}`과 같은 json 구조가 여러라인으로 구성된 간단한 구조의 jsonl 파일을 만들면 되고, Fine-tuning의 경우는 해당 태스크에 맞게 데이터셋을 구성해야 합니다. 본 튜토리얼에서는 Pre-training만 다루고 있기 때문에 Fine-tuning이 필요하시면 Megatron-LM 깃헙 레포를 참고해주세요.
@@ -812,7 +817,8 @@ for sample in dataset_read:
 ```
 
 ```
-[glogin01]$ python ../../src/megatron_datasets.py
+[glogin01]$ cd Megatron-LM/
+[glogin01]$ python ../megatron_datasets.py
 Downloading readme: 100%|██████████████████████████████████████████████| 10.5k/10.5k [00:00<00:00, 25.5kB/s]
 {"text": " Senjō no Valkyria 3 : Unrecorded Chronicles ( Japanese : 戦場のヴァルキュリア3 , lit . Valkyria of the Battlefield 3 ) , commonly referred to as Valkyria Chronicles III outside Japan , is a tactical role @-@ playing video game developed by Sega and Media.Vision for the PlayStation Portable . Released in January 2011 in Japan , it is the third game in the Valkyria series . Employing the same fusion of tactical and real @-@ time gameplay as its predecessors , the story runs parallel to the first game and follows the \" Nameless \" , a penal military unit serving the nation of Gallia during the Second Europan War who perform secret black operations and are pitted against the Imperial unit \" Calamaty Raven \" . \n"}
 
@@ -1106,27 +1112,18 @@ def __getitem__(self, idx: Union[int, slice]) -> np.ndarray:
 
 ```
 (large-scale-lm) [glogin01]$ python tools/preprocess_data.py  --input megatron_datasets.jsonl  --output-prefix my-gpt2    --vocab-file vocab.json    --tokenizer-type GPT2BPETokenizer   --merge-file merges.txt   --append-eod --workers 8
-/scratch/qualis/test/Megatron-LM/megatron/core/tensor_parallel/layers.py:280: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
-  def forward(ctx, input, weight, bias, allreduce_dgrad):
-/scratch/qualis/test/Megatron-LM/megatron/core/tensor_parallel/layers.py:290: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
-  def backward(ctx, grad_output):
-/scratch/qualis/test/Megatron-LM/megatron/core/tensor_parallel/layers.py:381: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
-  def forward(
-/scratch/qualis/test/Megatron-LM/megatron/core/tensor_parallel/layers.py:420: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
-  def backward(ctx, grad_output):
 Opening megatron_datasets.jsonl
-Time to startup: 0.15536856651306152
-Processed 1000 documents (4517.679498502833 docs/s, 4.076922082678098 MB/s).
-Processed 2000 documents (5735.114088912438 docs/s, 5.0170434307006 MB/s).
-Processed 3000 documents (6388.614042356152 docs/s, 5.605386721256875 MB/s).
-Processed 4000 documents (7059.590644111501 docs/s, 6.18686698247938 MB/s).
-Processed 5000 documents (7587.995553908855 docs/s, 6.61786772878844 MB/s).
-Processed 6000 documents (7819.407279438724 docs/s, 6.774899172875795 MB/s).
-Processed 7000 documents (8150.381658834173 docs/s, 7.024358042262432 MB/s).
-Processed 8000 documents (8471.471700437833 docs/s, 7.308923232599674 MB/s).
-Processed 9000 documents (8653.491370862088 docs/s, 7.474430541084828 MB/s).
-Processed 10000 documents (8858.767601141883 docs/s, 7.624463633529589 MB/s).
-
+Time to startup: 0.2418653964996338
+Processed 1000 documents (2414.283880556293 docs/s, 2.1787396095175984 MB/s).
+Processed 2000 documents (3086.184695575906 docs/s, 2.699775874171669 MB/s).
+Processed 3000 documents (3535.2736126489676 docs/s, 3.1018583425089634 MB/s).
+Processed 4000 documents (3640.7253406802256 docs/s, 3.190650072794039 MB/s).
+Processed 5000 documents (3853.9685188326316 docs/s, 3.3612373264254836 MB/s).
+Processed 6000 documents (3870.7082725855316 docs/s, 3.3536631789648315 MB/s).
+Processed 7000 documents (4040.228723286409 docs/s, 3.482047137539327 MB/s).
+Processed 8000 documents (4217.510323365528 docs/s, 3.638737196582043 MB/s).
+Processed 9000 documents (4320.326483412309 docs/s, 3.731670701586145 MB/s).
+Processed 10000 documents (4462.9152662988345 docs/s, 3.8410912984141734 MB/s).
 ```
 
 데이터셋 전처리가 완료되었습니다. 데이터를 확인해봅시다
@@ -1135,11 +1132,15 @@ Processed 10000 documents (8858.767601141883 docs/s, 7.624463633529589 MB/s).
 와 같은 파일들이 생겼습니다. `idx`파일은 데이터의 위치 등의 메타데이터가 저장되어 있으며, `bin` 파일에는 실제로 Tokenized 된 데이터가 저장되어 있습니다.
 ```
 [glogin01]$ ls
-LICENSE    megatron/                  pretrain_bert.py  tasks/
-README.md  megatron_datasets.jsonl    pretrain_gpt.py   tests/
-apex/      merges.txt                 pretrain_ict.py   tools/
-examples/  my-gpt2_text_document.bin  pretrain_t5.py    vocab.json
-images/    my-gpt2_text_document.idx  pretrain_vit.py
+./                  examples/       MANIFEST.in                pretrain_mamba.py            pytest.ini
+../                 .flake8         megatron/                  pretrain_retro.py            README.md
+CHANGELOG.md        .git/           megatron_datasets.jsonl    pretrain_t5.py               setup.py
+CODEOWNERS          .github/        merges.txt                 pretrain_vision_classify.py  tasks/
+CONTRIBUTING.md     .gitignore      my-gpt2_text_document.bin  pretrain_vision_dino.py      tests/
+.coveragerc         .gitlab/        my-gpt2_text_document.idx  pretrain_vision_inpaint.py   tools/
+Dockerfile.ci       .gitlab-ci.yml  pretrain_bert.py           pretrain_vlm.py              vocab.json
+Dockerfile.linting  images/         pretrain_gpt.py            .pylintrc
+docs/               LICENSE         pretrain_ict.py            pyproject.toml
 ```
 
 모델을 시작하기 전에 Mix Precesion 지원을 위해서 [Transformer Engine](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/index.html)을 설치해야 한다.
@@ -1207,6 +1208,8 @@ salloc: Nodes gpu[05] are ready for job
 모델을 저장할 때에 (위의 경우에 매 50스탭 마다) 에러 발생합니다. 예전 Megatron-LM 브랜치를 체크아웃해서 다시 실행해 보도록 하겠습니다.
 
 ```
+(large-scale-lm) [gpu05]$ pwd
+/scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM
 (large-scale-lm) [gpu05]$ git checkout core_r0.5.0
 Branch core_r0.5.0 set up to track remote branch core_r0.5.0 from origin.
 Switched to a new branch 'core_r0.5.0'
@@ -2092,7 +2095,7 @@ if __name__ == "__main__":
 `docker run ... --shm_size=?gb` 옵션을 통해 공유메모리 사이즈를 키우거나 `docker run ... --ipc=host` 옵션을 통해 공유메모리 제한을 해제할 수 있습니다. docker에서 발생하는 거의 모든 문제는 공유메모리의 제한 때문에 일어나는 것으로 확인 되었으며 더 큰 모델을 사용하려면 더 큰 사이즈의 shared memory 할당이 요구됩니다.
 
 ```
-(large-scale-lm) [gpu05]$ python ../src/ch6/parallelformers_inference.py
+(large-scale-lm) [gpu05]$ python ../ch6/parallelformers_inference.py
 Downloading: 100%|██████████████████████████| 1.42k/1.42k [00:00<00:00, 864kB/s]
 Downloading: 100%|█████████████████████████| 9.94G/9.94G [04:34<00:00, 38.8MB/s]
 Downloading: 100%|██████████████████████████████| 200/200 [00:00<00:00, 241kB/s]
