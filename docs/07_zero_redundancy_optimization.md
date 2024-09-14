@@ -167,7 +167,7 @@ Password or token: $USER    # your account name on Neuron
 <p align="center"><img src="https://user-images.githubusercontent.com/84169368/218938419-f38c356b-e682-4b1c-9add-6cfc29d53425.png"/></p> 
 
 
-이제 주피터를 띄웠으니 `mixed_precision.ipynb` 불러서 mixed precision 하나씩 수행해보자.
+이제 주피터가 띄웠으니 `ch7/mixed_precision.ipynb` 불러서 mixed precision 하나씩 수행합니다.
 먼저 2개의 레이어를 가진 뉴럴넷을 정의합니다.
 ```
 import torch
@@ -570,6 +570,9 @@ HTML("""
 결론적으로 ZeRO-DP를 적용하면 기존보다 훨씬 큰 모델을 작은 GPU에서 학습시킬 수 있습니다. 바로 실습해봅시다. 먼저 configuration 파일을 만듭니다. 저는 learning rate scheduler, fp16, zero optimization (stage 1) 등을 활성화 시켰습니다. 이외에도 deepspeed configuration에는 매우 다양한 옵션들이 있습니다. 더 많은 옵션들은 https://www.deepspeed.ai/docs/config-json 여기에서 확인하세요.
 
 ```
+"""
+src/ch7/zero_dp_config.org.json
+"""
 {
   "train_batch_size": 16,
   "gradient_accumulation_steps": 1,
@@ -603,7 +606,7 @@ HTML("""
 
 ```
 """
-src/zero_dp_args.py
+src/ch7/zero_args.org.py
 """
 from argparse import ArgumentParser
 from datasets import load_dataset
@@ -619,7 +622,7 @@ tokenizer.pad_token = tokenizer.eos_token
 
 parser = ArgumentParser()
 parser.add_argument(
-    "--deepspeed_config", default="../src/zero_dp_config.json", type=str
+    "--deepspeed_config", default="src/zero_dp_config.org.json", type=str
 )
 parser.add_argument("--local_rank", default=0, type=int)
 args = parser.parse_args()
@@ -662,6 +665,8 @@ for i, data in enumerate(data_loader):
 ```
 
 ```
+(large-scale-lm) [gpu05] cd ch7
+
 [glogin01]$ deepspeed --num_gpus=4 ../src/zero_args.py --deepspeed_config=../src/zero_dp_config.json
 [2021-10-27 22:23:20,777] [WARNING] [runner.py:122:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
 [2021-10-27 22:23:20,955] [INFO] [runner.py:360:main] cmd = /usr/bin/python3 -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMCwgMSwgMiwgM119 --master_addr=127.0.0.1 --master_port=29500 ../src/zero_args.py --deepspeed_config=../src/zero_dp_config.json
