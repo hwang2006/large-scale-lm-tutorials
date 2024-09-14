@@ -203,18 +203,20 @@ f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} MB"
     
 이 과정은 단순히 `0.524796132`와 같은 파라미터를 `0.5247`과 같이 잘라내는 작업입니다.
    
-보시다시피 용량도 FP32 모델의 절반정도 사이즈를 가집니다. (1.0 GB + 0.5 GB)
+보시다시피 용량도 FP32 모델의 절반정도 사이즈를 가집니다. (1.0 MB + 0.5 MB)
 ```
 fp16_model = Net().half().to("cuda")
 fp16_model.load_state_dict(fp32_model.state_dict())
 ```
+```
 <All keys matched successfully>
-
 ```
-f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} GiB"
 ```
-'GPU = 1.5029296875 GiB'
-
+f"GPU = {torch.cuda.memory_allocated(0) / (1024 ** 2)} MB"
+```
+```
+'GPU = 1.5029296875 MB'
+```
 
 ### 2) Forward
     
@@ -230,7 +232,7 @@ import torch
 # example input sizes
 batch_size, hidden_size = 4, 512
 
-# create dummy data (bsz=4, hid=256)
+# create dummy data (bsz=4, hid=512)
 x = torch.randn(batch_size,hidden_size, dtype=torch.half, device="cuda") 
 
 # do forward
@@ -238,6 +240,8 @@ z2 = fp16_model(x)
 
 # check dtypr of output logits
 f"logits type = {z2.dtype}"
+```
+```
 'logits type = torch.float16'
 ```
 
