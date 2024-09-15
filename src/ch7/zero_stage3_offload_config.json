@@ -1,0 +1,41 @@
+{
+    "fp16": {
+        "enabled": true,
+        "loss_scale": 0,
+        "loss_scale_window": 1000,
+        "initial_scale_power": 16,
+        "hysteresis": 2,
+        "min_loss_scale": 1
+    },
+    "scheduler": {
+        "type": "WarmupDecayLR",
+        "params": {
+            "total_num_steps": 300,
+            "warmup_min_lr": 0,
+            "warmup_max_lr": 3e-5,
+            "warmup_num_steps": 30
+        },
+    },
+    "zero_optimization": {
+        "stage": 3,
+        "offload_optimizer": {
+            "device": "cpu",
+            "pin_memory": true
+        },
+        "offload_param": {
+            "device": "cpu",
+            "pin_memory": true
+        },
+        "overlap_comm": true,
+        "contiguous_gradients": true,
+        "allgather_bucket_size": 5e8,
+        "reduce_bucket_size": 5e8,
+        "sub_group_size": 1e9,
+        "stage3_max_live_parameters": 1e9,
+        "stage3_max_reuse_distance": 1e9,
+    },
+    "gradient_accumulation_steps": 1,
+    "train_batch_size": 16,
+    "wall_clock_breakdown": false,
+    "zero_force_ds_cpu_optimizer": false
+}
