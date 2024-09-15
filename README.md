@@ -7,7 +7,7 @@ This repository provides a comprehensive guide to large-scale distributed traini
 본 튜토리얼 사이트는 TUNiB의 고현웅님의 [large-scale language modeling tutorials with PyTorch](https://github.com/tunib-ai/large-scale-lm-tutorials) 사이트를 기반으로 작성한 사이트 입니다. 이 자료는 대규모 언어모델 개발에 필요한 여러가지 기술들을 소개드리기 위해 마련하였으며 기본적으로 PyTorch와 Transformer 언어모델에 대한 지식이 있다고 가정하고 만들었습니다. 내용 중 틀린부분이 있거나 궁금하신 부분이 있으시면 이슈나 메일로 문의 주시면 감사하겠습니다. 
 
 - 목차의 대분류는 '세션', 소분류는 '챕터'라고 명명하였습니다.
-- 모든 소스코드 및 노트북 파일은 [Github](https://github.com/hwang2006/large-scale-lm-tutorials)와 [NBViewer](https://nbviewer.org/github/hwang2006/large-scale-lm-tutorials/tree/main/notebooks/)에 공개되어 있습니다. <br>
+- 모든 소스코드 및 노트북 파일은 [Github](https://github.com/hwang2006/large-scale-lm-tutorials)에 공개되어 있습니다. <br>
 <!-- - Github에서 열람하시는 것보다 [NBViewer](https://nbviewer.org/github/hwang2006/large-scale-lm-tutorials/tree/main/notebooks/) 로 열람하시는 것을 추천드립니다. -->
 
 ## Contents
