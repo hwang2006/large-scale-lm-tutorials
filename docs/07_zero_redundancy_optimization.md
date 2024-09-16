@@ -78,7 +78,7 @@ with amp.scale_loss(loss0, optimizer, loss_id=loss_ids[0]) as scaled_loss:
 
 ### 0) 모델과 옵티마이저 생성
 
-먼저 주피터를 설치하자. 
+#### 먼저 주피터를 설치 및 실행하고 PC 또는 랩탑에서 주피터 노트북을 띄웁니다.  
 ```
 (large-scale-lm) [gpu05]$ conda install jupyter chardet cchardet -y; python -m ipykernel install --user --name large-scale-lm
 ```
@@ -167,7 +167,7 @@ Password or token: $USER    # your account name on Neuron
 <p align="center"><img src="https://user-images.githubusercontent.com/84169368/218938419-f38c356b-e682-4b1c-9add-6cfc29d53425.png"/></p> 
 
 
-이제 주피터가 띄웠으니 `ch7/mixed_precision.ipynb` 불러서 mixed precision 하나씩 수행합니다.
+이제 주피터가 성공적으로 띄워졌으면 `ch7/mixed_precision.ipynb` 불러서 아래 mixed precision 실습을 하나씩 수행합니다.
 먼저 2개의 레이어를 가진 뉴럴넷을 정의합니다.
 ```
 import torch
