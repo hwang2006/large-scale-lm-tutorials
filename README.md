@@ -296,7 +296,7 @@ Executing transaction: done
 ```
 
 ## 주피터 띄워서 실습하기 
-참고로 터미날 상에서 모든 실습을 할 수도 있지만 주피터를 띄워서 본 레포지터리에 있는 코드들을 Hands-on 실습을 할 수도 있습니다. [7. Zero Redundancy Optimization](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/07_zero_redundancy_optimization.md) **Mixed Precision** 실습 부분에 뉴론시스템 컴퓨터 노드에 주피터 서버를 실행하고 각자의 PC 또는 노트북에서 브라우저를 띄워서 뉴론 주피터 서버에 연결하는 방법이 설명되어 있습니다.  
+참고로 터미날 상에서 모든 실습을 할 수도 있지만 주피터를 띄워서 본 레포지터리에 있는 코드들을 Hands-on 실습을 할 수도 있습니다. [7. Zero Redundancy Optimization](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/07_zero_redundancy_optimization.md) 첫부분인 **Mixed Precision** 실습 부분에 뉴론시스템 컴퓨터 노드에 주피터 서버를 실행하고 각자의 PC 또는 노트북에서 브라우저를 띄워서 뉴론 주피터 서버에 연결하는 방법이 설명되어 있습니다.  
 
 ## LICENSE
 
