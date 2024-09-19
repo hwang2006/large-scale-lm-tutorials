@@ -1075,12 +1075,12 @@ Gradient Bucekting는 Gradient를 일정한 사이즈의 bucket에 저장해두�
 
 
 ## Distributed Training on a Supercomputer with Horovod
-슈퍼컴퓨터에서 Horovod를 사용한 Distributed Data Parallel 실습하기는 아래 깃허브 사이트에 자세히 기술되었습니다. 
+슈퍼컴퓨터에서 Horovod 프레임워크를 사용한 Distributed Data Parallelism 실습하기는 아래 깃허브 사이트에 자세히 기술되었습니다. 
 - https://github.com/hwang2006/KISTI-DL-tutorial-using-horovod
 
 
 ## Distributed Training on a Supercomputer with Pytorch Lightning
-슈퍼컴퓨터에서 Pytorch Lightning을 사용한 Distributed Data Parallel 실습하기는 아래 깃허브 사이트에 자세히 기술되었습니다. 
+슈퍼컴퓨터에서 Pytorch Lightning을 사용한 Distributed Data Parallelism 실습하기는 아래 깃허브 사이트에 자세히 기술되었습니다. 
 - https://github.com/hwang2006/distributed-training-on-supercomputer-with-pytorch-lightning
 
 
