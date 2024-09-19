@@ -2,7 +2,7 @@
 이번 세션에서는 다양한 데이터 병렬화 기법에 대해 알아보겠습니다.
 
 **Contents**
-* [DP in PyTorch](1.-data-paralell-in-pytorch(`torch.nn.DataParallel`))
+* [DP in PyTorch](1.-data-paralell-in-pytorch-torch.nn.DataParallel)
 * [DDP in PyTorch](2.-distributed-data-parallel(ddp)-in-pytorch(`torch.nn.parallel.DistributedDataParallel`))
 * [Distributed Training with Horovod](3.-distributed-training-on-a-supercomputer-with-horovod)
 * [Distributed Training with Pytorch Lightning](4.-distributed-training-on-a-supercomputer-with-pytorch-lightning)
