@@ -1,7 +1,13 @@
 # Data Parallelism
-이번 세션에는 데이터 병렬화 기법에 대해 알아보겠습니다.
+이번 세션에서는 다양한 데이터 병렬화 기법에 대해 알아보겠습니다.
+
+**Contents**
+* [DP in PyTorch](1.-data-paralell-(dp)-in-pytorch(`torch.nn.DataParallel`))
+* [DDP in PyTorch](2.-distributed-data-parallel(ddp)-in-pytorch(`torch.nn.parallel.DistributedDataParallel`))
+* [Distributed Training with Horovod](3.-distributed-training-on-a-supercomputer-with-horovod)
+* [Distributed Training with Pytorch Lightning](4.-distributed-training-on-a-supercomputer-with-pytorch-lightning)
     
-## 1. `torch.nn.DataParallel`
+## 1. Data Paralell (DP) in PyTorch(`torch.nn.DataParallel`)
 가장 먼저 우리에게 친숙한 `torch.nn.DataParallel`의 동작 방식에 대해 알아봅시다. `torch.nn.DataParallel`은 single-node & multi-GPU에서 동작하는 multi-thread 모듈입니다.
 
 ### 1) Forward Pass
@@ -429,7 +435,7 @@ step:290, loss:0.7309739589691162
 step:300, loss:0.5764233469963074
 ```
 
-## 2. `torch.nn.DataParallel`의 문제점
+## `torch.nn.DataParallel`의 문제점
 ### 1) 멀티쓰레드 모듈이기 때문에 Python에서 비효율적임.
 Python은 GIL (Global Interpreter Lock)에 의해 하나의 프로세스에서 동시에 여러개의 쓰레드가 작동 할 수 없습니다. 따라서 근본적으로 멀티 쓰레드가 아닌 **멀티 프로세스 프로그램**으로 만들어서 여러개의 프로세스를 동시에 실행하게 해야합니다.
  
@@ -451,7 +457,7 @@ Python은 GIL (Global Interpreter Lock)에 의해 하나의 프로세스에서 �
 ### All to All 구현 방식
 ![](../images/allreduce_2.png)
  
-## 3. `torch.nn.parallel.DistributedDataParallel` (이하 DDP)
+## 2. Distributed Data Parallel(DDP) in PyTorch(`torch.nn.parallel.DistributedDataParallel`)
 ### Ring All-reduce 💍
 Ring All-reduce는 2017년에 바이두의 연구진이 개발한 새로운 연산입니다. 기존의 방식들에 비해 월등히 효율적인 성능을 보여줬기 때문에 DDP 개발의 핵심이 되었죠.
 - https://github.com/baidu-research/baidu-allreduce
@@ -1066,3 +1072,13 @@ Averge Accuracy: 0.824
 Gradient Bucekting는 Gradient를 일정한 사이즈의 bucket에 저장해두고 가득차면 다른 프로세스로 전송하는 방식입니다. 가장 먼저 `backward()` 연산 도중 뒤쪽부터 계산된 Gradient들을 차례대로 bucket에 저장하다가 bucket의 용량이 가득차면 All-reduce를 수행해서 각 device에 Gradient의 합을 전달합니다. 그림 때문에 헷갈릴 수도 있는데, bucket에 저장되는 것은 모델의 파라미터가 아닌 해당 레이어에서 출력된 Gradient입니다. 모든 bucket은 일정한 사이즈를 가지고 있으며 `bucket_size_mb` 인자를 통해 mega-byte 단위로 용량을 설정 할 수 있습니다.
    
 ![](../images/ddp_analysis_5.png)
+
+
+## 3. Distributed Training on a Supercomputer with Horovod
+https://github.com/hwang2006/KISTI-DL-tutorial-using-horovod
+
+
+## 4. Distributed Training on a Supercomputer with Pytorch Lightning 
+https://github.com/hwang2006/distributed-training-on-supercomputer-with-pytorch-lightning
+
+
