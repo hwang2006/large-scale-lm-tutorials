@@ -1076,11 +1076,13 @@ Gradient Bucekting는 Gradient를 일정한 사이즈의 bucket에 저장해두�
 
 ## Distributed Training on a Supercomputer with Horovod
 슈퍼컴퓨터에서 Horovod 프레임워크를 사용한 Distributed Data Parallelism 실습하기는 아래 깃허브 사이트에 자세히 기술되었습니다. 
+This GitHub site aims to facilitate the implementation of large-scale distributed deep learning on Neuron. It provides guidance on utilizing Horovod to execute deep learning code across multiple GPU nodes.
 - https://github.com/hwang2006/KISTI-DL-tutorial-using-horovod
 
 
 ## Distributed Training on a Supercomputer with Pytorch Lightning
 슈퍼컴퓨터에서 Pytorch Lightning을 사용한 Distributed Data Parallelism 실습하기는 아래 깃허브 사이트에 자세히 기술되었습니다. 
+This repository provides guidance on utilizing PyTorch Lightning to run distributed training on Neuron. PyTorch Lightning streamlines the development process by automating tasks like multi-GPU training and checkpointing, allowing users to concentrate on model architecture and research.
 - https://github.com/hwang2006/distributed-training-on-supercomputer-with-pytorch-lightning
 
 
