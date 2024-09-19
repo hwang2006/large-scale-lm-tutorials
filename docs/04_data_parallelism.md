@@ -2,13 +2,13 @@
 이번 세션에서는 다양한 데이터 병렬화 기법에 대해 알아보겠습니다.
 
 **Contents**
-* [DP in PyTorch](#1.-data-paralell-in-pytorch)
-* [DDP in PyTorch](#2.-distributed-data-parallel)
+* [DP in PyTorch](#data-paralell-in-pytorch)
+* [DDP in PyTorch](#distributed-data-paralle-(ddp)-in-PyTorch(torch.nn.parallel.distributeddataparallel))
 * [Distributed Training with Horovod](#distributed-training-on-a-supercomputer-with-horovod)
 * [Distributed Training with Pytorch Lightning](#distributed-training-on-a-supercomputer-with-pytorch-lightning)
     
-## 1. Data Paralell in PyTorch(`torch.nn.DataParallel`)
-가장 먼저 우리에게 친숙한 `torch.nn.DataParallel`의 동작 방식에 대해 알아봅시다. `torch.nn.DataParallel`은 single-node & multi-GPU에서 동작하는 multi-thread 모듈입니다.
+## Data Paralell in PyTorch
+가장 먼저 우리에게 친숙한 **`torch.nn.DataParallel`**의 동작 방식에 대해 알아봅시다. `torch.nn.DataParallel`은 single-node & multi-GPU에서 동작하는 multi-thread 모듈입니다.
 
 ### 1) Forward Pass
 1. 입력된 mini-batch를 **Scatter**하여 각 디바이스로 전송.
@@ -457,7 +457,7 @@ Python은 GIL (Global Interpreter Lock)에 의해 하나의 프로세스에서 �
 ### All to All 구현 방식
 ![](../images/allreduce_2.png)
  
-## 2. Distributed Data Parallel(DDP) in PyTorch(`torch.nn.parallel.DistributedDataParallel`)
+## Distributed Data Parallel(DDP) in PyTorch(`torch.nn.parallel.DistributedDataParallel`)
 ### Ring All-reduce 💍
 Ring All-reduce는 2017년에 바이두의 연구진이 개발한 새로운 연산입니다. 기존의 방식들에 비해 월등히 효율적인 성능을 보여줬기 때문에 DDP 개발의 핵심이 되었죠.
 - https://github.com/baidu-research/baidu-allreduce
@@ -1075,10 +1075,12 @@ Gradient Bucekting는 Gradient를 일정한 사이즈의 bucket에 저장해두�
 
 
 ## Distributed Training on a Supercomputer with Horovod
-https://github.com/hwang2006/KISTI-DL-tutorial-using-horovod
+슈퍼컴퓨터에서 Horovod를 사용한 Distributed Data Parallel 실습하기는 아래 깃허브 사이트에 자세히 기술되었습니다. 
+- https://github.com/hwang2006/KISTI-DL-tutorial-using-horovod
 
 
-## Distributed Training on a Supercomputer with Pytorch Lightning 
-https://github.com/hwang2006/distributed-training-on-supercomputer-with-pytorch-lightning
+## Distributed Training on a Supercomputer with Pytorch Lightning
+슈퍼컴퓨터에서 Pytorch Lightning을 사용한 Distributed Data Parallel 실습하기는 아래 깃허브 사이트에 자세히 기술되었습니다. 
+- https://github.com/hwang2006/distributed-training-on-supercomputer-with-pytorch-lightning
 
 
