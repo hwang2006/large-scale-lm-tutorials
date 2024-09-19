@@ -2,12 +2,12 @@
 이번 세션에서는 다양한 데이터 병렬화 기법에 대해 알아보겠습니다.
 
 **Contents**
-* [DP in PyTorch](1.-data-paralell-(dp)-in-pytorch(`torch.nn.DataParallel`))
+* [DP in PyTorch](1.-data-paralell-in-pytorch(`torch.nn.DataParallel`))
 * [DDP in PyTorch](2.-distributed-data-parallel(ddp)-in-pytorch(`torch.nn.parallel.DistributedDataParallel`))
 * [Distributed Training with Horovod](3.-distributed-training-on-a-supercomputer-with-horovod)
 * [Distributed Training with Pytorch Lightning](4.-distributed-training-on-a-supercomputer-with-pytorch-lightning)
     
-## 1. Data Paralell (DP) in PyTorch(`torch.nn.DataParallel`)
+## 1. Data Paralell in PyTorch(`torch.nn.DataParallel`)
 가장 먼저 우리에게 친숙한 `torch.nn.DataParallel`의 동작 방식에 대해 알아봅시다. `torch.nn.DataParallel`은 single-node & multi-GPU에서 동작하는 multi-thread 모듈입니다.
 
 ### 1) Forward Pass
