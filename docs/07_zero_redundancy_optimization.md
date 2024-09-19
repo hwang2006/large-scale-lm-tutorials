@@ -602,7 +602,7 @@ src/ch7/zero_dp_config.org.json
 ```
 
 
-그리고 다음과 같은 코드를 작성합니다. argument parser의 옵션으로 `--local_rank`와 `--deepspeed_config`가 반드시 필요하며, 이 중 `--local_rank`는 스크립트 실행시에 자동으로 입력됩니다. 참고로, [5장](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/05_pipeline_parallelism.md)에서 PipeDream 코드 실행할 때 DeepSpeed를 이미 설치하였습니다.     
+그리고 다음과 같은 코드를 작성합니다. argument parser의 옵션으로 `--local_rank`와 `--deepspeed_config`가 반드시 필요하며, 이 중 `--local_rank`는 스크립트 실행시에 자동으로 입력됩니다. 참고로, [5장](https://github.com/hwang2006/large-scale-lm-tutorials/blob/main/docs/05_pipeline_parallelism.md)에서 **PipeDream** 코드 실행할 때 DeepSpeed를 이미 설치하였습니다.     
 
 ```
 """
