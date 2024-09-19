@@ -3,7 +3,7 @@
 
 **Contents**
 * [DP in PyTorch](#1.-data-paralell-in-pytorch)
-* [DDP in PyTorch](#2.-distributed-data-parallel(ddp)-in-pytorch(`torch.nn.parallel.DistributedDataParallel`))
+* [DDP in PyTorch](#2.-distributed-data-parallel)
 * [Distributed Training with Horovod](3.-distributed-training-on-a-supercomputer-with-horovod)
 * [Distributed Training with Pytorch Lightning](4.-distributed-training-on-a-supercomputer-with-pytorch-lightning)
     
