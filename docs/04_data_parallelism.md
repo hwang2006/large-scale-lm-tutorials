@@ -1083,7 +1083,7 @@ This repository provides guidance on utilizing PyTorch Lightning to run distribu
 - https://github.com/hwang2006/distributed-training-on-supercomputer-with-pytorch-lightning
 
 
-This site provides best practices for fine-tuning pretrained models (BERT, GPT-2) using PyTorch Lightning on a SLURM-managed supercomputer using multiple GPU nodes. It covers five tasks: document classification, sentence pair classification, sequence labeling, question answering, and sentence generation.
+This site provides best practices for fine-tuning pretrained models (BERT, GPT-2) using PyTorch Lightning on a SLURM-managed supercomputer using multiple GPU nodes. It covers five **NLP tasks**: (1)document classification, (2)sentence pair classification, (3)sequence labeling, (4)question answering, and (5)sentence generation.
 
 - https://github.com/hwang2006/NLP-practices-on-supercomputer-with-pytorch-lightning
   
