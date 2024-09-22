@@ -2090,7 +2090,8 @@ Root Cause (first observed failure):
 ```
 
 모델을 저장할 때에 (위의 경우에 50스탭 후에) 에러가 발생합니다. 예전 Megatron-LM 브랜치(`core_r0.5.0`)를 체크아웃해서 다시 실행해 보도록 하겠습니다.
-
+#### 해당 에러 관련해서 Megatron-LM GitHub 이슈을 생성했습니다. https://github.com/NVIDIA/Megatron-LM/issues/1134 
+ 
 ```
 (large-scale-lm) [gpu05]$ pwd
 /scratch/qualis/large-scale-lm-tutorials/src/Megatron-LM
