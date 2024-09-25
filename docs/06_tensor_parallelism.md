@@ -1189,7 +1189,7 @@ Successfully installed transformer_engine-1.10.0+08a85d3
 ...
 salloc: Nodes gpu[05] are ready for job
 [gpu05]$ pwd
-/scratch/qualis/git-projects/large-scale-lm-tutorials/src/ch6
+/scratch/qualis/git-projects/large-scale-lm-tutorials/src/ch6_tensor_parallelism/Megatron-LM
 [gpu05]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 [gpu05]$ conda activate large-scale-lm
 ```
