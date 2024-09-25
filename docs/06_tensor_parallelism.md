@@ -712,9 +712,8 @@ wget is already the newest version (1.19.4-1ubuntu2.2).
 -->
 ```
 # Megatron-LM을 clone 합니다.
-[glogin01]$ cd ..
 [glogin01]$ pwd
-/scratch/qualis/large-scale-lm-tutorials/src
+/scratch/qualis/large-scale-lm-tutorials/src/ch6_tensor_parallelism
 [glogin01]$ git clone https://github.com/NVIDIA/Megatron-LM
 Cloning into 'Megatron-LM'...
 remote: Enumerating objects: 6281, done.
