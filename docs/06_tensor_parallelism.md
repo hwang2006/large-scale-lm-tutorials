@@ -2089,7 +2089,7 @@ Root Cause (first observed failure):
 ```
 
 모델을 저장할 때에 (위의 경우에 50스탭 후에) 에러가 발생합니다. 예전 Megatron-LM 브랜치(`core_r0.5.0`)를 체크아웃해서 다시 실행해 보도록 하겠습니다.
-#### 해당 에러 관련해서 Megatron-LM GitHub 이슈(https://github.com/NVIDIA/Megatron-LM/issues/1134) 를 생성했습니다. 임시 해결 방안으로 체크포인터 포맷을 `torch`로 지정하고 실행하면 에러 없이 잘 실행되는 것이 확인할 수 있습니다. 참고로 디폴트 체크포인터 포맷은 `torch_dist`입니다. 또한 아래와 같이 old Megatron-LM Branch 코드를 git checkout하고 실행할 수도 있습니다.    
+#### 해당 에러 관련해서 Megatron-LM GitHub 이슈(https://github.com/NVIDIA/Megatron-LM/issues/1134) 를 생성했습니다. 임시 해결 방안으로 체크포인터 포맷을 `torch`로 지정하고 (--ckpt-format torch) 실행하면 에러 없이 잘 실행되는 것이 확인할 수 있습니다. 참고로 디폴트 체크포인터 포맷은 `torch_dist`입니다. 또한 아래와 같이 old Megatron-LM Branch 코드를 git checkout하고 실행할 수도 있습니다.    
  
 ```
 (large-scale-lm) [gpu05]$ pwd
