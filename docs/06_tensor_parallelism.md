@@ -767,13 +767,13 @@ MIG (Multi-Instance GPU)에서 빌딩하면 위와 같이 런타임 에러가 �
 [glogin02]$ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
 [glogin02]$ cd ..
 [glogin02]$ pwd
-/scratch/qualis/large-scale-lm-tutorials/src
+/scratch/qualis/large-scale-lm-tutorials/src/ch6_tensor_parallelism
 ```
 Apex를 성공적으로 빌당되면 로그인 노드 1 - 3번 중에 아무 노드에서 계속해서 튜토리얼을 진행해도 됩니다.  
 이제 데이터셋을 만들어보도록 하겠습니다. Megatron-LM으로 모델을 Pre-training을 할 때는 `{\"text\": \"샘플\"}`과 같은 json 구조가 여러라인으로 구성된 간단한 구조의 jsonl 파일을 만들면 되고, Fine-tuning의 경우는 해당 태스크에 맞게 데이터셋을 구성해야 합니다. 본 튜토리얼에서는 Pre-training만 다루고 있기 때문에 Fine-tuning이 필요하시면 Megatron-LM 깃헙 레포를 참고해주세요.
 ```
 """
-src/ch6/megatron_datasets.py
+src/ch6_tensor_parallelism/megatron_datasets.py
 """
 
 import json
