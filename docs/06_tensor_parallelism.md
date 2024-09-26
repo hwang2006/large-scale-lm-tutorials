@@ -2847,19 +2847,18 @@ Evaluating iter 10/10
  validation loss at iteration 200 on test set | lm loss value: 7.693538E+00 | lm loss PPL: 2.194124E+03 |
 -----------------------------------------------------------------------------------------------------------
 ```
-#### Note that if you have been allocated 3 nodes with each 2 GPUs instead of 1 node with 4 GPUs, then the `pretrain_gpt.py` command looks like as follows:
-
+#### Note that if you are allocated 3 nodes with 2 GPUs each, instead of 1 node with 4 GPUs, then the pretrain_gpt.py command would look as follows:
 ```
 (large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 srun torchrun --nnodes=3 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu30:12345  pretrain_gpt.py     --tensor-model-parallel-size 2     --pipeline-model-parallel-size 3         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel --ckpt-format torch
 ```
 
-#### Note that if you might want to use ZERO1 (?)`distributed-optimizer`, you could put `--use-distributed-optimizer` in the command line as follows. 
+#### Note that if you want to use the ZERO1(?) distributed optimizer, you can add --use-distributed-optimizer to the command line as follows: 
 
 ```
 CUDA_DEVICE_MAX_CONNECTIONS=1 srun torchrun --nnodes=3 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu30:12345  pretrain_gpt.py     --tensor-model-parallel-size 2     --pipeline-model-parallel-size 3         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel --ckpt-format torch  --use-distributed-optimizer
 ```
 
-#### Pleaser refer to some GitHub issues relating to pipeline parallel + ZERO 1/2/3.
+#### Please refer to some GitHub issues related to pipeline parallelism combined with ZeRO 1/2/3.
 - https://github.com/NVIDIA/Megatron-LM/issues/589
 - https://github.com/microsoft/DeepSpeed/issues/1110
 
