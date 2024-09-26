@@ -2111,7 +2111,7 @@ docs/            megatron/                  pretrain_retro.py              tests
 examples/        megatron_datasets.jsonl    pretrain_t5.py                 tools/
 .git/            merges.txt                 pretrain_vision_classify.py    vocab.json
 .github/         my-gpt2_text_document.bin  pretrain_vision_dino.py
-(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 4  pretrain_gpt.py     --tensor-model-parallel-size 4     --pipeline-model-parallel-size 8         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
+(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 4  pretrain_gpt.py     --tensor-model-parallel-size 4     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel
 W0914 19:37:31.953000 47780312846272 torch/distributed/run.py:757]
 W0914 19:37:31.953000 47780312846272 torch/distributed/run.py:757] *****************************************
 W0914 19:37:31.953000 47780312846272 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
@@ -2847,6 +2847,34 @@ Evaluating iter 10/10
  validation loss at iteration 200 on test set | lm loss value: 7.693538E+00 | lm loss PPL: 2.194124E+03 |
 -----------------------------------------------------------------------------------------------------------
 ```
+#### Can we do some experiments with 3D Parallelism, including Data Parallel (DP), using the `pretrain_gpt.py` script?
+
+- Yes, it appears that you can indeed experiment with 3D Parallelism (Tensor, Pipeline, Data Parallel), using the pretrain_gpt.py script.
+- For example, given the parameters in the command line like `--nproc_per_node 4  pretrain_gpt.py  --tensor-model-parallel-size 2  --pipeline-model-parallel-size 1`, it is observed that the DP degree is indeed automatically set to 2 as follows (`Total processes = Tensor Parallel size × Pipeline Parallel size × Data Parallel size`):
+```
+(large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 4  pretrain_gpt.py     --tensor-model-parallel-size 2     --pipeline-model-parallel-size 1         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel --ckpt-format torch
+.
+.
+.
+------------------------ arguments ------------------------
+  accumulate_allreduce_grads_in_fp32 .............. False
+  adam_beta1 ...................................... 0.9
+  adam_beta2 ...................................... 0.999
+  adam_eps ........................................ 1e-08
+  .
+  .
+  .
+  data_parallel_size .............................. 2
+  .
+  .
+  pipeline_model_parallel_size .................... 1
+  .
+  .
+  tensor_model_parallel_size ...................... 2
+  .
+  .
+```
+
 #### Note that if you are allocated 3 nodes with 2 GPUs each, instead of 1 node with 4 GPUs, then the pretrain_gpt.py command would look as follows:
 ```
 (large-scale-lm) [gpu05]$ CUDA_DEVICE_MAX_CONNECTIONS=1 srun torchrun --nnodes=3 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu30:12345  pretrain_gpt.py     --tensor-model-parallel-size 2     --pipeline-model-parallel-size 3         --num-layers 24     --hidden-size 1024     --num-attention-heads 16     --seq-length 1024     --max-position-embeddings 1024     --micro-batch-size 4     --global-batch-size 16     --lr 0.00015     --train-iters 200     --lr-decay-iters 320000     --lr-decay-style cosine     --min-lr 1.0e-5     --weight-decay 1e-2     --lr-warmup-fraction .01     --clip-grad 1.0     --fp16 --data-path  my-gpt2_text_document     --vocab-file vocab.json     --merge-file merges.txt     --split 949,50,1 --log-interval 10     --save-interval 50    --eval-interval 100     --eval-iters 10 --distributed-backend nccl  --save checkpoints/gpt2_345m_dist_mp     --load  checkpoints/gpt2_345m_dist_mp --attention-softmax-in-fp32 --sequence-parallel --ckpt-format torch
