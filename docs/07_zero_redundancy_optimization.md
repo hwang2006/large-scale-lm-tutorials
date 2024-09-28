@@ -1394,7 +1394,7 @@ for i, data in enumerate(data_loader):
 
 ```
 ## stage 3 실행 예
-deepspeed --num_gpus=4 zero_config.3.py
+(large-scale-lm) [gpu05]$ deepspeed --num_gpus=4 zero_config.3.py
 [2024-09-15 18:05:44,200] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
 [2024-09-15 18:05:45,962] [WARNING] [runner.py:212:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
 Detected VISIBLE_DEVICES=0,1,2,3 but ignoring it because one or several of --include/--exclude/--num_gpus/--num_nodes cl args were used. If you want to use CUDA_VISIBLE_DEVICES don't pass any of these arguments to deepspeed.
