@@ -1393,7 +1393,7 @@ for i, data in enumerate(data_loader):
 ```
 
 ```
-## stage 3 실행 예
+## stage 3 실행 예 1
 (large-scale-lm) [gpu05]$ deepspeed --num_gpus=4 zero_config.3.py
 [2024-09-15 18:05:44,200] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
 [2024-09-15 18:05:45,962] [WARNING] [runner.py:212:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
@@ -1697,9 +1697,107 @@ step:300, loss:3.62109375
 [2024-09-15 18:06:52,543] [INFO] [launch.py:351:main] Process 41694 exits successfully.
 [2024-09-15 18:06:52,543] [INFO] [launch.py:351:main] Process 41696 exits successfully.
 ```
- 
+
+```
+## Stage 3 실행 예 2 
+(large-scale-lm) [gpu03]$ deepspeed --num_gpus=4 zero_args.py --deepspeed_config=zero_dp_config.json
+Detected VISIBLE_DEVICES=0,1,2,3 but ignoring it because one or several of --include/--exclude/--num_gpus/--num_nodes cl args were used. If you want to use CUDA_VISIBLE_DEVICES don't pass any of these arguments to deepspeed.
+[2024-09-28 15:53:29,370] [INFO] [runner.py:585:main] cmd = /scratch/qualis/miniconda3/envs/large-scale-lm/bin/python -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMCwgMSwgMiwgM119 --master_addr=127.0.0.1 --master_port=29500 --enable_each_rank_log=None zero_args.py --deepspeed_config=zero_dp_config.json
+[2024-09-28 15:53:30,718] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-28 15:53:32,800] [INFO] [launch.py:139:main] 0 NCCL_HOME=/scratch/qualis/nccl_2.11.4-1+cuda11.4_x86_64
+[2024-09-28 15:53:32,800] [INFO] [launch.py:146:main] WORLD INFO DICT: {'localhost': [0, 1, 2, 3]}
+[2024-09-28 15:53:32,800] [INFO] [launch.py:152:main] nnodes=1, num_local_procs=4, node_rank=0
+[2024-09-28 15:53:32,800] [INFO] [launch.py:163:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0, 1, 2, 3]})
+[2024-09-28 15:53:32,800] [INFO] [launch.py:164:main] dist_world_size=4
+[2024-09-28 15:53:32,800] [INFO] [launch.py:168:main] Setting CUDA_VISIBLE_DEVICES=0,1,2,3
+[2024-09-28 15:53:32,801] [INFO] [launch.py:256:main] process 173610 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'zero_args.py', '--local_rank=0', '--deepspeed_config=zero_dp_config.json']
+[2024-09-28 15:53:32,802] [INFO] [launch.py:256:main] process 173611 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'zero_args.py', '--local_rank=1', '--deepspeed_config=zero_dp_config.json']
+[2024-09-28 15:53:32,803] [INFO] [launch.py:256:main] process 173612 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'zero_args.py', '--local_rank=2', '--deepspeed_config=zero_dp_config.json']
+[2024-09-28 15:53:32,803] [INFO] [launch.py:256:main] process 173613 spawned with command: ['/scratch/qualis/miniconda3/envs/large-scale-lm/bin/python', '-u', 'zero_args.py', '--local_rank=3', '--deepspeed_config=zero_dp_config.json']
+[2024-09-28 15:53:35,816] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-28 15:53:35,831] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-28 15:53:35,834] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2024-09-28 15:53:35,872] [INFO] [real_accelerator.py:203:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+[2024-09-28 15:53:38,674] [INFO] [logging.py:96:log_dist] [Rank -1] DeepSpeed info: version=0.15.1, git-hash=unknown, git-branch=unknown
+[2024-09-28 15:53:38,674] [INFO] [comm.py:652:init_distributed] cdb=None
+[2024-09-28 15:53:38,674] [INFO] [comm.py:683:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/scratch/qualis/miniconda3/envs/large-scale-lm/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+.
+.
+.
+[2024-09-28 15:53:42,501] [INFO] [config.py:1003:print]   zero_enabled ................. True
+[2024-09-28 15:53:42,501] [INFO] [config.py:1003:print]   zero_force_ds_cpu_optimizer .. True
+[2024-09-28 15:53:42,501] [INFO] [config.py:1003:print]   zero_optimization_stage ...... 3
+[2024-09-28 15:53:42,501] [INFO] [config.py:989:print_user_config]   json = {
+    "train_batch_size": 16,
+    "gradient_accumulation_steps": 1,
+    "scheduler": {
+        "type": "WarmupDecayLR",
+        "params": {
+            "total_num_steps": 300,
+            "warmup_min_lr": 0,
+            "warmup_max_lr": 3e-05,
+            "warmup_num_steps": 30
+        }
+    },
+    "fp16": {
+        "enabled": true,
+        "initial_scale_power": 32,
+        "loss_scale_window": 1000,
+        "hysteresis": 2,
+        "min_loss_scale": 1
+    },
+    "zero_optimization": {
+        "stage": 3
+    },
+    "zero_allow_untested_optimizer": true,
+    "wall_clock_breakdown": false,
+    "steps_per_print": 1.000000e+10
+}
+.
+.
+.
+step:30, loss:3.66796875
+step:40, loss:3.03515625
+step:50, loss:2.619140625
+step:60, loss:2.802734375
+step:70, loss:2.388671875
+step:80, loss:2.671875
+step:90, loss:3.107421875
+step:100, loss:3.01171875
+step:110, loss:2.65625
+step:120, loss:3.08984375
+step:130, loss:2.50390625
+step:140, loss:3.087890625
+step:150, loss:3.94921875
+step:160, loss:3.171875
+step:170, loss:3.169921875
+step:180, loss:1.736328125
+step:190, loss:3.697265625
+step:200, loss:3.900390625
+step:210, loss:3.65625
+step:220, loss:3.171875
+step:230, loss:3.451171875
+step:240, loss:2.64453125
+step:250, loss:3.37109375
+step:260, loss:3.75390625
+step:270, loss:3.375
+step:280, loss:2.748046875
+step:290, loss:2.328125
+step:300, loss:3.65625
+[2024-09-28 15:54:46,882] [INFO] [launch.py:351:main] Process 173610 exits successfully.
+[2024-09-28 15:54:46,882] [INFO] [launch.py:351:main] Process 173611 exits successfully.
+[2024-09-28 15:54:46,882] [INFO] [launch.py:351:main] Process 173612 exits successfully.
+[2024-09-28 15:54:46,882] [INFO] [launch.py:351:main] Process 173613 exits successfully.
+```
+
 ## 4. Activation Checkpointing
-    
+     
 FP 16과 32의 model, gradient, optimizer state 이외에 또 하나의 큰 메모리 영역은 Activation Memory 영역입니다. Activation은 model weight에 곱해지는 입력텐서들을 의미하는데요. 만약 $y = w_1 \\cdot (w_2 \\cdot x)$와 같은 뉴럴넷이 있다면, $w_1$과 곱해지는 $x$와 $w_2$와 곱해지는 $w_2 \\cdot x$ 등의 텐서들이 Activation Memory에 해당합니다. 
 ```
 """
