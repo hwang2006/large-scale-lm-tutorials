@@ -2,7 +2,7 @@
 
 ![](images/megatron_3d.png)
 
-This repository provides a comprehensive, in-depth guide for large-scale distributed training on supercomputers managed with SLURM. It briefly covers basics of collective communication in messege passing, delving into data parallelism techniques such as Data Parallelism (DP) and Distributed Data Parallelism (DDP) in PyTorch, and model parallelism techniques including Tensor Parallelism, Pipeline Parallelism, and 3D Parallelism, with hands-on PyTorch code examples. It also covers how to set up and leverage distributed training tools like Megatron-LM and DeepSpeed to efficiently run the PyTorch codes using multiple GPUs on a supercomputer.
+This repository provides a comprehensive, in-depth guide for large-scale distributed training of Large Language Models (LLMs) on supercomputers managed with SLURM. It briefly covers basics of collective communication in messege passing, delving into data parallelism techniques such as Data Parallelism (DP) and Distributed Data Parallelism (DDP) in PyTorch, and model parallelism techniques including Tensor Parallelism, Pipeline Parallelism, and 3D Parallelism, with hands-on PyTorch code examples. It also covers how to set up and leverage distributed training tools like Megatron-LM and DeepSpeed to efficiently run the PyTorch codes using multiple GPUs on a supercomputer.
 
 본 튜토리얼 사이트는 TUNiB의 고현웅님의 [large-scale language modeling tutorials with PyTorch](https://github.com/tunib-ai/large-scale-lm-tutorials) 사이트를 기반으로 작성한 사이트 입니다. 이 자료는 대규모 언어모델 개발에 필요한 여러가지 기술들을 소개드리기 위해 마련하였으며 기본적으로 PyTorch와 Transformer 언어모델에 대한 지식이 있다고 가정하고 만들었습니다. 내용 중 틀린부분이 있거나 궁금하신 부분이 있으시면 이슈나 메일로 문의 주시면 감사하겠습니다. 
 
