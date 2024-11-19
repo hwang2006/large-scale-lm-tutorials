@@ -395,7 +395,7 @@ PipeDream은 Profiling과 Optimizing을 통해 최적의 Partioning 전략을 �
 ## 4. Variations of 1F1B Pipelining
 
 PipeDream의 1F1B 파이프라이닝을 개선한 두가지 버전의 파이프라인 전략을 소개합니다.   
-### 1) PipeDream 2BW (2-buffered weight update)\n",
+### 1) PipeDream 2BW (2-buffered weight update)
 PipeDream 2BW는 PipeDream의 메모리 비효율성을 개선하기 위해 등장했습니다. 핵심 아이디어는 파이프라이닝 중에 Gradient Accumulation을 수행하는 것입니다. 여러개의 Gradient들을 모아두다가 한번에 업데이트를 수행하는 방식으로 메모리 비효율성 문제를 해결했죠. 2BW는 이전과 달리 단 두개의 weight version만 유지하면 됩니다.
    
 ![](../images/pipe_dream_2bw.png)
