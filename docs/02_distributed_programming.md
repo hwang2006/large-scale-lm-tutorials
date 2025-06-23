@@ -468,7 +468,7 @@ Broadcast는 특정 프로세스에 있는 데이터를 그룹내의 모든 프�
 
 ```
 """
-src/broadcast.py
+src/ch2/broadcast.py
 """
 
 import torch
