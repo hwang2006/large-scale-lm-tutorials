@@ -25,7 +25,10 @@ if __name__ == "__main__":
     for rank in range(4):
         process = mp.Process(target=fn, args=(rank, "A0", "B1"))
         # 서브프로세스 생성
-        process.daemon = False
+        #process.daemon = False 
+        process.daemon = True
+        # False means that child processes will run independently of the main process 
+        # and will not be terminated when the main process exits.
         # 데몬 여부 (메인프로세스 종료시 함께 종료)
         process.start()
         # 서브프로세스 시작
@@ -35,6 +38,5 @@ if __name__ == "__main__":
         process.join()  # main process is waitiing for the subprocesses exit. 
         # 서브 프로세스 join (=완료되면 종료)
         
-
     print("Main Process is done")
 
