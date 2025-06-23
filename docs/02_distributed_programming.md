@@ -506,6 +506,7 @@ salloc: Nodes gpu[10,17] are ready for job
 
 ```
 [gpu10]$ conda activate large-scale-lm
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 broadcast.py
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 broadcast.py
 W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757]
 W0908 15:57:10.869000 47684370574400 torch/distributed/run.py:757] *****************************************
@@ -643,6 +644,7 @@ if rank == 0:
 ```
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 reduce_sum.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 reduce_sum.py
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 
 W0908 19:22:40.917000 47001334897728 torch/distributed/run.py:757]
 W0908 19:22:40.917000 47001334897728 torch/distributed/run.py:757] *****************************************
@@ -685,6 +687,7 @@ if rank == 0:
 ```
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 reduce_max.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 reduce_max.py
 (large-scale-lm) [gpu10]$  srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 reduce_max.py
 W0908 19:27:12.994000 47977569922112 torch/distributed/run.py:757]
 W0908 19:27:12.994000 47977569922112 torch/distributed/run.py:757] *****************************************
@@ -733,6 +736,7 @@ print(f"after rank {rank}: {output}\n")
 ```
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 scatter.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 scatter.py
 (large-scale-lm) [gpu10]$  srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 scatter.py
 W0908 19:29:22.166000 47327257168960 torch/distributed/run.py:757]
 W0908 19:29:22.166000 47327257168960 torch/distributed/run.py:757] *****************************************
@@ -772,28 +776,35 @@ src/ch2/scatter_nccl.py
 import torch
 import torch.distributed as dist
 
+import os
+
 dist.init_process_group("nccl")
+local_rank = int(os.environ['LOCAL_RANK'])
 world_size = dist.get_world_size()
 rank = dist.get_rank()
-local_rank = int(os.environ['LOCAL_RANK'])
-
-#torch.cuda.set_device(rank)
 torch.cuda.set_device(local_rank)
 
-#inputs = torch.tensor([10.0, 20.0, 30.0, 40.0])
-#inputs = torch.split(tensor=inputs, dim=-1, split_size_or_sections=1)
-
 inputs = torch.tensor([10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0])
-split_size = int(inputs.size(0) // world_size) + (1 if inputs.size(0) % world_size > rank else 0)
-inputs = torch.split(tensor=inputs, dim=-1, split_size_or_sections=split_size)
-#print(f"rank: {rank}, splited inputs : {inputs}")
 
-output = inputs[rank].contiguous().to(torch.cuda.current_device())
-print(f"after rank {rank}: {output}\n")
+sections = []
+N = inputs.size(0)
+base = N // world_size
+extra = N % world_size
+
+for i in range(world_size):
+    sections.append(base + (1 if i < extra else 0))
+# sections = [3, 3, 2, 2]
+inputs_split = torch.split(inputs, dim=-1, split_size_or_sections=sections)
+output = inputs_split[rank].contiguous().to(torch.cuda.current_device())
+
+print(f"rank {rank}: {output}")
+
+dist.destroy_process_group()
 ```
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 scatter_nccl.py
-# (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 scatter_nccl.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 scatter_nccl.py
+(large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 scatter_nccl.py
 W0908 19:32:01.899000 47271064988736 torch/distributed/run.py:757]
 W0908 19:32:01.899000 47271064988736 torch/distributed/run.py:757] *****************************************
 W0908 19:32:01.899000 47271064988736 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
@@ -878,6 +889,7 @@ else:
 ```
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 gather.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 gather.py
 (large-scale-lm) [gpu10]$  srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 gather.py
 W0908 19:36:04.870000 47971703446592 torch/distributed/run.py:757]
 W0908 19:36:04.870000 47971703446592 torch/distributed/run.py:757] *****************************************
@@ -918,6 +930,7 @@ print(f"rank {rank}: {tensor}\n")
 ```
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 allreduce_sum.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 allreduce_sum.py
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allreduce_sum.py
 W0908 19:38:53.667000 47797158214720 torch/distributed/run.py:757]
 W0908 19:38:53.667000 47797158214720 torch/distributed/run.py:757] *****************************************
@@ -964,6 +977,7 @@ print(f"rank {rank}: {tensor}\n")
 
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 allreduce_max.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 allreduce_max.py
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allreduce_max.py
 W0908 19:40:27.219000 47670963731520 torch/distributed/run.py:757]
 W0908 19:40:27.219000 47670963731520 torch/distributed/run.py:757] *****************************************
@@ -1021,6 +1035,7 @@ print(outputs_list)
 
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 allgather.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 allgather.py
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 allgather.py
 W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757]
 W0908 19:41:52.274000 47340615318592 torch/distributed/run.py:757] *****************************************
@@ -1072,6 +1087,7 @@ print(f"rank {rank}: {output}\n")
 
 ```
 # (large-scale-lm) [gpu10]$ python -m torch.distributed.launch --nproc_per_node=4 reduce_scatter.py
+# (large-scale-lm) [gpu10]$ torchrun --nproc_per_node=4 reduce_scatter.py
 (large-scale-lm) [gpu10]$ srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend c10d --rdzv_endpoint gpu10:12345 reduce_scatter.py
 W0908 19:43:26.981000 47070802037824 torch/distributed/run.py:757]
 W0908 19:43:26.981000 47070802037824 torch/distributed/run.py:757] *****************************************
