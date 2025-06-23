@@ -198,14 +198,14 @@ MPI는 Message Passing에 대한 표준 인터페이스를 의미합니다. MPI�
 
 ![](../images/open_mpi.png)
    
-### NCCL & GLOO\n",
+### NCCL & GLOO,
 실제로는 openmpi 보다는 nccl이나 gloo 같은 라이브러리를 사용하게 됩니다.
 - NCCL (NVIDIA Collective Communication Library)
-  - NVIDIA에서 개발한 GPU 특화 Message Passing 라이브러리 ('nickel'이라고 읽음)\n",
-  - NVIDIA GPU에서 사용시, 다른 도구에 비해 월등히 높은 성능을 보여주는 것으로 알려져있습니다.\n",
-- GLOO (Facebook's Collective Communication Library)\n",
-  - Facebook에서 개발된 Message Passing 라이브러리. \n",
-  - `torch`에서는 주로 CPU 분산처리에 사용하라고 추천하고 있습니다.\n",
+  - NVIDIA에서 개발한 GPU 특화 Message Passing 라이브러리 ('nickel'이라고 읽음)
+  - NVIDIA GPU에서 사용시, 다른 도구에 비해 월등히 높은 성능을 보여주는 것으로 알려져있습니다.
+- GLOO (Facebook's Collective Communication Library)
+  - Facebook에서 개발된 Message Passing 라이브러리. 
+  - `torch`에서는 주로 CPU 분산처리에 사용하라고 추천하고 있습니다.
   
 ### 백엔드 라이브러리 선택 가이드
 openmpi를 써야할 특별한 이유가 있는 것이 아니라면 nccl이나 gloo를 사용하는데, GPU에서 사용시 nccl, CPU에서 사용시 gloo를 사용하시면 됩니다. 더 자세한 정보는  https://pytorch.org/docs/stable/distributed.html 여기를 참고하세요.
@@ -281,7 +281,9 @@ dist.init_process_group(backend="nccl", rank=0, world_size=1)
 process_group = dist.new_group([0])
 # 0번 프로세스가 속한 프로세스 그룹 생성
 
-print(process_group)
+print(process_group
+
+dist.destroy_process_group()
 ```
 
 ```
@@ -307,6 +309,7 @@ def fn(rank, world_size):
     dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
     group = dist.new_group([_ for _ in range(world_size)])
     print(f"{group} - rank: {rank}")
+    dist.destroy_process_group()
 
 
 # 메인 프로세스
@@ -349,6 +352,8 @@ group = dist.new_group([_ for _ in range(dist.get_world_size())])
 # 프로세스 그룹 생성
 
 print(f"{group} - rank: {dist.get_rank()}\n")
+
+dist.destroy_process_group()
 ```
 ```
 # (large-scale-lm) [glogin01]$ python -m torch.distributed.launch --nproc_per_node=4 process_group_4.py
