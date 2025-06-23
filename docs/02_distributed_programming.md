@@ -773,12 +773,16 @@ import torch
 import torch.distributed as dist
 
 dist.init_process_group("nccl")
+world_size = dist.get_world_size()
 rank = dist.get_rank()
+local_rank = int(os.environ['LOCAL_RANK'])
+
 #torch.cuda.set_device(rank)
 torch.cuda.set_device(local_rank)
 
 #inputs = torch.tensor([10.0, 20.0, 30.0, 40.0])
 #inputs = torch.split(tensor=inputs, dim=-1, split_size_or_sections=1)
+
 inputs = torch.tensor([10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0])
 split_size = int(inputs.size(0) // world_size) + (1 if inputs.size(0) % world_size > rank else 0)
 inputs = torch.split(tensor=inputs, dim=-1, split_size_or_sections=split_size)
