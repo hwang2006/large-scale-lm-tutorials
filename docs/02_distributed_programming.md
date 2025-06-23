@@ -78,7 +78,7 @@ if __name__ == "__main__":
     print("Main Process is done")
 ```
 
-코드를 실행하기 위해서 모듀을 로드하고 `src/ch2` 디렉토리로 이동하고 콘다 환경을 활성화 시킨다.
+코드를 실행하기 위해서 필요한 모듈을 로드하고 `src/ch2` 디렉토리로 이동하고 콘다 환경을 활성화 시킨다.
 ```
 [glogin01]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 [glogin01]$ cd large-scale-lm-tutorials/src/ch2
