@@ -15,8 +15,19 @@ rank = dist.get_rank()
 torch.cuda.set_device(local_rank)
 
 inputs = torch.tensor([10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0])
-split_size = int(inputs.size(0) // world_size) + (1 if inputs.size(0) % world_size > rank else 0)
-inputs = torch.split(tensor=inputs, dim=-1, split_size_or_sections=split_size)
-print(f"rank: {rank}, splited inputs : {inputs}")
-output = inputs[rank].contiguous().to(torch.cuda.current_device())
-print(f"after rank {rank}: {output}\n")
+
+sections = []
+N = inputs.size(0)
+base = N // world_size
+extra = N % world_size
+
+for i in range(world_size):
+    sections.append(base + (1 if i < extra else 0))
+# sections = [3, 3, 2, 2]
+inputs_split = torch.split(inputs, dim=-1, split_size_or_sections=sections)
+output = inputs_split[rank].contiguous().to(torch.cuda.current_device())
+
+dist.destroy_process_group()
+
+print(f"rank {rank}: {output}")
+

@@ -4,10 +4,10 @@
 #SBATCH --partition=amd_a100nv_8
 ##SBATCH --partition=cas_v100nv_8
 ##SBATCH --partition=cas_v100_4
-#SBATCH --time=12:00:00        # walltime
+#SBATCH --time=48:00:00        # walltime
 #SBATCH --nodes=1             # the number of nodes 
 #SBATCH --ntasks-per-node=1   # number of tasks per node
-#SBATCH --gres=gpu:1          # number of gpus per node
+#SBATCH --gres=gpu:4          # number of gpus per node
 #SBATCH --cpus-per-task=8     # number of cpus per task
 
 #removing the old port forwading
