@@ -19,3 +19,5 @@ group = dist.new_group([_ for _ in range(dist.get_world_size())])
 # 프로세스 그룹 생성
 
 print(f"{group} - rank: {dist.get_rank()}\n")
+
+dist.destroy_process_group()

@@ -22,3 +22,5 @@ process_group = dist.new_group([0])
 # 0번 프로세스가 속한 프로세스 그룹 생성
 
 print(process_group)
+
+dist.destroy_process_group()
