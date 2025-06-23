@@ -281,7 +281,7 @@ dist.init_process_group(backend="nccl", rank=0, world_size=1)
 process_group = dist.new_group([0])
 # 0번 프로세스가 속한 프로세스 그룹 생성
 
-print(process_group
+print(process_group)
 
 dist.destroy_process_group()
 ```
