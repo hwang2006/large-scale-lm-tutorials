@@ -801,7 +801,8 @@ for i in range(world_size):
     sections.append(base + (1 if i < extra else 0))
 # sections = [3, 3, 2, 2]
 inputs_split = torch.split(inputs, dim=-1, split_size_or_sections=sections) # <class, 'tuple'>
-print(inputs_split)
+#print(inputs_split)
+#(tensor([10., 20., 30.]), tensor([40., 50., 60.]), tensor([70., 80.]), tensor([ 90., 100.]))
 output = inputs_split[rank].contiguous().to(torch.cuda.current_device())
 
 print(f"rank {rank}: {output}")
