@@ -24,12 +24,12 @@ input_list = torch.tensor([1, 10, 100, 1000]).to(torch.cuda.current_device()) * 
 #rank2 => tensor([   2,   20,  200, 2000], device='cuda:1')
 #rank3 => tensor([   3,   30,  300, 3000], device='cuda:1')
 
-#print(type(input_list)) #<class 'tuple'>
-#print(input_list)
-# rank0 => (tensor([0]), tensor([0]), tensor([0]), tensor([0]))
-# rank1 => (tensor([1]), tensor([10]), tensor([100]), tensor([1000]))
-# rank2 => (tensor([2]), tensor([20]), tensor([200]), tensor([2000]))
-# rank3 => (tensor([3]), tensor([30]), tensor([300]), tensor([3000]))
+#print(type(list(input_list))) #<class 'list'>
+#print(list(input_list))
+# rank0 => [tensor([0]), tensor([0]), tensor([0]), tensor([0])]
+# rank1 => [tensor([1]), tensor([10]), tensor([100]), tensor([1000])]
+# rank2 => [tensor([2]), tensor([20]), tensor([200]), tensor([2000])]
+# rank3 => [tensor([3]), tensor([30]), tensor([300]), tensor([3000])]
 
 #output = torch.tensor([0], device=torch.device(torch.cuda.current_device()),)
 #output = torch.zeros(1).to(torch.cuda.current_device())

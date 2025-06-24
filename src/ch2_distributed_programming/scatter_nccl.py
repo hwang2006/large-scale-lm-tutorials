@@ -27,7 +27,6 @@ for i in range(world_size):
 inputs_split = torch.split(inputs, dim=-1, split_size_or_sections=sections)
 output = inputs_split[rank].contiguous().to(torch.cuda.current_device())
 
-dist.destroy_process_group()
-
 print(f"rank {rank}: {output}")
 
+dist.destroy_process_group()
