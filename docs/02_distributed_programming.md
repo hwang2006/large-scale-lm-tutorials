@@ -822,10 +822,10 @@ W0908 19:32:02.126000 47347575663680 torch/distributed/run.py:757] *************
 W0908 19:32:02.126000 47347575663680 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed.
 W0908 19:32:02.126000 47347575663680 torch/distributed/run.py:757] *****************************************
 
-after rank 1: tensor([40., 50., 60.], device='cuda:1')
-after rank 0: tensor([10., 20., 30.], device='cuda:0')
-after rank 3: tensor([70., 80.], device='cuda:1')
-after rank 2: tensor([50., 60.], device='cuda:0')
+rank 3: tensor([ 90., 100.], device='cuda:3')
+rank 1: tensor([40., 50., 60.], device='cuda:1')
+rank 0: tensor([10., 20., 30.], device='cuda:0')
+rank 2: tensor([70., 80.], device='cuda:2')
 ```
 
 ```
