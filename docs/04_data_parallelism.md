@@ -564,7 +564,6 @@ dist.destroy_process_group()
 (large-scale-lm) [gpu05]$ python -m  torch.distributed.launch --nproc_per_node=4 ddp.org.py
 (large-scale-lm) [gpu05]$ torchrun --nproc_per_node=4 ddp.org.py
 (large-scale-lm) [gpu05]$ srun torchrun --nproc_per_node=4 ddp.org.py
-```
 W0628 19:55:33.583000 111443 site-packages/torch/distributed/run.py:793] 
 W0628 19:55:33.583000 111443 site-packages/torch/distributed/run.py:793] *****************************************
 W0628 19:55:33.583000 111443 site-packages/torch/distributed/run.py:793] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
@@ -608,6 +607,8 @@ step:270, loss:0.5114008188247681
 step:280, loss:0.7599917054176331
 step:290, loss:0.8055667281150818
 step:300, loss:0.4976884722709656
+```
+
 ```
 """
 src/ch4/ddp.py
