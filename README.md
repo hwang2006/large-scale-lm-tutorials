@@ -184,7 +184,7 @@ Executing transaction: done
 #     $ conda deactivate
 ```
 
-2. Install PyTorch
+2. Install PyTorch, jupyter, transformers and datasets
 ```
 [glogin01]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 [glogin01]$ conda activate large-scale-lm
