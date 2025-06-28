@@ -11,9 +11,9 @@
 
 ### 1) Forward Pass
 1. 입력된 mini-batch를 **Scatter**하여 각 디바이스로 전송.
-2. GPU-1에 올라와 있는 모델의 파라미터를 GPU-2,3,4로 **Broadcast**.
+2. GPU-0에 올라와 있는 모델의 파라미터를 GPU-1,2,3에 **Broadcast**.
 3. 각 디바이스로 복제된 모델로 **Forward**하여 Logits을 계산 함.
-4. 계산된 Logits을 **Gather**하여 GPU-1에 모음.
+4. 계산된 Logits을 **Gather**하여 GPU-0에 모음.
 5. Logits으로부터 **Loss**를 계산함. (with loss reduction)
    
 ![](../images/dp_forward.png)
