@@ -1,7 +1,3 @@
-"""
-src/ddp.py
-"""
-
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
@@ -82,3 +78,7 @@ for i, data in enumerate(data_loader):
 
     if i == 300:
         break
+
+# Ensure all ranks reach this point before destroying the process group
+dist.barrier()
+dist.destroy_process_group()

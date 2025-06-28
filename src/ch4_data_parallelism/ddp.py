@@ -1,180 +1,125 @@
+import os
+import sys
 import torch
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel
+from torch.nn.parallel import DistributedDataParallel as DDP
 
-from torch import nn
 from datasets import load_dataset
-from transformers import AutoTokenizer, DataCollatorWithPadding
-
+from transformers import (
+    AutoTokenizer,
+    DataCollatorWithPadding,
+    AutoModelForSequenceClassification,
+    get_scheduler,
+)
 from torch.utils.data import DataLoader, DistributedSampler
-
-from transformers import AutoModelForSequenceClassification
-#from transformers import AdamW
 from torch.optim import AdamW
-
-from transformers import get_scheduler
-
 from tqdm.auto import tqdm
-
 import evaluate
 
+def main():
+    # 1. Distributed init
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    world_size = dist.get_world_size()
+    torch.cuda.set_device(rank)
+    device = torch.device("cuda", rank)
 
-# initialize process group
-dist.init_process_group("nccl")
-rank = dist.get_rank()
-world_size = dist.get_world_size()
-torch.cuda.set_device(rank)
-device = torch.cuda.current_device()
+    batch_size = 32
 
+    # 2. Load and split dataset
+    raw_datasets = load_dataset("multi_nli", split="train")
+    train_test = raw_datasets.train_test_split(test_size=0.1, seed=42)
+    checkpoint = "bert-base-cased"
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 
-batch_size = 32
-device_count = torch.cuda.device_count() if torch.cuda.is_available() else 1
+    # 3. Tokenize
+    def tokenize_function(example):
+        return tokenizer(example["premise"], example["hypothesis"], truncation=True)
+    tokenized = train_test.map(tokenize_function, batched=True)
 
-raw_datasets = load_dataset("multi_nli", split="train")
+    # 4. Remove unused columns (do this for both splits!)
+    columns_to_remove = [
+        'promptID', 'pairID', 'premise', 'premise_binary_parse', 'premise_parse',
+        'hypothesis', 'hypothesis_binary_parse', 'hypothesis_parse', 'genre'
+    ]
+    for split in tokenized.keys():
+        tokenized[split] = tokenized[split].remove_columns(
+            [col for col in columns_to_remove if col in tokenized[split].column_names]
+        )
 
-train_test_datasets = raw_datasets.train_test_split(test_size=0.1, seed=42)
+    train_data = tokenized["train"].shuffle(seed=12)
+    eval_data = tokenized["test"].shuffle(seed=12)
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-checkpoint = "bert-base-cased"
-tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+    # 5. Distributed Sampler and DataLoader
+    train_sampler = DistributedSampler(
+        train_data, num_replicas=world_size, rank=rank, shuffle=True
+    )
+    train_loader = DataLoader(
+        train_data, batch_size=batch_size, sampler=train_sampler,
+        num_workers=4, pin_memory=True, collate_fn=data_collator
+    )
+    eval_sampler = DistributedSampler(
+        eval_data, num_replicas=world_size, rank=rank, shuffle=False
+    )
+    eval_loader = DataLoader(
+        eval_data, batch_size=batch_size, sampler=eval_sampler,
+        num_workers=4, pin_memory=True, collate_fn=data_collator
+    )
 
-def tokenize_function(example):
-    return tokenizer(example["premise"], example["hypothesis"], truncation=True)
+    # 6. Model, optimizer, scheduler
+    model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=3).to(device)
+    model = DDP(model, device_ids=[rank])
+    optimizer = AdamW(model.parameters(), lr=5e-5)
+    num_epochs = 1
+    num_training_steps = num_epochs * len(train_loader)
+    lr_scheduler = get_scheduler(
+        "linear", optimizer=optimizer,
+        num_warmup_steps=0, num_training_steps=num_training_steps,
+    )
 
-tokenized_datasets = train_test_datasets.map(tokenize_function, batched=True)
-tokenized_datasets = tokenized_datasets.remove_columns(['promptID', 'pairID', 'premise', 'premise_binary_parse', 'premise_parse', 'hypothesis', 'hypothesis_binary_parse', 'hypothesis_parse', 'genre'])
+    # 7. Training loop
+    progress_bar = tqdm(range(num_training_steps), disable=(rank != 0))
+    model.train()
+    for epoch in range(num_epochs):
+        train_sampler.set_epoch(epoch)
+        for batch in train_loader:
+            batch = {k: v.to(device) for k, v in batch.items()}
+            outputs = model(**batch)
+            loss = outputs.loss
+            loss.backward()
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
+            progress_bar.update(1)
+    progress_bar.close()  # Clean up tqdm
 
-data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
-
-
-#train_datasets = tokenized_datasets["train"].shuffle(seed=12).select(range(20000))
-train_datasets = tokenized_datasets["train"].shuffle(seed=12).select(range(353431))
-#valid_datasets = tokenized_datasets["test"].shuffle(seed=12).select(range(2000))
-valid_datasets = tokenized_datasets["test"].shuffle(seed=12).select(range(39271))
-
-train_dataloader = DataLoader(
-    #tokenized_datasets["train"], shuffle=True, batch_size=32, =data_collator
-    train_datasets, shuffle=True, batch_size=batch_size*device_count, collate_fn=data_collator
-)
-eval_dataloader = DataLoader(
-    #tokenized_datasets["test"], batch_size=64, collate_fn=data_collator
-    valid_datasets, batch_size=batch_size*device_count, collate_fn=data_collator
-)
-
-# create DistributedSampler
-train_sampler = DistributedSampler(
-    #datasets,
-    train_datasets,
-    num_replicas=world_size,
-    rank=rank,
-    shuffle=True,
-)
-train_dataloader = DataLoader(
-    #datasets,
-	train_datasets,
-    batch_size=32,
-    num_workers=8,
-    sampler=train_sampler,
-    shuffle=False,
-    pin_memory=True,
-    collate_fn=data_collator,
-)
-
-eval_sampler = DistributedSampler(
-    #datasets,
-    valid_datasets,
-    num_replicas=world_size,
-    rank=rank,
-    shuffle=False,
-)
-eval_dataloader = DataLoader(
-    #datasets,
-    valid_datasets,
-    batch_size=32,
-    num_workers=8,
-    sampler=eval_sampler,
-    shuffle=False,
-    pin_memory=True,
-    collate_fn=data_collator,
-)
-
-
-model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=3)
-
-optimizer = AdamW(model.parameters(), lr=5e-5)
-
-#num_epochs = 5
-num_epochs = 1
-num_training_steps = num_epochs * len(train_dataloader)
-lr_scheduler = get_scheduler(
-    "linear",
-    optimizer=optimizer,
-    num_warmup_steps=0,
-    num_training_steps=num_training_steps,
-)
-
-# distributed data parallel 
-model = model.to(device)
-#model = DistributedDataParallel(model, device_ids=[device])
-model = DistributedDataParallel(model)
-
-progress_bar = tqdm(range(num_training_steps))
-
-loss_fn = nn.CrossEntropyLoss(reduction="mean")
-
-model.train()
-for epoch in range(num_epochs):
-    for i, batch in enumerate(train_dataloader):
-        batch = batch.to(device)
-        outputs = model(**batch)
-        loss = outputs.loss 
-        # print(f"loss: {loss}") #loss: tensor([1.1256, 1.0732, 1.2382, 1.2967], device='cuda:0',grad_fn=<GatherBackward>)
-        #loss = torch.mean(loss)
-        #print(f"after torch mean loss: {loss}") # loss: 1.1834330558776855
-        #logits = outputs.logits
-        #loss = loss_fn(logits, batch["labels"])
-        
-
-        loss.backward()
-
-        optimizer.step()
-        #lr_scheduler.step()
-        optimizer.zero_grad()
-        progress_bar.update(1)
-
-        #steps = (epoch+1)*i
-        #if steps % 100 == 0:
-        #   print(f"step:{steps}, loss:{loss}")
-
-
-
-metric = evaluate.load("accuracy")
-
-num_eval_steps = len(eval_dataloader)
-progress_bar = tqdm(range(num_eval_steps))
-
-model.eval()
-
-for batch in eval_dataloader:
-    #batch = {k: v.to(device) for k, v in batch.items()}
-    batch = batch.to(device)
+    # 8. Evaluation
+    metric = evaluate.load("accuracy")
+    model.eval()
     with torch.no_grad():
-        outputs = model(**batch)
+        for batch in eval_loader:
+            batch = {k: v.to(device) for k, v in batch.items()}
+            outputs = model(**batch)
+            logits = outputs.logits
+            preds = torch.argmax(logits, dim=-1)
+            metric.add_batch(predictions=preds.cpu(), references=batch["labels"].cpu())
 
-    logits = outputs.logits
-    predictions = torch.argmax(logits, dim=-1)
-    metric.add_batch(predictions=predictions, references=batch["labels"])
-    progress_bar.update(1)
+    evaluation = metric.compute()
+    if rank == 0:
+        print(f"\nMetric: {evaluation}")
 
-evaluation = metric.compute()
-#print(type(evaluation)) # class dict
-#print(evaluation["accuracy"])
-print(f"\nMetric: {evaluation}")
+    # Reduce accuracy over all workers (optional)
+    acc_tensor = torch.tensor(evaluation["accuracy"]).to(device)
+    dist.reduce(acc_tensor, op=dist.ReduceOp.AVG, dst=0)
+    if rank == 0:
+        print(f"\nAverage Accuracy: {acc_tensor.item():.3f}")
 
-evaluation_tensor = torch.tensor(evaluation["accuracy"]).to(device)
+    # 9. Ensure all ranks reach this point before destroying the process group
+    dist.barrier()
+    dist.destroy_process_group()
 
-dist.reduce(evaluation_tensor, op=torch.distributed.ReduceOp.AVG, dst=0)
-
-if rank == 0:
-    print(f"\nAverge Accuracy: {evaluation_tensor.item():.3f}")
-
+if __name__ == "__main__":
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    main()
 
