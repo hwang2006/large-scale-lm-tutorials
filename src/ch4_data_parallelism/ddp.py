@@ -9,8 +9,8 @@ from transformers import AutoTokenizer, DataCollatorWithPadding
 from torch.utils.data import DataLoader, DistributedSampler
 
 from transformers import AutoModelForSequenceClassification
-from transformers import AdamW
-
+#from transformers import AdamW
+from torch.optim import AdamW
 
 from transformers import get_scheduler
 
