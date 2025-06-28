@@ -42,8 +42,8 @@ def data_parallel(module, inputs, labels, device_ids, output_device):
 ### 2) Backward Pass
 1. 계산된 Loss를 각 디바이스에 **Scatter**함.
 2. 전달받은 Loss를 이용해서 각 디바이스에서 **Backward**를 수행하여 Gradients 계산.
-3. 계산된 모든 Gradient를 GPU-1로 **Reduce**하여 GPU-1에 전부 더함.
-4. 더해진 Gradients를 이용하여 GPU-1에 있는 모델을 업데이트.
+3. 계산된 모든 Gradient를 GPU-0으로 **Reduce**하여 GPU-0에 전부 더함.
+4. 더해진 Gradients를 이용하여 GPU-0에 있는 모델을 업데이트.
 ![](../images/dp_backward.png)
    
 #### 혹시나 모르시는 분들을 위해...
