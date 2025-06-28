@@ -155,7 +155,7 @@ You need to create a virtual envrionment for a large-scale language model tutori
 
 1. Create a conda virtual environment with a python version 3.10
 ```
-[glogin01]$ conda create -n large-scale-lm python=3.10 -y
+[glogin01]$ conda create -n large-scale-lm python=3.12 -y
 Channels:
  - defaults
 Platform: linux-64
@@ -188,111 +188,8 @@ Executing transaction: done
 ```
 [glogin01]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 [glogin01]$ conda activate large-scale-lm
-(large-scale-lm) [glogin01]$ conda install pytorch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 pytorch-cuda=12.1 -c pytorch -c nvidia -y
-Channels:
- - pytorch
- - nvidia
- - defaults
-Platform: linux-64
-Collecting package metadata (repodata.json): done
-Solving environment: done
-
-## Package Plan ##
-
-  environment location: /scratch/qualis/miniconda3/envs/test
-
-  added / updated specs:
-    - pytorch-cuda=12.1
-    - pytorch==2.3.0
-    - torchaudio==2.3.0
-    - torchvision==0.18.0
-
-
-The following NEW packages will be INSTALLED:
-
-  blas               pkgs/main/linux-64::blas-1.0-mkl
-  brotli-python      pkgs/main/linux-64::brotli-python-1.0.9-py310h6a678d5_8
-  certifi            pkgs/main/linux-64::certifi-2024.8.30-py310h06a4308_0
-  charset-normalizer pkgs/main/noarch::charset-normalizer-3.3.2-pyhd3eb1b0_0
-  cuda-cudart        nvidia/linux-64::cuda-cudart-12.1.105-0
-  cuda-cupti         nvidia/linux-64::cuda-cupti-12.1.105-0
-  cuda-libraries     nvidia/linux-64::cuda-libraries-12.1.0-0
-  cuda-nvrtc         nvidia/linux-64::cuda-nvrtc-12.1.105-0
-  cuda-nvtx          nvidia/linux-64::cuda-nvtx-12.1.105-0
-  cuda-opencl        nvidia/linux-64::cuda-opencl-12.6.68-0
-  cuda-runtime       nvidia/linux-64::cuda-runtime-12.1.0-0
-  cuda-version       nvidia/noarch::cuda-version-12.6-3
-  ffmpeg             pytorch/linux-64::ffmpeg-4.3-hf484d3e_0
-  filelock           pkgs/main/linux-64::filelock-3.13.1-py310h06a4308_0
-  freetype           pkgs/main/linux-64::freetype-2.12.1-h4a9f257_0
-  gmp                pkgs/main/linux-64::gmp-6.2.1-h295c915_3
-  gmpy2              pkgs/main/linux-64::gmpy2-2.1.2-py310heeb90bb_0
-  gnutls             pkgs/main/linux-64::gnutls-3.6.15-he1e5248_0
-  idna               pkgs/main/linux-64::idna-3.7-py310h06a4308_0
-  intel-openmp       pkgs/main/linux-64::intel-openmp-2023.1.0-hdb19cb5_46306
-  jinja2             pkgs/main/linux-64::jinja2-3.1.4-py310h06a4308_0
-  jpeg               pkgs/main/linux-64::jpeg-9e-h5eee18b_3
-  lame               pkgs/main/linux-64::lame-3.100-h7b6447c_0
-  lcms2              pkgs/main/linux-64::lcms2-2.12-h3be6417_0
-  lerc               pkgs/main/linux-64::lerc-3.0-h295c915_0
-  libcublas          nvidia/linux-64::libcublas-12.1.0.26-0
-  libcufft           nvidia/linux-64::libcufft-11.0.2.4-0
-  libcufile          nvidia/linux-64::libcufile-1.11.1.6-0
-  libcurand          nvidia/linux-64::libcurand-10.3.7.68-0
-  libcusolver        nvidia/linux-64::libcusolver-11.4.4.55-0
-  libcusparse        nvidia/linux-64::libcusparse-12.0.2.55-0
-  libdeflate         pkgs/main/linux-64::libdeflate-1.17-h5eee18b_1
-  libiconv           pkgs/main/linux-64::libiconv-1.16-h5eee18b_3
-  libidn2            pkgs/main/linux-64::libidn2-2.3.4-h5eee18b_0
-  libjpeg-turbo      pytorch/linux-64::libjpeg-turbo-2.0.0-h9bf148f_0
-  libnpp             nvidia/linux-64::libnpp-12.0.2.50-0
-  libnvjitlink       nvidia/linux-64::libnvjitlink-12.1.105-0
-  libnvjpeg          nvidia/linux-64::libnvjpeg-12.1.1.14-0
-  libpng             pkgs/main/linux-64::libpng-1.6.39-h5eee18b_0
-  libtasn1           pkgs/main/linux-64::libtasn1-4.19.0-h5eee18b_0
-  libtiff            pkgs/main/linux-64::libtiff-4.5.1-h6a678d5_0
-  libunistring       pkgs/main/linux-64::libunistring-0.9.10-h27cfd23_0
-  libwebp-base       pkgs/main/linux-64::libwebp-base-1.3.2-h5eee18b_0
-  llvm-openmp        pkgs/main/linux-64::llvm-openmp-14.0.6-h9e868ea_0
-  lz4-c              pkgs/main/linux-64::lz4-c-1.9.4-h6a678d5_1
-  markupsafe         pkgs/main/linux-64::markupsafe-2.1.3-py310h5eee18b_0
-  mkl                pkgs/main/linux-64::mkl-2023.1.0-h213fc3f_46344
-  mkl-service        pkgs/main/linux-64::mkl-service-2.4.0-py310h5eee18b_1
-  mkl_fft            pkgs/main/linux-64::mkl_fft-1.3.10-py310h5eee18b_0
-  mkl_random         pkgs/main/linux-64::mkl_random-1.2.7-py310h1128e8f_0
-  mpc                pkgs/main/linux-64::mpc-1.1.0-h10f8cd9_1
-  mpfr               pkgs/main/linux-64::mpfr-4.0.2-hb69a4c5_1
-  mpmath             pkgs/main/linux-64::mpmath-1.3.0-py310h06a4308_0
-  nettle             pkgs/main/linux-64::nettle-3.7.3-hbbd107a_1
-  networkx           pkgs/main/linux-64::networkx-3.2.1-py310h06a4308_0
-  numpy              pkgs/main/linux-64::numpy-2.0.1-py310h5f9d8c6_1
-  numpy-base         pkgs/main/linux-64::numpy-base-2.0.1-py310hb5e798b_1
-  openh264           pkgs/main/linux-64::openh264-2.1.1-h4ff587b_0
-  openjpeg           pkgs/main/linux-64::openjpeg-2.5.2-he7f1fd0_0
-  pillow             pkgs/main/linux-64::pillow-10.4.0-py310h5eee18b_0
-  pysocks            pkgs/main/linux-64::pysocks-1.7.1-py310h06a4308_0
-  pytorch            pytorch/linux-64::pytorch-2.3.0-py3.10_cuda12.1_cudnn8.9.2_0
-  pytorch-cuda       pytorch/linux-64::pytorch-cuda-12.1-ha16c6d3_5
-  pytorch-mutex      pytorch/noarch::pytorch-mutex-1.0-cuda
-  pyyaml             pkgs/main/linux-64::pyyaml-6.0.1-py310h5eee18b_0
-  requests           pkgs/main/linux-64::requests-2.32.3-py310h06a4308_0
-  sympy              pkgs/main/linux-64::sympy-1.13.2-py310h06a4308_0
-  tbb                pkgs/main/linux-64::tbb-2021.8.0-hdb19cb5_0
-  torchaudio         pytorch/linux-64::torchaudio-2.3.0-py310_cu121
-  torchtriton        pytorch/linux-64::torchtriton-2.3.0-py310
-  torchvision        pytorch/linux-64::torchvision-0.18.0-py310_cu121
-  typing_extensions  pkgs/main/linux-64::typing_extensions-4.11.0-py310h06a4308_0
-  urllib3            pkgs/main/linux-64::urllib3-2.2.2-py310h06a4308_0
-  yaml               pkgs/main/linux-64::yaml-0.2.5-h7b6447c_0
-  zstd               pkgs/main/linux-64::zstd-1.5.5-hc292b87_2
-
-
-
-Downloading and Extracting Packages:
-
-Preparing transaction: done
-Verifying transaction: done
-Executing transaction: done
+(large-scale-lm) [glogin01]$ pip install torch==2.5.0 torchvision==0.20.0 torchaudio==2.5.0 --index-url https://download.pytorch.org/whl/cu121
+(large-scale-lm) [glogin01]$ pip install jupyter transformers datasets
 ```
 
 ## 주피터 띄워서 실습하기(Hands-on Practices with Jupyter on a Supercomputer)
