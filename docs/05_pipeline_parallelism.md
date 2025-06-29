@@ -373,7 +373,7 @@ Microsoft에서 공개한 `PipeDream`은 `GPipe`와는 약간 다른 방식의 �
 2. Work partitioning
  
 ### 1) Weight version managinig
-GPipe의 경우 하나의 weight 버전만 운용하지만 주기적으로 Pipeline flush가 일어납니다. **Pipeline flush란 계산된 Gradient를 통해 파라미터를 업데이트 하는 과정**입니다. 이러한 flush 과정 중에는 어떠한 **forward, backward 연산도 하지 않기** 때문에 처리 효율이 떨어집니다.
+GPipe의 경우 하나의 weight 버전만 운용하지만 주기적으로 Pipeline flush가 일어납니다. **Pipeline flush란 계산된 Gradient를 통해 파라미터를 업데이트 하는 과정`(optimizer.step())`**입니다. 이러한 flush 과정 중에는 어떠한 **forward, backward 연산도 하지 않기** 때문에 처리 효율이 떨어집니다.
 
 ![](../images/pipeline_flush.png)
    
