@@ -1144,7 +1144,7 @@ docs/               LICENSE         pretrain_ict.py            pyproject.toml
 
 모델을 시작하기 전에 Mix Precesion 지원을 위해서 [Transformer Engine](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/index.html)을 설치해야 한다.
 ```
-(large-scale-lm) [glogin01]$ pip install git+https://github.com/NVIDIA/TransformerEngine.git@stable
+(large-scale-lm) [glogin01]$ pip install git+https://github.com/NVIDIA/TransformerEngine.git@v1.10
 Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
 Collecting git+https://github.com/NVIDIA/TransformerEngine.git@stable
   Cloning https://github.com/NVIDIA/TransformerEngine.git (to revision stable) to /tmp/pip-req-build-qfbxqfc2
