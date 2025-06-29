@@ -609,7 +609,7 @@ if __name__ == "__main__":
 ```
 
 ```
-(large-scale-lm) [gpu05]$ pip install deepspeed
+(large-scale-lm) [gpu05]$ pip install deepspeed==0.15.1
 Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
 Collecting deepspeed
   Downloading deepspeed-0.15.1.tar.gz (1.4 MB)
