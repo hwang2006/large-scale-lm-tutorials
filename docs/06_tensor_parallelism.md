@@ -1142,7 +1142,8 @@ Dockerfile.linting  images/         pretrain_gpt.py            .pylintrc
 docs/               LICENSE         pretrain_ict.py            pyproject.toml
 ```
 
-모델을 시작하기 전에 Mix Precesion 지원을 위해서 [Transformer Engine](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/index.html)을 설치해야 한다.
+모델을 시작하기 전에 Mix Precesion 지원을 위해서 [Transformer Engine](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/index.html)을 설치해야 한다. 참고로, 뉴론에 `cuDNN 8.x`버전 설치되어 있으므로 8.x버전과 호환하는 과거 TransformerEngine 버전(e.g., v1.10) 설치해야 한다. 최신 TransformerEngine로 빌드할 경우에 cuDNN 9.x 버전에만 있는 `$CUDA_HOME/inlcude/cudnn_graph.h`파일을 찾을 수 없다는 빌드 에러가 발생한다. 
+
 ```
 #(large-scale-lm) [glogin01]$ pip install git+https://github.com/NVIDIA/TransformerEngine.git@v1.10 -v
 (large-scale-lm) [glogin01]$ pip install git+https://github.com/NVIDIA/TransformerEngine.git@v1.10
