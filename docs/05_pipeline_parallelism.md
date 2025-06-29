@@ -594,7 +594,8 @@ if __name__ == "__main__":
             # uniform length batching
             # https://mccormickml.com/2020/07/29/smart-batching-tutorial/
             batch_size=batch_size,
-            num_workers=8,
+            #num_workers=8,
+            num_workers=0,
             collate_fn=collate_fn,
             shuffle=False,
         )
