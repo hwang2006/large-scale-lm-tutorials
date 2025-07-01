@@ -140,7 +140,7 @@ if __name__ == "__main__":
         input_ids = tokens.input_ids.to(0)
         labels = tokens.input_ids.to(world_size - 1)
 
-        lm_logits = model(input_ids) # (bsz, sequence_length, vocab size) 
+        lm_logits = model(input_ids) # (bsz, seq_length, vocab_size) 
         shift_logits = lm_logits[..., :-1, :].contiguous() # 마지막 토큰 제외, 마지막에서 첫번째 까지
         shift_labels = labels[..., 1:].contiguous() # 첫 토큰 제외, 두번째 토큰부터 마지막 토큰까지
         loss = nn.CrossEntropyLoss()(
