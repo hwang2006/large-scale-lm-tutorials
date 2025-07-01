@@ -14,6 +14,7 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from transformers.models.gpt2.modeling_gpt2 import GPT2Block as GPT2BlockBase
 import torch.distributed as dist
 
+from functools import partial
 
 class GPT2Preprocessing(nn.Module):
     def __init__(self, config):
@@ -88,6 +89,14 @@ def collate_fn(batch):
     )
     return batch_encoding.input_ids
 
+class CollateFn:
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+    def __call__(self, batch):
+        batch_encoding = self.tokenizer.pad(
+            {"input_ids": batch}, padding="max_length", max_length=1024
+        )
+        return batch_encoding.input_ids
 
 def batch_fn(data):
     input_ids = data
@@ -114,8 +123,8 @@ if __name__ == "__main__":
     deepspeed.init_distributed()
     world_size, rank = dist.get_world_size(), dist.get_rank()
     #batch_size, train_steps = 1, 85000
-    #batch_size, train_steps = 4, 10000
-    batch_size, train_steps = 8, 10500
+    batch_size, train_steps = 4, 10000
+    #batch_size, train_steps = 8, 10500
     #batch_size, train_steps = 10, 8700
     #batch_size, train_steps = 12, 7200
     #batch_size, train_steps = 16, 5400
@@ -167,7 +176,9 @@ if __name__ == "__main__":
             # https://mccormickml.com/2020/07/29/smart-batching-tutorial/
             batch_size=batch_size,
             num_workers=8,
-            collate_fn=collate_fn,
+            collate_fn=CollateFn(tokenizer),
+            #collate_fn=collate_fn,
+            #collate_fn=partial(collate_fn, tokenizer=tokenizer),  # partial로 tokenizer 전달collate_fn,
             shuffle=False,
         )
     )
