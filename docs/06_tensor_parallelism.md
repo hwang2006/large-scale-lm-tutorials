@@ -404,6 +404,17 @@ print(RowParallelLinear()(x).item())
 print("Is GeLU in ColumnParallelLinear same with non-parallel = ", end="")
 print(ColumnParallelLinear()(x).item())
 ```
+```
+(large-scale-lm) [glogin01]$ ls
+./                     Megatron-LM/                      parallelformers_inference.py
+../                    megatron_mlp_gelu.py              row_parallelism.py
+column_parallelism.py  non_parallelism.py
+megatron_datasets.py   parallelformers_inference.org.py
+
+(large-scale-lm) [glogin01]$ python megatron_mlp_gelu.py
+Is GeLU in RowParallelLinear same with non-parallel = False
+Is GeLU in ColumnParallelLinear same with non-parallel = True
+```
 
 따라서 GeLU 연산을 병렬화 시키려면 반드시 GeLU 이전의 Linear 레이어는 Column 방향으로 병렬화 되어있어야 합니다. 따라서 Column-Row 순서로 병렬화 하는 것이 가장 효율적인 방식이죠."
 
