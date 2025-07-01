@@ -181,7 +181,7 @@ Megatron-LM에서는 **분할된 파라미터 (A1, A2)를 서로 다른 디바�
 def forward(self, input_):
     bias = self.bias if not self.skip_bias_add else None
 
-    # Set up backprop all-reduce.
+    # Set up backprop all-gather.
     input_parallel = copy_to_tensor_model_parallel_region(input_)
 
     # Matrix multiply.
