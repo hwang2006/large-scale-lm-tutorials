@@ -1891,7 +1891,7 @@ output: tensor([[[ 1.4440,  0.2227, -0.1925,  ...,  1.9239, -0.1831, -0.5063],
 
 사용법은 위 예제처럼 기존에 **`module(a, b, c)`와 같이 사용하던 것을 `checkpoint(module, a, b, c)`와 같이 변경**하기만 하면 끝입니다. 
    
-또한 우리가 자주 사용하는 Hugging Face `transformers`에도 거의 대부분 모델에 이러한 Activation Checkpointing 기능이 탑재되어 있습니다. **단순히 `model.gradient_checkpointing_enable()`와 `model.gradient_checkpointing_disable()`으로 켜고 끌 수 있습니다.** 정말 쉽죠?
+또한 우리가 자주 사용하는 Hugging Face `transformers`에도 거의 대부분 모델에 이러한 Activation Checkpointing 기능이 탑재되어 있습니다. **단순히 `model.gradient_checkpointing_enable()`와 `model.gradient_checkpointing_disable()`으로 켜고 끌 수 있습니다.** 
 
 
 ## 5. ZeRO-R
