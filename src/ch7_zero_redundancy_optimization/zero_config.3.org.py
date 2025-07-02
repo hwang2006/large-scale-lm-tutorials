@@ -14,8 +14,8 @@ import torch.distributed as dist
 model = GPT2LMHeadModel.from_pretrained("gpt2")
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
-optimizer = Adam(model.parameters(), lr=3e-5, weight_decay=3e-7)
-#optimizer = Adam(model.parameters(), lr=1e-5, weight_decay=3e-7)
+#optimizer = Adam(model.parameters(), lr=3e-5, weight_decay=3e-7)
+optimizer = Adam(model.parameters(), lr=1e-5, weight_decay=3e-7)
 
 engine, optimizer, _, scheduler = deepspeed.initialize(
     optimizer=optimizer,
@@ -34,9 +34,8 @@ engine, optimizer, _, scheduler = deepspeed.initialize(
         },
         "fp16": {
             "enabled": True,
-            #"enabled": False,
-            #"initial_scale_power": 32,
-            "initial_scale_power": 16,
+            "initial_scale_power": 32,
+            #"initial_scale_power": 16,
             "loss_scale_window": 1000,
             "hysteresis": 2,
             "min_loss_scale": 1,
