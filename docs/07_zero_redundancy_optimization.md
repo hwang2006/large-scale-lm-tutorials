@@ -361,7 +361,7 @@ tensor([[-0.6399, -1.1324, -2.4314,  ..., -3.1628,  1.4747, -1.5225],
 
 ### Pytorch에서 Mixed precision training 수행하기
    
-Pytorch에서는 다음과 같이 손쉽게 Mixed precision training을 수행할 수 있습니다.
+Pytorch에서는 torch.cuda.amp (Automatic Mixed Precision) 모듈을 활용하면 다음과 같이 손쉽게 Mixed precision training을 수행할 수 있습니다.
 ```
 # 참고: https://pytorch.org/docs/stable/notes/amp_examples.html#automatic-mixed-precision-examples
 # Creates model and optimizer in default precision
@@ -378,6 +378,7 @@ for epoch in epochs:
         optimizer.zero_grad()
 
         # Runs the forward pass with autocasting.
+        # autocast()를 사용하여 모델의 forward 패스와 손실 계산이 자동으로 혼합 정밀도로 수행
         with torch.cuda.amp.autocast(device_type='cuda', dtype=torch.float16):
             output = model(input)
             loss = loss_fn(output, target)
