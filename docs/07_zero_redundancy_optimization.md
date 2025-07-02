@@ -378,7 +378,8 @@ for epoch in epochs:
         optimizer.zero_grad()
 
         # Runs the forward pass with autocasting.
-        # autocast()를 사용하여 모델의 forward 패스와 손실 계산이 자동으로 혼합 정밀도로 수행
+        # AMP : Forward pass 진행
+        # AMP : autocast를 통한 자동 FP32 -> FP16 변환 (가능한 연산에 한하여)
         with torch.cuda.amp.autocast(device_type='cuda', dtype=torch.float16):
             output = model(input)
             loss = loss_fn(output, target)
@@ -386,14 +387,20 @@ for epoch in epochs:
         # Scales loss.  Calls backward() on scaled loss to create scaled gradients.
         # Backward passes under autocast are not recommended.
         # Backward ops run in the same dtype autocast chose for corresponding forward ops.
+        # scaled loss를 이용해 backward 진행 (gradient 모두 같은 scale factor로 scale됨)
+        # backward pass는 autocast 영역 내에 진행될 필요 없음
+        # forward pass에서 사용된 같은 data type으로 backward pass는 실행됨
         scaler.scale(loss).backward()
 
         # scaler.step() first unscales the gradients of the optimizer's assigned params.
         # If these gradients do not contain infs or NaNs, optimizer.step() is then called,
         # otherwise, optimizer.step() is skipped.
+        # scaler.step은 가장 먼저 unscale(grad를 scale factor만큼 나눠기)
+        # weight update 실시, 단 만약 grad 중 infs or NaNs이 있으면 step 스킵됨
         scaler.step(optimizer)
 
         # Updates the scale for next iteration.
+        # scale factor 업데이트
         scaler.update()
 
 ```
