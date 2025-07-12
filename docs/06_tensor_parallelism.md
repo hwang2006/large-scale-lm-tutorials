@@ -765,7 +765,7 @@ WARNING: Running pip as root will break packages and permissions. You should ins
 ```
 [glogin01]$ git clone https://github.com/NVIDIA/apex
 [glogin01]$ cd apex
-[glogin01]$ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
+[glogin01]$ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" ./
 .
 .
 .
