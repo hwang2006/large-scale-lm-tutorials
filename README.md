@@ -189,7 +189,7 @@ Executing transaction: done
 [glogin01]$ module load gcc/10.2.0 cmake/3.26.2 cuda/12.1
 [glogin01]$ conda activate large-scale-lm
 (large-scale-lm) [glogin01]$ pip install torch==2.5.0 torchvision==0.20.0 torchaudio==2.5.0 --index-url https://download.pytorch.org/whl/cu121
-(large-scale-lm) [glogin01]$ pip install jupyter transformers datasets
+(large-scale-lm) [glogin01]$ pip install jupyter transformers datasets torchgpipe nltk pybind11
 ```
 
 ## 주피터 띄워서 실습하기(Hands-on Practices with Jupyter on a Supercomputer)
