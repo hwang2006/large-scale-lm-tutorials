@@ -33,7 +33,7 @@ engine, optimizer, _, scheduler = deepspeed.initialize(
 datasets = load_dataset("squad").data["train"]["context"]
 datasets = [str(sample) for sample in datasets]
 #data_loader = DataLoader(datasets, batch_size=8, num_workers=8)
-data_loader = DataLoader(datasets, batch_size=2, num_workers=8)
+data_loader = DataLoader(datasets, batch_size=1, num_workers=8)
 
 
 model.train() #Sets the model to training model
@@ -60,5 +60,5 @@ for i, data in enumerate(data_loader):
         #print(f"step:{i}, loss:{loss}")
         print(f"step:{i}, loss:{loss}, Loss Scale: {engine.optimizer.cur_scale}")
 
-    if i >= 300:
-        break
+    #if i >= 300:
+    #    break

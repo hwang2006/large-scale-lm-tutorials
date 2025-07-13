@@ -1,6 +1,6 @@
 {
   "train_batch_size": 32,
-  "gradient_accumulation_steps": 4,
+  "gradient_accumulation_steps": 8,
   "scheduler": {
     "type": "WarmupDecayLR",
     "params": {
@@ -12,8 +12,8 @@
   },
   "fp16": {
     "enabled": true,
-    #"initial_scale_power": 16,
-    "initial_scale_power": 8,
+    "initial_scale_power": 10,
+    #"initial_scale_power": 8,
     "loss_scale_window": 1000,
     "hysteresis": 3,
     "min_loss_scale": 1
