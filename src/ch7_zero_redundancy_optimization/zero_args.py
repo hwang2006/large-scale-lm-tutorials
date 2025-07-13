@@ -22,7 +22,7 @@ parser.add_argument(
 parser.add_argument("--local_rank", default=0, type=int)
 args = parser.parse_args()
 
-optimizer = Adam(model.parameters(), lr=3e-5, weight_decay=3e-7)
+optimizer = Adam(model.parameters(), lr=1e-5, weight_decay=3e-7)
 
 engine, optimizer, _, scheduler = deepspeed.initialize(
     args=args,
@@ -32,7 +32,8 @@ engine, optimizer, _, scheduler = deepspeed.initialize(
 
 datasets = load_dataset("squad").data["train"]["context"]
 datasets = [str(sample) for sample in datasets]
-data_loader = DataLoader(datasets, batch_size=8, num_workers=8)
+#data_loader = DataLoader(datasets, batch_size=8, num_workers=8)
+data_loader = DataLoader(datasets, batch_size=2, num_workers=8)
 
 
 model.train() #Sets the model to training model
@@ -56,7 +57,8 @@ for i, data in enumerate(data_loader):
     engine.step()
 
     if i % 10 == 0 and dist.get_rank() == 0:
-        print(f"step:{i}, loss:{loss}")
+        #print(f"step:{i}, loss:{loss}")
+        print(f"step:{i}, loss:{loss}, Loss Scale: {engine.optimizer.cur_scale}")
 
     if i >= 300:
         break
