@@ -2483,6 +2483,223 @@ step:300, loss:3.0925631523132324, Loss Scale: 64.0
 [2025-07-13 22:33:13,831] [INFO] [launch.py:351:main] Process 43218 exits successfully.
 ```
 
+## FSDP 코드 실행 예 - ZeRO Stage3 해당
+```
+"""
+FSDP equivalent of zero_config.3.py
+For FSDP training with GPT2 model
+"""
+from datasets import load_dataset
+from torch.optim import Adam
+from torch.utils.data import DataLoader
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+import torch
+import torch.distributed as dist
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp import ShardingStrategy, MixedPrecision
+from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
+from transformers.models.gpt2.modeling_gpt2 import GPT2Block
+import functools
+
+# Initialize distributed training
+dist.init_process_group(backend="nccl")
+torch.cuda.set_device(dist.get_rank())
+
+# Load model and tokenizer
+model = GPT2LMHeadModel.from_pretrained("gpt2")
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+tokenizer.pad_token = tokenizer.eos_token
+
+# Configure mixed precision (equivalent to fp16 in DeepSpeed)
+mixed_precision_policy = MixedPrecision(
+    param_dtype=torch.float16,
+    reduce_dtype=torch.float16,
+    buffer_dtype=torch.float16,
+)
+
+# Configure auto wrap policy for transformer blocks
+auto_wrap_policy = functools.partial(
+    transformer_auto_wrap_policy,
+    transformer_layer_cls={GPT2Block},
+)
+
+# Wrap model with FSDP (equivalent to ZeRO stage 3)
+model = FSDP(
+    model,
+    sharding_strategy=ShardingStrategy.FULL_SHARD,  # ZeRO stage 3 equivalent
+    mixed_precision=mixed_precision_policy,
+    auto_wrap_policy=auto_wrap_policy,
+    device_id=torch.cuda.current_device(),
+    limit_all_gathers=True,  # Memory optimization
+)
+
+# Initialize optimizer
+optimizer = Adam(model.parameters(), lr=1e-5, weight_decay=3e-7)
+
+# Learning rate scheduler (equivalent to WarmupDecayLR)
+from torch.optim.lr_scheduler import LambdaLR
+
+warmup_steps = 30
+
+def lr_lambda(step):
+    if step < warmup_steps:
+        # Warmup: linear increase from 0 to 1
+        return step / warmup_steps
+    else:
+        # Decay: linear decrease from 1 to 0
+        #return max(0.0, (300 - step) / (300 - warmup_steps))
+        # Keep a small learning rate instead of going to 0
+        return max(0.1, (300 - step) / (300 - warmup_steps))  # Min 10% of original LR
+
+scheduler = LambdaLR(optimizer, lr_lambda)
+
+# Load dataset
+datasets = load_dataset("squad").data["train"]["context"]
+datasets = [str(sample) for sample in datasets]
+
+# Calculate micro batch size (equivalent to DeepSpeed's automatic calculation)
+train_batch_size = 32
+gradient_accumulation_steps = 8
+world_size = dist.get_world_size()
+micro_batch_size = train_batch_size // (gradient_accumulation_steps * world_size)
+
+data_loader = DataLoader(datasets, batch_size=micro_batch_size, num_workers=8)
+
+# Training setup
+model.train()
+scaler = torch.amp.GradScaler('cuda',
+    init_scale=2**8,  # equivalent to initial_scale_power: 8
+    growth_factor=2.0,
+    backoff_factor=0.5,
+    growth_interval=1000,  # equivalent to loss_scale_window
+)
+
+step_count = 0
+accumulated_loss = 0.0
+
+for i, data in enumerate(data_loader):
+    # Tokenize data
+    tokens = tokenizer(
+        data,
+        return_tensors="pt",
+        truncation=True,
+        padding=True,
+        max_length=1024,
+    )
+
+    # Move to GPU
+    input_ids = tokens.input_ids.cuda()
+    attention_mask = tokens.attention_mask.cuda()
+
+    # Forward pass with autocast (equivalent to fp16)
+    with torch.amp.autocast('cuda'):
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=input_ids,
+        )
+        loss = outputs.loss / gradient_accumulation_steps  # Scale loss for accumulation
+
+    # Backward pass with gradient scaling
+    scaler.scale(loss).backward()
+    accumulated_loss += loss.item()
+
+    # Gradient accumulation
+    if (i + 1) % gradient_accumulation_steps == 0:
+        # Gradient clipping (equivalent to DeepSpeed's gradient_clipping: 1.0)
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+        # Optimizer step
+        scaler.step(optimizer)
+        scaler.update()
+        scheduler.step()
+        optimizer.zero_grad()
+
+        # Logging
+        if step_count % 10 == 0 and dist.get_rank() == 0:
+            avg_loss = accumulated_loss * gradient_accumulation_steps
+            current_lr = scheduler.get_last_lr()[0]  # Get current learning rate
+            print(f"step:{step_count}, loss:{avg_loss:.6f}, Loss Scale: {scaler.get_scale()}, LR: {current_lr:.2e}")
+
+        accumulated_loss = 0.0
+        step_count += 1
+
+        #if step_count >= 300:
+        #    break
+
+# Cleanup
+dist.destroy_process_group()
+```
+
+```
+(large-scale-lm) [gpu05]$ torchrun --nproc_per_node=4 fsdp_config3.py
+W0714 11:12:44.241000 37797 site-packages/torch/distributed/run.py:793] 
+W0714 11:12:44.241000 37797 site-packages/torch/distributed/run.py:793] *****************************************
+W0714 11:12:44.241000 37797 site-packages/torch/distributed/run.py:793] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0714 11:12:44.241000 37797 site-packages/torch/distributed/run.py:793] *****************************************
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+`loss_type=None` was set in the config but it is unrecognised.Using the default loss: `ForCausalLMLoss`.
+step:0, loss:29.728081, Loss Scale: 256.0, LR: 3.33e-07
+step:10, loss:28.272661, Loss Scale: 256.0, LR: 3.67e-06
+step:20, loss:26.267936, Loss Scale: 256.0, LR: 7.00e-06
+step:30, loss:30.569752, Loss Scale: 256.0, LR: 9.96e-06
+step:40, loss:25.710792, Loss Scale: 256.0, LR: 9.59e-06
+step:50, loss:21.235041, Loss Scale: 256.0, LR: 9.22e-06
+step:60, loss:22.724265, Loss Scale: 256.0, LR: 8.85e-06
+step:70, loss:25.077879, Loss Scale: 256.0, LR: 8.48e-06
+step:80, loss:24.478126, Loss Scale: 256.0, LR: 8.11e-06
+step:90, loss:25.461616, Loss Scale: 256.0, LR: 7.74e-06
+step:100, loss:24.153207, Loss Scale: 256.0, LR: 7.37e-06
+step:110, loss:23.376777, Loss Scale: 256.0, LR: 7.00e-06
+step:120, loss:25.944422, Loss Scale: 256.0, LR: 6.63e-06
+step:130, loss:28.251074, Loss Scale: 256.0, LR: 6.26e-06
+step:140, loss:27.309904, Loss Scale: 256.0, LR: 5.89e-06
+step:150, loss:31.746749, Loss Scale: 256.0, LR: 5.52e-06
+step:160, loss:26.181143, Loss Scale: 256.0, LR: 5.15e-06
+step:170, loss:30.260555, Loss Scale: 256.0, LR: 4.78e-06
+step:180, loss:22.487913, Loss Scale: 256.0, LR: 4.41e-06
+step:190, loss:29.431092, Loss Scale: 256.0, LR: 4.04e-06
+step:200, loss:32.180871, Loss Scale: 256.0, LR: 3.67e-06
+step:210, loss:29.817479, Loss Scale: 256.0, LR: 3.30e-06
+step:220, loss:25.622557, Loss Scale: 256.0, LR: 2.93e-06
+step:230, loss:31.840750, Loss Scale: 256.0, LR: 2.56e-06
+step:240, loss:33.186001, Loss Scale: 256.0, LR: 2.19e-06
+step:250, loss:32.582079, Loss Scale: 256.0, LR: 1.81e-06
+step:260, loss:33.256118, Loss Scale: 256.0, LR: 1.44e-06
+step:270, loss:32.069117, Loss Scale: 256.0, LR: 1.07e-06
+step:280, loss:32.938382, Loss Scale: 256.0, LR: 1.00e-06
+step:290, loss:30.069434, Loss Scale: 256.0, LR: 1.00e-06
+step:300, loss:30.484320, Loss Scale: 256.0, LR: 1.00e-06
+step:310, loss:25.051904, Loss Scale: 256.0, LR: 1.00e-06
+step:320, loss:28.015306, Loss Scale: 256.0, LR: 1.00e-06
+step:330, loss:30.110172, Loss Scale: 256.0, LR: 1.00e-06
+step:340, loss:22.453009, Loss Scale: 256.0, LR: 1.00e-06
+step:350, loss:23.124409, Loss Scale: 256.0, LR: 1.00e-06
+step:360, loss:26.931024, Loss Scale: 256.0, LR: 1.00e-06
+step:370, loss:20.888100, Loss Scale: 256.0, LR: 1.00e-06
+step:380, loss:31.422818, Loss Scale: 256.0, LR: 1.00e-06
+step:390, loss:28.503827, Loss Scale: 256.0, LR: 1.00e-06
+step:400, loss:26.812489, Loss Scale: 256.0, LR: 1.00e-06
+step:410, loss:28.631587, Loss Scale: 256.0, LR: 1.00e-06
+step:420, loss:29.378061, Loss Scale: 256.0, LR: 1.00e-06
+step:430, loss:32.433940, Loss Scale: 256.0, LR: 1.00e-06
+step:440, loss:26.941878, Loss Scale: 256.0, LR: 1.00e-06
+step:450, loss:25.341681, Loss Scale: 256.0, LR: 1.00e-06
+step:460, loss:28.714197, Loss Scale: 256.0, LR: 1.00e-06
+step:470, loss:30.674416, Loss Scale: 256.0, LR: 1.00e-06
+step:480, loss:26.755354, Loss Scale: 256.0, LR: 1.00e-06
+step:490, loss:23.920671, Loss Scale: 256.0, LR: 1.00e-06
+step:500, loss:23.716164, Loss Scale: 256.0, LR: 1.00e-06
+step:510, loss:29.680382, Loss Scale: 256.0, LR: 1.00e-06
+.
+.
+.
+```
+
+
 ## 4. Activation Checkpointing
      
 FP 16과 32의 model, gradient, optimizer state 이외에 또 하나의 큰 메모리 영역은 Activation Memory 영역입니다. Activation은 model weight에 곱해지는 입력텐서들을 의미하는데요. 만약 $y = w_1 \\cdot (w_2 \\cdot x)$와 같은 뉴럴넷이 있다면, $w_1$과 곱해지는 $x$와 $w_2$와 곱해지는 $w_2 \\cdot x$ 등의 텐서들이 Activation Memory에 해당합니다. 
