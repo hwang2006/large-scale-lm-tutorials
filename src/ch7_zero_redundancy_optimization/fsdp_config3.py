@@ -47,13 +47,18 @@ model = FSDP(
 )
 
 # Initialize optimizer
-optimizer = Adam(model.parameters(), lr=1e-5, weight_decay=3e-7)
+#optimizer = Adam(model.parameters(), lr=1e-5, weight_decay=3e-7)
+optimizer = Adam(model.parameters(), lr=3e-5, weight_decay=3e-7)
 
 # Learning rate scheduler (equivalent to WarmupDecayLR)
 from torch.optim.lr_scheduler import LambdaLR
 
-warmup_steps = 30
+#warmup_steps = 30
+warmup_steps = 300
 
+# Steps 0-300: Warmup from 0 to 3e-5
+# Steps 300-3000: Decay from 3e-5 to 3e-07 (1% minimum)
+# Steps 3000+: Maintain at 3e-07
 def lr_lambda(step):
     if step < warmup_steps:
         # Warmup: linear increase from 0 to 1
@@ -62,7 +67,9 @@ def lr_lambda(step):
         # Decay: linear decrease from 1 to 0
         #return max(0.0, (300 - step) / (300 - warmup_steps))
         # Keep a small learning rate instead of going to 0
-        return max(0.1, (300 - step) / (300 - warmup_steps))  # Min 10% of original LR
+        #return max(0.1, (300 - step) / (300 - warmup_steps))  # Min 10% of original LR
+        #return max(0.01, (300 - step) / (300 - warmup_steps))  # Min 10% of original LR
+        return max(0.01, (3000 - step) / (3000 - warmup_steps))  # Min 10% of original LR
 
 scheduler = LambdaLR(optimizer, lr_lambda)
 
@@ -81,7 +88,8 @@ data_loader = DataLoader(datasets, batch_size=micro_batch_size, num_workers=8)
 # Training setup
 model.train()
 scaler = torch.amp.GradScaler('cuda',
-    init_scale=2**8,  # equivalent to initial_scale_power: 8
+    #init_scale=2**8,  # equivalent to initial_scale_power: 8
+    init_scale=2**12,  # equivalent to initial_scale_power: 16
     growth_factor=2.0,
     backoff_factor=0.5,
     growth_interval=1000,  # equivalent to loss_scale_window
