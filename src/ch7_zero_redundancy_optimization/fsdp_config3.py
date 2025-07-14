@@ -87,12 +87,19 @@ data_loader = DataLoader(datasets, batch_size=micro_batch_size, num_workers=8)
 
 # Training setup
 model.train()
+#scaler = torch.amp.GradScaler('cuda',
+#    #init_scale=2**8,  # equivalent to initial_scale_power: 8
+#    init_scale=2**12,  # equivalent to initial_scale_power: 16
+#    growth_factor=2.0,
+#    backoff_factor=0.5,
+#    growth_interval=1000,  # equivalent to loss_scale_window
+#)
+
 scaler = torch.amp.GradScaler('cuda',
-    #init_scale=2**8,  # equivalent to initial_scale_power: 8
-    init_scale=2**12,  # equivalent to initial_scale_power: 16
-    growth_factor=2.0,
-    backoff_factor=0.5,
-    growth_interval=1000,  # equivalent to loss_scale_window
+    init_scale=2**10,        # Start lower (1024)
+    growth_factor=1.2,       # Very conservative growth
+    backoff_factor=0.8,      # Gentler backoff
+    growth_interval=2000,    # Wait much longer before growing
 )
 
 step_count = 0
