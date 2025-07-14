@@ -1,6 +1,7 @@
 {
   "train_batch_size": 32,
   "gradient_accumulation_steps": 8,
+  #"micro_batch_per_gpu": 1,
   "scheduler": {
     "type": "WarmupDecayLR",
     "params": {
