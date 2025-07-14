@@ -2,6 +2,10 @@
 src/ch7/zero_args.py
 
 ## model.train() is added 
+# Calculate the correct batch size for your DataLoader
+micro_batch_size = train_batch_size // (gradient_accumulation_steps * world_size)
+data_loader = DataLoader(datasets, batch_size=micro_batch_size, num_workers=8)
+
 """
 from argparse import ArgumentParser
 from datasets import load_dataset
